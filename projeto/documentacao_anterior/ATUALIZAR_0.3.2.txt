@@ -1,0 +1,33 @@
+ROV LIVE IA 0.3.2 — RUIDO E NITIDEZ
+
+Atualizar 0.3 ou 0.3.1:
+Feche o programa, copie o CONTEUDO desta pasta sobre a pasta instalada,
+substitua os arquivos e mantenha .venv. Abra INICIAR.cmd. Nao precisa reinstalar.
+Novas instalacoes: veja COMECE_AQUI.txt.
+
+CONTROLES NOVOS (modo IA)
+Reducao de ruido IA: 30% inicialmente. Suaviza granulacao com filtro bilateral.
+Nitidez IA: 15% inicialmente. Realca bordas com faixa de tolerancia e limite.
+Os mesmos valores sao usados na exibicao e na exportacao de video.
+Zere AMBOS para obter exatamente a saida anterior da IA, com os mesmos demais
+ajustes. Nao foi alterada nem treinada novamente a rede WaterNet.
+
+O acabamento e um filtro espacial adicional depois da IA. Nao e uma nova rede
+neural. Nao usa quadros anteriores, nao gera objetos, nao garante preservacao
+de defeitos nem remove com garantia particulas reais em suspensao. Ajustes fortes
+podem suavizar detalhes ou destacar particulas. Compare sempre com o original.
+Se ficar lento, reduza ou zere os controles. Teste primeiro 30% / 15%.
+
+VALIDACAO
+23 testes da base passaram com os controles integrados. Quatro testes novos
+passaram para: equivalencia exata em zero, ausencia de alteracao da entrada,
+reducao de variacao em ruido sintetico uniforme, limite de nitidez e controles.
+Na amostra sintetica com ruido70%, o desvio-padrao caiu mais de 20%; isso nao mede
+remocao de particulas nem resultado no video real da Underwater.
+Interface inspecionada com os dois controles. Exportacao demonstrativa do recorte
+esquerdo da gravacao enviada: 90 quadros a30FPS. Nao e arquivo original da camera.
+GPU/Windows/captura fisica continuam sem validacao neste ambiente.
+
+EXEMPLOS
+01: recorte original. 02: IA anterior. 03: IA com ruido30% / nitidez15%.
+A origem e os limites estao em exemplos/ORIGEM.txt.

@@ -1,0 +1,45 @@
+VERSAO 0.3.2: leia ATUALIZAR_0.3.2.txt para atualizar sem reinstalar.
+
+ATUALIZACAO 0.3.1: leia ATUALIZAR_0.3.1.txt antes das instrucoes abaixo.
+
+ROV LIVE IA 0.3 — PROTOTIPO UTILIZAVEL
+
+1. Extraia TODO este ZIP em uma pasta NOVA. Nao copie sobre a versao 0.2.
+2. Abra INSTALAR.cmd uma vez. Usa seu Python existente e instala as dependencias
+   nesta pasta. A instalacao precisa de internet; o uso posterior e local.
+3. Abra INICIAR.cmd.
+4. Em Entrada, escolha Arquivo de video. Clique Escolher video e Conectar.
+5. A IA ja esta selecionada. Comece com Analise IA: Rapida.
+6. Segure Ver original para comparar; Intensidade regula a correcao.
+7. Para salvar o resultado, clique Exportar video com IA e escolha entrada/saida.
+   Exporta MP4 SEM AUDIO. Processa todos os quadros; pode demorar mais que o video.
+
+Para camera: Entrada Placa de captura, dispositivo 0, DirectShow, Conectar.
+Se abrir a webcam, tente outro indice. Feche OBS/outros programas de captura.
+Para fluxo IP: informe o endereco RTSP/HTTP direto do video.
+
+EXECUCAO
+Automatico tenta DirectML no adaptador GPU 0 quando disponivel; caso nao esteja
+instalado, usa CPU. GPU 0 pode ser a integrada. Escolha outro indice se necessario.
+O rodape informa o provedor da sessao (algumas operacoes podem rodar em CPU).
+Se houver erro com GPU, selecione CPU e Reconectar. Se nao instalar DirectML,
+use INSTALAR_CPU.cmd nesta mesma pasta, depois INICIAR.cmd.
+
+CONTROLES
+Intensidade: força da IA. Os ajustes manuais antigos ficam disponiveis somente
+em Processamento: Classico. Analise Detalhada custa mais processamento.
+Resolucao da exibicao/captura so muda ao Reconectar. A resolucao interna da IA
+fica em 128x72 (Rapida) ou 256x144 (Detalhada). A correcao e ampliada e aplicada
+sobre o quadro original; nao e super-resolucao nem recuperacao garantida de detalhes.
+
+IMPORTANTE
+E uma rede WaterNet pre-treinada com adaptacao de processamento para ROV.
+Nao foi treinada uma nova rede exclusiva. Ja funciona com video na interface.
+Windows, placa de captura e GPU fisica ainda precisam de teste no destino.
+Nao ha comprovacao de superioridade sobre Orphie nem validacao operacional.
+Use em bancada, compare com original e mantenha a imagem de pilotagem disponivel.
+Nao controla o ROV. Retira imagens com idade maior que 0,75s; isso pode ocorrer
+se o processamento ficar lento. Nao detecta uma placa enviando imagem congelada.
+
+Amostras em exemplos/: somente recorte esquerdo da gravacao de tela enviada;
+nao sao videos originais da camera. Original e tratado permitem conferir a IA.
