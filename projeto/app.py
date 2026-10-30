@@ -18,14 +18,14 @@ from PySide6.QtGui import QImage, QPixmap, QPainter, QColor, QFont, QKeySequence
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel, QPushButton,
     QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QFileDialog, QMessageBox, QCheckBox,
     QHBoxLayout, QVBoxLayout, QFormLayout, QGroupBox, QSplitter, QScrollArea, QToolButton,
-    QSizePolicy)
+    QSizePolicy, QSlider, QStyle)
 
 from engine import Session, Source
 from processing import Settings
 import capture_devices
 from rov_ai import list_adapters, adapter_label
 
-VERSION = "0.3.7"
+VERSION = "0.3.8"
 
 STYLE = """
 QWidget { background: #0b1420; color: #d9e6ef; font-family: 'Segoe UI'; font-size: 13px; }
@@ -46,6 +46,9 @@ QSplitter::handle { background: #1e3548; width: 3px; }
 QToolTip { background: #20394e; color: white; border: 1px solid #4c758e; }
 QToolButton#section { border: none; color: #83c6d1; font-weight: 600; padding: 6px 0; text-align: left; }
 QToolButton#section:hover { color: #b7e6ee; }
+QSlider::groove:horizontal { height: 6px; background: #1c3549; border-radius: 3px; }
+QSlider::sub-page:horizontal { background: #28b69c; border-radius: 3px; }
+QSlider::handle:horizontal { background: #e8f6f3; width: 16px; height: 16px; margin: -6px 0; border-radius: 8px; }
 """
 
 # 0.3.7: "Visual" presets of the AI look (restoration, specks, color, local
@@ -99,6 +102,23 @@ class Section(QWidget):
         self.button.setArrowType(Qt.ArrowType.DownArrow if expanded else Qt.ArrowType.RightArrow)
         self.body.setVisible(expanded)
         self.updateGeometry()
+
+
+class JumpSlider(QSlider):
+    """Timeline: a click jumps straight to that point (not page steps)."""
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton and self.maximum() > 0:
+            value = QStyle.sliderValueFromPosition(self.minimum(), self.maximum(),
+                                                   round(event.position().x()), self.width())
+            self.setValue(value)
+            self.sliderMoved.emit(value)
+        super().mousePressEvent(event)
+
+
+def clock(seconds):
+    seconds = max(0, int(seconds))
+    hours, rest = divmod(seconds, 3600)
+    return f"{hours}:{rest // 60:02d}:{rest % 60:02d}" if hours else f"{rest // 60:02d}:{rest % 60:02d}"
 
 
 class VideoPanel(QWidget):
@@ -382,6 +402,28 @@ class Window(QMainWindow):
         splitter.addWidget(self.original)
         splitter.addWidget(self.enhanced)
         right.addWidget(splitter, 1)
+        # Timeline: shown only while a video file is connected (0.3.8).
+        self.timeline = QWidget()
+        bar = QHBoxLayout(self.timeline)
+        bar.setContentsMargins(0, 4, 0, 0)
+        self.play_btn = QPushButton("⏸  Pausar")
+        self.play_btn.setToolTip("Pausar / continuar o vídeo. Pausado, o tratamento continua no quadro parado.")
+        self.play_btn.setFixedWidth(118)
+        self.play_btn.clicked.connect(self.toggle_play)
+        self.seek_bar = JumpSlider(Qt.Orientation.Horizontal)
+        self.seek_bar.setRange(0, 0)
+        self.seek_bar.setToolTip("Arraste ou clique para ir a um trecho do vídeo.")
+        self.seek_bar.sliderMoved.connect(self.preview_seek)
+        self.seek_bar.sliderReleased.connect(self.commit_seek)
+        self.time_label = QLabel("00:00 / 00:00")
+        self.time_label.setMinimumWidth(110)
+        self.time_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        bar.addWidget(self.play_btn)
+        bar.addWidget(self.seek_bar, 1)
+        bar.addWidget(self.time_label)
+        self.timeline.setVisible(False)
+        self._seek_pending = None
+        right.addWidget(self.timeline)
         self.metrics = QLabel("FPS: —   |   Filtro: — ms   |   Idade no app: — ms")
         self.metrics.setWordWrap(True)
         right.addWidget(self.metrics)
@@ -479,6 +521,52 @@ class Window(QMainWindow):
             blocker = QSignalBlocker(self.visual)
             self.visual.setCurrentIndex(match)
             del blocker
+
+    def file_session(self):
+        return self.session is not None and getattr(self.session, "source", None) is not None \
+            and self.session.source.kind == "file" and hasattr(self.session, "timeline")
+
+    def toggle_play(self):
+        if not self.file_session():
+            return
+        paused = not self.session.paused
+        self.session.set_paused(paused)
+        self.play_btn.setText("▶  Continuar" if paused else "⏸  Pausar")
+
+    def preview_seek(self, value):
+        duration = self.seek_bar.maximum() / 1000
+        self.time_label.setText(f"{clock(value / 1000)} / {clock(duration)}")
+        if not self.seek_bar.isSliderDown():  # click on the track
+            self.commit_seek()
+
+    def commit_seek(self):
+        if self.file_session():
+            self.session.seek(self.seek_bar.value() / 1000)
+            # Keep the handle where the user put it until the file catches up.
+            self._seek_pending = (self.seek_bar.value(), time.perf_counter())
+
+    def update_timeline(self):
+        show = self.file_session()
+        if self.timeline.isVisible() != show:
+            self.timeline.setVisible(show)
+        if not show:
+            return
+        position, duration = self.session.timeline()
+        maximum = int(duration * 1000)
+        if self.seek_bar.maximum() != maximum:
+            self.seek_bar.setRange(0, maximum)
+        if self.seek_bar.isSliderDown():
+            return
+        if self._seek_pending is not None:
+            target, since = self._seek_pending
+            if abs(position * 1000 - target) > 1500 and time.perf_counter() - since < 2:
+                return
+            self._seek_pending = None
+        blocker = QSignalBlocker(self.seek_bar)
+        self.seek_bar.setValue(int(position * 1000))
+        del blocker
+        self.time_label.setText(f"{clock(position)} / {clock(duration)}" if duration else clock(position))
+        self.play_btn.setText("▶  Continuar" if self.session.paused else "⏸  Pausar")
 
     def toggle_panel(self):
         visible = not self.panel.isVisible()
@@ -663,6 +751,7 @@ class Window(QMainWindow):
             self.session.close()
             self.write_session_log(self.session)
             self.session = None
+        self.update_timeline()
         self.current = None
         self.last_sequence = -1
         self.stop.setEnabled(False)
@@ -675,6 +764,7 @@ class Window(QMainWindow):
 
     def refresh(self):
         self.poll_background()
+        self.update_timeline()
         if not self.session:
             return
         packet = self.session.snapshot()

@@ -321,3 +321,23 @@ desabilitados.
   modo escolhido (IA ou Clássico).
 - Botão “Ocultar controles” (F9) deixa o vídeo com a largura toda.
 - O processamento não mudou: mesmos padrões, mesma fluidez. 83 testes passam.
+
+---
+
+# 0.3.8: linha do tempo para vídeos
+
+Pedido: “uma linha para controlar o trecho do vídeo (apenas se for vídeo)”.
+
+- Abaixo dos painéis aparece **⏸ Pausar / ▶ Continuar**, uma barra de posição
+  e o tempo “atual / total”. A barra **só aparece com Arquivo de vídeo
+  conectado**. Não aparece para placa de captura nem câmera IP.
+- Clicar na barra vai direto ao ponto; arrastar mostra o tempo e vai ao soltar.
+  Com o vídeo pausado, ir a outro ponto mostra o quadro novo.
+- Pausado, o processo de captura reenvia o mesmo quadro na cadência do
+  arquivo. A imagem não some como “sem sinal” e dá para comparar ajustes
+  (Visual, Cor, Contraste…) com a cena parada. A IA continua processando.
+- Implementação: comandos de posição e de pausa em memória compartilhada com o
+  processo de captura. A posição e a duração voltam nos metadados do quadro.
+  Nada muda para placa ou IP.
+- 85 testes passam. Os novos cobrem ir a um ponto, pausar com a imagem viva,
+  ir a outro ponto pausado, continuar, e a barra visível só para arquivo.

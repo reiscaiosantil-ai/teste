@@ -162,7 +162,13 @@ def open_capture(source, stop, messages):
     return None, None, text
 
 
-def capture_worker(source, buffer, metadata, lock, stop, messages):
+# metadata: sequence, received, h, w, source_h, source_w, position_s, duration_s
+METADATA = 8
+# control (files only): seek target in seconds (-1 = none), paused flag
+SEEK, PAUSED = 0, 1
+
+
+def capture_worker(source, buffer, metadata, lock, stop, messages, control=None):
     # Driver hangs are isolated here. Parent can terminate this process.
     os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;tcp")
     cv2.setNumThreads(2)
@@ -195,9 +201,34 @@ def capture_worker(source, buffer, metadata, lock, stop, messages):
         array = np.frombuffer(buffer, dtype=np.uint8)
         origin, first_pts, last_pts = time.perf_counter(), None, None
         sequence, file_index = 0, 0
+        is_file = source.kind == "file"
+        count = cap.get(cv2.CAP_PROP_FRAME_COUNT) if is_file else 0
+        duration = count / fps if np.isfinite(count) and count > 0 else 0.
+        metadata[7] = duration
+        # Timeline (files): position of the shown frame; pause re-sends it so
+        # the display stays alive and settings can be compared on a still.
+        held, position, base, step = None, 0., 0., False
         signal = {"thumb": None, "changed": time.perf_counter(), "bright": time.perf_counter(),
                   "warning": None}
         while not stop.is_set():
+            if is_file and control is not None:
+                target = control[SEEK]
+                if target >= 0:
+                    control[SEEK] = -1.
+                    target = min(max(0., target), max(0., duration - 1 / fps)) if duration else max(0., target)
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, int(round(target * fps)))
+                    origin, first_pts, last_pts, file_index = time.perf_counter(), None, None, 0
+                    base, step = target, True
+                elif control[PAUSED] and held is not None and not step:
+                    if stop.wait(1 / fps):
+                        break
+                    # Same frame, new timestamp: paused is not a lost signal.
+                    origin, first_pts, last_pts, file_index = time.perf_counter(), None, None, 0
+                    base = position
+                    sequence += 1
+                    publish(array, metadata, lock, held[0], sequence,
+                            time.perf_counter(), held[1], held[2], position)
+                    continue
             if pending is not None:
                 ok, frame, pending = True, pending, None
             else:
@@ -209,6 +240,7 @@ def capture_worker(source, buffer, metadata, lock, stop, messages):
                         _status(messages, "Não foi possível reiniciar o arquivo.", "fail")
                         break
                     origin, first_pts, last_pts, file_index = time.perf_counter(), None, None, 0
+                    base = 0.
                     continue
                 _status(messages, "Fim do arquivo." if source.kind == "file" else
                         "Sinal perdido. Confira a conexão e clique em Reconectar.", "fail")
@@ -222,8 +254,10 @@ def capture_worker(source, buffer, metadata, lock, stop, messages):
                 else:
                     offset = file_index / fps
                 last_pts = pts
-                if stop.wait(max(0, origin + offset - time.perf_counter())):
+                position = base + offset
+                if not step and stop.wait(max(0, origin + offset - time.perf_counter())):
                     break
+                step = False
                 received = time.perf_counter()
                 file_index += 1
             elif sequence % 10 == 0:
@@ -231,12 +265,9 @@ def capture_worker(source, buffer, metadata, lock, stop, messages):
             source_h, source_w = frame.shape[:2]
             frame = fit_frame(frame, source.width, source.height)
             sequence += 1
-            if lock.acquire(timeout=0.03):
-                try:
-                    array[:frame.size] = frame.ravel()
-                    metadata[:] = (sequence, received, frame.shape[0], frame.shape[1], source_h, source_w)
-                finally:
-                    lock.release()
+            if is_file:
+                held = (frame, source_h, source_w)
+            publish(array, metadata, lock, frame, sequence, received, source_h, source_w, position)
     except Exception as exc:
         _status(messages, "Falha na captura (" + type(exc).__name__ +
                 "). Verifique a fonte e tente outro backend.", "fail")
@@ -244,6 +275,16 @@ def capture_worker(source, buffer, metadata, lock, stop, messages):
         if cap is not None:
             cap.release()
         messages.cancel_join_thread()
+
+
+def publish(array, metadata, lock, frame, sequence, received, source_h, source_w, position=0.):
+    if lock.acquire(timeout=0.03):
+        try:
+            array[:frame.size] = frame.ravel()
+            metadata[:7] = (sequence, received, frame.shape[0], frame.shape[1],
+                            source_h, source_w, position)
+        finally:
+            lock.release()
 
 
 def watch_signal(signal, frame, now, messages):
@@ -272,7 +313,8 @@ class Session:
         self.source = source
         self.settings = settings
         self.buffer = context.RawArray("B", MAX_BYTES)
-        self.metadata = context.RawArray("d", 6)
+        self.metadata = context.RawArray("d", METADATA)
+        self.control = context.RawArray("d", [-1., 0.])
         self.frame_lock = context.Lock()
         self.capture_stop = context.Event()
         self.messages = context.Queue(maxsize=16)
@@ -287,7 +329,8 @@ class Session:
         self.log = []
         self.started = time.perf_counter()
         self.process = context.Process(target=capture_worker,
-            args=(source, self.buffer, self.metadata, self.frame_lock, self.capture_stop, self.messages),
+            args=(source, self.buffer, self.metadata, self.frame_lock, self.capture_stop, self.messages,
+                  self.control),
             daemon=True)
         self.live_ai = LiveAI()
         self._live_active = False
@@ -428,6 +471,21 @@ class Session:
             finally:
                 self.frame_lock.release()
         return self._capture_health
+
+    # ---- Timeline (video files only)
+    def timeline(self):
+        """(position_s, duration_s) of the frame last delivered by the file."""
+        return float(self.metadata[6]), float(self.metadata[7])
+
+    def seek(self, seconds):
+        self.control[SEEK] = max(0., float(seconds))
+
+    def set_paused(self, paused):
+        self.control[PAUSED] = 1. if paused else 0.
+
+    @property
+    def paused(self):
+        return bool(self.control[PAUSED])
 
     def snapshot(self):
         with self.output_lock:
