@@ -145,17 +145,19 @@ def test_motion_fallback_is_labeled_temporal_without_old_scene_pixels():
             time.sleep(.15)
             return np.zeros(f.shape,np.float32),f.copy()
     live=LiveAI(NoResult);f=textured();f[:,96:]=180
-    s=Settings(mode='ai',ai_realtime=True,ai_restore=.5)
+    # Core bounds without the 0.3.6 color/local-contrast stage (tested separately).
+    s=Settings(mode='ai',ai_realtime=True,ai_restore=.5,ai_color=0,ai_contrast=0)
     try:
         # A pending neural analysis need not stop the conventional restoration.
         output,info=live.process(f,s,1,time.perf_counter())
         assert info['ai_state']=='temporal' and info['ai_reason']=='waiting'
-        assert output.shape==f.shape and np.max(abs(output.astype(int)-f.astype(int)))<=16
+        # 20 (was 16): the 0.3.6 water-tint removal shifts chroma a few levels.
+        assert output.shape==f.shape and np.max(abs(output.astype(int)-f.astype(int)))<=20
         # Expired correction is never reused. Temporal-only stage remains clear.
         with live.condition:
             live.result=Correction(live.epoch,live.key,1,time.perf_counter()-3,
                 np.full(f.shape,80,np.float32),f.copy(),50,('TEST',))
         output,info=live.process(f,s,2,time.perf_counter())
         assert info['ai_state']=='temporal' and info['ai_reason']=='expired'
-        assert np.max(abs(output.astype(int)-f.astype(int)))<=16
+        assert np.max(abs(output.astype(int)-f.astype(int)))<=20
     finally:live.close()

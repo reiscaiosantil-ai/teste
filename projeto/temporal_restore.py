@@ -86,6 +86,7 @@ class TemporalRestorer:
         self.levels = None
         self.ceiling = None
         self.overlay = None
+        self.tone = None
         self.metrics = {'temporal_fraction': 0., 'particle_fraction': 0.}
 
     def clean(self, frame, amount, dt):
@@ -243,6 +244,45 @@ class TemporalRestorer:
         self.older = older
         self.previous_guide = guide
         return output
+
+    def natural(self, source, enhanced, color, contrast, dt):
+        """Final composition used by the AI paths (0.3.6).
+
+        Luminance (veil removal, contrast) comes from the restoration. Color
+        comes from the source frame: part of the average water tint is
+        removed and saturation is raised by at most (1 + color); only a
+        fraction `0.8 × color` of the network's own chroma is mixed in, so
+        it cannot paint new violet/neon hues. `contrast` blends a limited
+        CLAHE on luminance to open dark and veiled areas.
+        """
+        color = float(np.clip(color, 0, 1))
+        contrast = float(np.clip(contrast, 0, 1))
+        src = cv2.cvtColor(source, cv2.COLOR_BGR2YCrCb)
+        out = cv2.cvtColor(enhanced, cv2.COLOR_BGR2YCrCb)
+        y, cr_out, cb_out = cv2.split(out)
+        _, cr, cb = cv2.split(src)
+        sample = src[::8, ::8, 1:].reshape(-1, 2).astype(np.float32) - 128
+        tone = np.median(sample, axis=0) if sample.size else np.zeros(2, np.float32)
+        blend = 1 - np.exp(-min(max(dt, .001), .25) / .5)
+        self.tone = tone if self.tone is None else self.tone + blend * (tone - self.tone)
+        saturation, mix = 1 + color, .8 * color
+        channels = [y]
+        for index, (source_c, network_c) in enumerate(((cr, cr_out), (cb, cb_out))):
+            # (c - 128 - 0.6·tone)·sat + 128, then mixed with the network chroma.
+            offset = 128 - 128 * saturation - .6 * float(self.tone[index]) * saturation
+            if mix:
+                natural = cv2.addWeighted(source_c, saturation, source_c, 0, offset, dtype=cv2.CV_32F)
+                channels.append(cv2.addWeighted(natural, 1 - mix, network_c.astype(np.float32),
+                                                mix, 0, dtype=cv2.CV_8U))
+            else:
+                channels.append(cv2.addWeighted(source_c, saturation, source_c, 0, offset,
+                                                dtype=cv2.CV_8U))
+        if contrast > 0:
+            clahe = getattr(self, '_clahe', None)
+            if clahe is None:
+                clahe = self._clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 5))
+            channels[0] = cv2.addWeighted(y, 1 - contrast, clahe.apply(y), contrast, 0)
+        return cv2.cvtColor(cv2.merge(channels), cv2.COLOR_YCrCb2BGR)
 
     def clarify(self, frame, amount, dt):
         """Bounded, smoothed luminance stretch; no new textures or RGB gains."""

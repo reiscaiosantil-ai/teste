@@ -37,8 +37,9 @@ def test_stale_or_unrelated_correction_returns_current_original():
 def test_age_budget_tracks_slow_analysis_but_has_absolute_limit():
     f = scene()
     slow = replace(correction(f), milliseconds=700)
-    assert transfer(f, slow, 11.4, .8)[1] == 'applied'
-    assert transfer(f, slow, 12.1, .8)[1] == 'expired'
+    # 0.3.6: budget min(1.2, max(0.5, 3 × analysis + 0.15)) seconds.
+    assert transfer(f, slow, 11.1, .8)[1] == 'applied'
+    assert transfer(f, slow, 11.3, .8)[1] == 'expired'
 
 
 def test_translated_scene_matches_only_color_not_old_scene_pixels():

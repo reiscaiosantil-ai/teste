@@ -9,7 +9,7 @@ from test_rov import make_video,wait_packet
 
 def test_ai_real_model_no_mutation_and_black():
     rng=np.random.default_rng(42);f=rng.integers(10,180,(90,160,3),dtype=np.uint8);saved=f.copy()
-    e=Enhancer();s=Settings(mode='ai',backend='cpu',strength=.8)
+    e=Enhancer();s=Settings(mode='ai',backend='cpu',strength=.8,ai_color=0,ai_contrast=0)
     y=e.process(f,s)
     assert y.shape==f.shape and y.dtype==np.uint8
     assert np.array_equal(f,saved) and not np.array_equal(y,f)

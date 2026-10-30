@@ -13,7 +13,7 @@ import numpy as np
 from rov_ai import RovAI
 from processing import finish_ai, detail_layers, apply_detail
 from temporal_restore import (TemporalRestorer, working_frame, lift_change,
-                              limit_added_chroma, pixel_grid, flow_map)
+                              pixel_grid, flow_map)
 
 
 @dataclass(frozen=True)
@@ -31,7 +31,9 @@ class Correction:
 def transfer(frame, correction, now, strength):
     """Return current-frame restoration, state, correction age and confidence."""
     age = max(0., now - correction.received)
-    max_age = min(2., max(.9, correction.milliseconds / 1000 * 3 + .15))
+    # 0.3.6: shorter reuse (was 0.9–2 s) so an old correction does not trail
+    # behind moving edges; the temporal path now has the same color/contrast.
+    max_age = min(1.2, max(.5, correction.milliseconds / 1000 * 3 + .15))
     if age > max_age:
         return frame.copy(), 'expired', age, 0.
     guide = correction.guide
@@ -198,7 +200,9 @@ class LiveAI:
         restore = settings.ai_restore * settings.strength
         if result is None:
             if settings.ai_restore > 0 and not job['error']:
-                output = self.temporal.clarify(cleaned, restore, dt)
+                output = self.temporal.natural(frame, cleaned, settings.ai_color,
+                                               settings.ai_contrast * settings.strength, dt)
+                output = self.temporal.clarify(output, restore, dt)
                 output = finish_ai(output, settings.ai_noise, 0., settings.ai_specks)
                 info.update(ai_state='temporal', ai_reason='waiting',
                             processor='Restauração temporal • aguardando a IA')
@@ -211,7 +215,9 @@ class LiveAI:
         info['transfer_ms'] = (time.perf_counter() - transfer_start) * 1000
         finish_start = time.perf_counter()
         if state == 'applied':
-            output = limit_added_chroma(frame, output, restore)
+            # Same look whether the network or only the temporal stage acted.
+            output = self.temporal.natural(frame, output, settings.ai_color,
+                                           settings.ai_contrast * settings.strength, dt)
             output = self.temporal.clarify(output, restore, dt)
             output = finish_ai(output, settings.ai_noise, 0., settings.ai_specks)
             output = lift_change(original, frame, output)
@@ -220,7 +226,9 @@ class LiveAI:
         elif settings.ai_restore > 0:
             info['ai_reason'] = state
             state = 'temporal'
-            output = self.temporal.clarify(cleaned, restore, dt)
+            output = self.temporal.natural(frame, cleaned, settings.ai_color,
+                                           settings.ai_contrast * settings.strength, dt)
+            output = self.temporal.clarify(output, restore, dt)
             output = finish_ai(output, settings.ai_noise, 0., settings.ai_specks)
             output = lift_change(original, frame, output)
             output = apply_detail(output, job['detail'])

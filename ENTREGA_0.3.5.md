@@ -234,3 +234,58 @@ de 1 s e 150 s foi de 0,1 a 0,5 nível. Veja `comparacao_1s.png` e
 - Uma partícula detectada só em parte pode ficar “cortada” por um quadro.
 - Em 1080p, a CPU continua sendo o limite neste ensaio. Em PCs fracos, comece
   em 960 × 540 ou 1280 × 720.
+
+---
+
+# 0.3.6: visual natural, sem efeitos acumulados
+
+Retorno do usuário sobre a 0.3.5: “ficou muito melhor”, mas com efeitos
+visíveis. Na cena enviada (19:32:53) aparecem água azul-violeta saturada,
+cantos escurecidos, viga amarelo-neon, brilho difuso nas bordas e discos
+escuros em volta de pontos claros.
+
+**Causas medidas.** A saturação média dobrava (47 → 89) e o brilho caía
+(119 → 98). Quase tudo vinha da própria WaterNet: ela corrige o verde da água
+criando violeta e escurece a cena em grande escala. A correção de 256 × 144
+era ampliada sem respeitar bordas, o que gerava halos, e a resposta da rede a
+um ponto isolado virava um disco ao ser ampliada.
+
+**Mudanças:**
+
+- Mediana 5 × 5 no mapa de correção. Remove a resposta a pontos isolados.
+- Ampliação guiada pelas bordas do quadro atual (guided filter rápido). A
+  correção não atravessa mais as bordas.
+- Preservação do brilho em grande escala. Sai 70% do escurecimento amplo da
+  rede e fica o contraste local.
+- Composição natural (`TemporalRestorer.natural`):
+  - a luminância vem da restauração;
+  - a cor vem do quadro original, sem 60% do tom médio da água e com
+    saturação no máximo ×(1 + Cor IA);
+  - só 0,8 × Cor IA da cor da própria rede é misturada.
+- Contraste local limitado (CLAHE clip 2 na luminância, misturado). Abre
+  áreas escuras e veladas sem mudar a cor.
+- A mesma composição vale no modo “só temporal”, para a aparência não
+  trocar quando a IA atrasa.
+- A correção antiga é reaproveitada por no máximo 1,2 s (antes até 2 s), para
+  não arrastar cor atrás de bordas em movimento.
+- Novos controles: **Cor IA** (padrão 30%; 100% fica perto do visual vivo da
+  0.3.5) e **Contraste local IA** (padrão 50%). A exportação aceita
+  `--color` e `--contrast`.
+
+**Na cena do print:**
+
+| Medida | Original | 0.3.5 | 0.3.6 |
+|---|---:|---:|---:|
+| Brilho médio | 119 | 99 | 112 |
+| Saturação média / p95 | 47 / 81 | 100 / 180 | 64 / 116 |
+| Contraste (desvio da luminância) | 22,6 | 49,8 | 43,5 |
+| Detalhe (Laplaciano) | 6,3 | 7,2 | **8,2** |
+
+**Fluidez (p50, mesmo ensaio).** Com a IA fora da CPU: 29,4 FPS em
+960 × 540 e 18,9 FPS em 1080p. Com a IA na CPU: 24,7 e 16,2 FPS. Em todos os
+casos, 100% dos quadros saíram com correção aplicada. O custo extra é de cerca
+de 2 a 4 ms, dentro da variação das medidas.
+
+**A validar no Windows.** Confirmar se Cor IA 30% e Contraste local 50% são o
+melhor padrão nas cenas reais. Se quiser mais cor, suba Cor IA. Se o texto do
+HUD ou o ruído ficarem realçados demais, baixe o Contraste local.

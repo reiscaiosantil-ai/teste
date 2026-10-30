@@ -24,6 +24,8 @@ class Settings:
     ai_realtime: bool = False
     ai_specks: float = 0.0
     ai_restore: float = 0.0
+    ai_color: float = 0.3      # 0.3.6: chroma gain limit / network chroma share
+    ai_contrast: float = 0.5   # 0.3.6: limited local contrast on luminance
 
 
 class Enhancer:
@@ -77,7 +79,8 @@ class Enhancer:
                     frame = self.temporal.suppress(frame)
                     work = self.temporal.suppress(work)
                 enhanced = self.ai.process(cleaned, settings.strength)
-                enhanced = limit_added_chroma(work, enhanced, settings.ai_restore * settings.strength)
+                enhanced = self.temporal.natural(work, enhanced, settings.ai_color,
+                                                 settings.ai_contrast * settings.strength, dt)
                 enhanced = self.temporal.clarify(enhanced, settings.ai_restore * settings.strength, dt)
                 enhanced = finish_ai(enhanced, settings.ai_noise, 0., settings.ai_specks)
                 return sharpen_detail(lift_change(frame, work, enhanced), settings.ai_sharp)

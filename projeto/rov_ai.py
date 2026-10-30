@@ -81,6 +81,39 @@ def adapter_label(adapter):
     return f"{adapter['name']} ({size} dedicada)"
 
 
+def keep_brightness(delta, keep=.3, sigma=12):
+    """Remove most of the network's large-scale darkening (whole scene and
+    corners got darker), keeping its local contrast and any brightening."""
+    luma = delta[:, :, 0] * .114 + delta[:, :, 1] * .587 + delta[:, :, 2] * .299
+    large = cv2.GaussianBlur(luma.astype(np.float32), (0, 0), sigma)
+    lift = np.float32(1 - keep) * np.minimum(large, 0)
+    return delta - lift[:, :, None]
+
+
+def _box(image, radius):
+    return cv2.boxFilter(image, -1, (2 * radius + 1, 2 * radius + 1), borderType=cv2.BORDER_REFLECT)
+
+
+def guided_upsample(frame, delta, radius=2, eps=100.):
+    """Fast guided-filter upsampling (He & Sun 2015) of a small BGR correction,
+    guided by the frame luminance. Slopes are bounded, so the frame texture
+    can change the correction only within ±50% of local contrast."""
+    h, w = frame.shape[:2]
+    dh, dw = delta.shape[:2]
+    full = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY).astype(np.float32)
+    guide = cv2.resize(full, (dw, dh), interpolation=cv2.INTER_AREA)
+    mean_i = _box(guide, radius)
+    var_i = _box(guide * guide, radius) - mean_i * mean_i
+    p = delta.astype(np.float32)
+    mean_p = _box(p, radius)
+    cov = _box(p * guide[:, :, None], radius) - mean_p * mean_i[:, :, None]
+    a = np.clip(cov / (var_i[:, :, None] + eps), -.5, .5)
+    b = mean_p - a * mean_i[:, :, None]
+    a = cv2.resize(_box(a, radius), (w, h), interpolation=cv2.INTER_LINEAR)
+    b = cv2.resize(_box(b, radius), (w, h), interpolation=cv2.INTER_LINEAR)
+    return cv2.add(cv2.multiply(a, cv2.merge([full, full, full])), b)
+
+
 class RovAI:
     def __init__(self, backend='auto', quality='fast', device_id=0):
         import onnxruntime as ort
@@ -145,8 +178,11 @@ class RovAI:
         # Transfer a smooth, bounded correction, not low-resolution textures.
         delta=np.clip(out*255-rgb.astype(np.float32),-80,80)
         delta=cv2.GaussianBlur(delta,(5,5),1.2)[top:top+sh,left:left+sw]
-        return (np.ascontiguousarray(delta[:, :, ::-1]),
-                np.ascontiguousarray(small[:, :, ::-1]))
+        delta=np.ascontiguousarray(delta[:, :, ::-1])
+        # 0.3.6: a 5 × 5 median drops the network's response to isolated
+        # points (it became dark discs around particles once enlarged).
+        delta=cv2.merge([cv2.medianBlur(np.ascontiguousarray(delta[:, :, c]),5) for c in range(3)])
+        return keep_brightness(delta), np.ascontiguousarray(small[:, :, ::-1])
 
     @staticmethod
     def apply(frame, delta, strength=.8):
@@ -154,11 +190,10 @@ class RovAI:
             raise ValueError('Intensidade entre 0 e 1.')
         if strength == 0:
             return frame.copy()
-        h, w = frame.shape[:2]
-        # Quantize only the small correction map; avoid full-frame float copies.
-        small = np.rint(delta * strength).astype(np.int16)
-        large = cv2.resize(small, (w, h), interpolation=cv2.INTER_LINEAR)
-        return cv2.add(frame, large, dtype=cv2.CV_8U)
+        # Edge-aware enlargement: the small correction follows the edges of
+        # the current frame instead of glowing across them (halos).
+        large = guided_upsample(frame, delta * np.float32(strength))
+        return cv2.add(frame, np.rint(large).astype(np.int16), dtype=cv2.CV_8U)
 
     def process(self, frame, strength=.8):
         if frame.dtype != np.uint8 or frame.ndim != 3 or frame.shape[2] != 3:

@@ -108,7 +108,7 @@ def main():
                         device_id=args.gpu, ai_noise=.3, ai_sharp=.15,
                         ai_realtime=not args.sem_fluido, ai_specks=0, ai_restore=.35)
     cv2.setNumThreads(2)
-    result = {"versao": "0.3.5", "python": sys.version.split()[0], "opencv": cv2.__version__,
+    result = {"versao": "0.3.6", "python": sys.version.split()[0], "opencv": cv2.__version__,
               "sistema": platform.platform(), "cpu": platform.processor(),
               "nucleos": os.cpu_count(), "fonte": source.kind,
               "controles": settings.__dict__, **run(source, settings, args.segundos, args.aquecimento)}

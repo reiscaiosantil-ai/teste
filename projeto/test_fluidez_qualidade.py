@@ -134,3 +134,51 @@ def test_cpu_model_reports_real_executor_and_auto_gpu_index_is_accepted():
     assert model.description.startswith(model.providers[0])
     frame = np.full((72, 128, 3), 90, np.uint8)
     assert model.process(frame, .8).shape == frame.shape
+
+
+def test_natural_color_does_not_invent_violet_or_neon():
+    """Gray-green water + a network output tinted violet: the result keeps the
+    source hue family and saturation grows at most by (1 + color)."""
+    restorer = TemporalRestorer()
+    water = np.zeros((90, 160, 3), np.uint8)
+    water[:] = (120, 130, 110)  # BGR gray-green
+    violet = water.copy()
+    violet[:] = (190, 90, 150)  # what an over-corrected network may produce
+    out = restorer.natural(water, violet, .3, 0., 1 / 30)
+    def chroma(x):
+        ycc = cv2.cvtColor(x, cv2.COLOR_BGR2YCrCb).astype(float)
+        return np.abs(ycc[..., 1:] - 128).sum(2).mean()
+    assert chroma(out) <= chroma(water) * 1.3 + chroma(violet) * .24 + 2
+    assert chroma(out) < chroma(violet) / 2
+    # Luminance comes from the restoration.
+    assert abs(cv2.cvtColor(out, cv2.COLOR_BGR2GRAY).mean() -
+               cv2.cvtColor(violet, cv2.COLOR_BGR2GRAY).mean()) < 6
+
+
+def test_local_contrast_opens_dark_areas_without_changing_color():
+    rng = np.random.default_rng(9)
+    frame = cv2.GaussianBlur(rng.integers(30, 70, (180, 320, 3), dtype=np.uint8), (0, 0), 2)
+    restorer = TemporalRestorer()
+    flat = restorer.natural(frame, frame, 0., 0., 1 / 30)
+    opened = TemporalRestorer().natural(frame, frame, 0., .5, 1 / 30)
+    gray = lambda x: cv2.cvtColor(x, cv2.COLOR_BGR2GRAY).astype(float)
+    assert gray(opened).std() > gray(flat).std() * 1.3
+    hue = lambda x: cv2.cvtColor(x, cv2.COLOR_BGR2YCrCb)[..., 1:].astype(float)
+    assert np.abs(hue(opened) - hue(flat)).mean() < 1.5
+
+
+def test_ai_correction_has_no_disc_around_isolated_point_and_follows_edges():
+    """A point response in the small correction grid must not become a dark
+    disc; a correction step must stay on its side of a frame edge."""
+    frame = np.full((360, 640, 3), 100, np.uint8)
+    frame[:, 320:] = 200
+    delta = np.zeros((144, 256, 3), np.float32)
+    delta[:, 128:] = -30  # darken only the bright half
+    out = rov_ai.RovAI.apply(frame, delta, 1.)
+    # Edge-aware: the dark side next to the edge is (almost) untouched.
+    assert abs(int(out[180, 312, 0]) - 100) <= 3
+    assert int(out[180, 330, 0]) < 180
+    spot = np.zeros((144, 256, 3), np.float32)
+    spot[70:73, 120:123] = -60
+    filtered = cv2.merge([cv2.medianBlur(np.ascontiguousarray(spot[..., c]), 5) for c in range(3)])
+    assert np.abs(filtered).max() == 0

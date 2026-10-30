@@ -24,7 +24,7 @@ from processing import Settings
 import capture_devices
 from rov_ai import list_adapters, adapter_label
 
-VERSION = "0.3.5"
+VERSION = "0.3.6"
 
 STYLE = """
 QWidget { background: #0b1420; color: #d9e6ef; font-family: 'Segoe UI'; font-size: 13px; }
@@ -218,6 +218,12 @@ class Window(QMainWindow):
         self.ai_specks=self.number(0,100,0,5," %")
         self.ai_specks.setToolTip("Atenua pontos claros muito pequenos. Pode atenuar detalhes reais. Comece em 15–25%; zero preserva esses pontos.")
         controls.addRow("Suavizar pontos claros",self.ai_specks)
+        self.ai_color=self.number(0,100,30,5," %")
+        self.ai_color.setToolTip("Quanto de cor a IA pode acrescentar. A cor vem da imagem original, sem parte do tom da água; 30% evita água violeta e amarelo exagerado. 100% fica próximo do visual mais vivo da 0.3.5.")
+        controls.addRow("Cor IA",self.ai_color)
+        self.ai_contrast=self.number(0,100,50,5," %")
+        self.ai_contrast.setToolTip("Contraste local limitado na luminância (CLAHE): abre áreas escuras e veladas sem mudar a cor. Valores altos podem realçar ruído e o texto da telemetria.")
+        controls.addRow("Contraste local IA",self.ai_contrast)
         self.ai_noise=self.number(0,100,30,5," %")
         self.ai_sharp=self.number(0,100,15,5," %")
         self.ai_noise.setToolTip("Suaviza granulação. Valores altos podem suavizar detalhes; não remove partículas reais com garantia.")
@@ -316,6 +322,8 @@ class Window(QMainWindow):
         self.ai_sharp.valueChanged.connect(self.update_settings)
         self.ai_restore.valueChanged.connect(self.update_settings)
         self.ai_specks.valueChanged.connect(self.update_settings)
+        self.ai_color.valueChanged.connect(self.update_settings)
+        self.ai_contrast.valueChanged.connect(self.update_settings)
         self.ai_realtime.toggled.connect(self.update_settings)
         self.update_settings()
         self.timer = QTimer(self)
@@ -341,13 +349,14 @@ class Window(QMainWindow):
             self.haze.value() / 100, self.denoise.isChecked(),
             "ai" if self.motor.currentIndex()==0 else "classic",
             "fast" if self.ai_quality.currentIndex()==0 else "detail",
-            "auto" if self.ai_backend.currentIndex()==0 else "cpu",int(self.ai_device.currentData()),self.ai_noise.value()/100,self.ai_sharp.value()/100,self.ai_realtime.isChecked(),self.ai_specks.value()/100,self.ai_restore.value()/100)
+            "auto" if self.ai_backend.currentIndex()==0 else "cpu",int(self.ai_device.currentData()),self.ai_noise.value()/100,self.ai_sharp.value()/100,self.ai_realtime.isChecked(),self.ai_specks.value()/100,self.ai_restore.value()/100,
+            self.ai_color.value()/100,self.ai_contrast.value()/100)
 
     def update_settings(self, *_):
         classic=self.motor.currentIndex()==1
         for widget in [self.profile,self.exposure,self.color,self.contrast,self.haze,self.denoise]:
             widget.setEnabled(classic)
-        for widget in [self.ai_quality,self.ai_backend,self.ai_device,self.ai_noise,self.ai_sharp,self.ai_realtime,self.ai_specks,self.ai_restore]:widget.setEnabled(not classic)
+        for widget in [self.ai_quality,self.ai_backend,self.ai_device,self.ai_noise,self.ai_sharp,self.ai_realtime,self.ai_specks,self.ai_restore,self.ai_color,self.ai_contrast]:widget.setEnabled(not classic)
         if classic and not self._applying_profile and self.profile.currentIndex()<3:
             presets=[(100,0,15,1.3,80),(100,0,15,1.2,95),(65,.6,35,1.6,0)]
             actual=[w.value() for w in [self.strength,self.exposure,self.color,self.contrast,self.haze]]
@@ -708,7 +717,7 @@ class Window(QMainWindow):
         process.finished.connect(self.export_finished)
         process.errorOccurred.connect(self.export_error)
         process.start(sys.executable,[str(Path(__file__).with_name('export_video.py')),source,dest,
-            '--quality',settings.quality,'--backend',settings.backend,'--device',str(settings.device_id),'--strength',str(settings.strength),'--noise',str(settings.ai_noise),'--sharp',str(settings.ai_sharp),'--specks',str(settings.ai_specks),'--restore',str(settings.ai_restore)])
+            '--quality',settings.quality,'--backend',settings.backend,'--device',str(settings.device_id),'--strength',str(settings.strength),'--noise',str(settings.ai_noise),'--sharp',str(settings.ai_sharp),'--specks',str(settings.ai_specks),'--restore',str(settings.ai_restore),'--color',str(settings.ai_color),'--contrast',str(settings.ai_contrast)])
 
     def export_read(self):
         if self.export_process:
