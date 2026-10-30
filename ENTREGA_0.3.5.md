@@ -289,3 +289,35 @@ de 2 a 4 ms, dentro da variação das medidas.
 **A validar no Windows.** Confirmar se Cor IA 30% e Contraste local 50% são o
 melhor padrão nas cenas reais. Se quiser mais cor, suba Cor IA. Se o texto do
 HUD ou o ruído ficarem realçados demais, baixe o Contraste local.
+
+---
+
+# 0.3.7: interface simplificada
+
+Retorno do usuário: “a visualização ficou complicada”. O print mostrava o
+painel lateral cortado à esquerda (rótulos invisíveis) e excesso de controles.
+
+**Causa.** Listas com textos longos (nome da GPU, “IA — restauração automática”)
+deixavam o conteúdo mais largo que o painel. Mesmo sem barra horizontal, o Qt
+rolava o painel lateralmente para mostrar o campo em foco, e os rótulos sumiam.
+Os controles do modo inativo e os da entrada não usada ficavam na tela,
+desabilitados.
+
+**Mudanças:**
+
+- Os campos não forçam mais largura. Os rótulos vão para cima do campo quando
+  falta espaço e os textos das opções foram encurtados. Testado em 1366 × 768
+  com escala de 125%: rolagem lateral zero.
+- **Modo simples por padrão:** Entrada, Dispositivo, Conectar, Modo, **Visual**
+  e Intensidade.
+- **Visual** escolhe tudo de uma vez:
+  - Natural: o padrão da 0.3.6;
+  - Mais detalhe: contraste local 70%, nitidez 35%, restauração 45%;
+  - Cores vivas: Cor IA 90%;
+  - mexer num ajuste fino muda para Personalizado.
+- Seções recolhidas: “Opções de captura” (backend, resolução, FPS, formato) e
+  “Ajustes finos da IA” (análise, execução, GPU, vídeo fluido e os seis ajustes).
+- O painel só mostra os campos da entrada escolhida (placa, arquivo ou IP) e do
+  modo escolhido (IA ou Clássico).
+- Botão “Ocultar controles” (F9) deixa o vídeo com a largura toda.
+- O processamento não mudou: mesmos padrões, mesma fluidez. 83 testes passam.

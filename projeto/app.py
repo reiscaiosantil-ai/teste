@@ -17,14 +17,15 @@ from PySide6.QtCore import Qt, QTimer, QSettings, QProcess, QSignalBlocker, QRec
 from PySide6.QtGui import QImage, QPixmap, QPainter, QColor, QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel, QPushButton,
     QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QFileDialog, QMessageBox, QCheckBox,
-    QHBoxLayout, QVBoxLayout, QFormLayout, QGroupBox, QSplitter, QScrollArea)
+    QHBoxLayout, QVBoxLayout, QFormLayout, QGroupBox, QSplitter, QScrollArea, QToolButton,
+    QSizePolicy)
 
 from engine import Session, Source
 from processing import Settings
 import capture_devices
 from rov_ai import list_adapters, adapter_label
 
-VERSION = "0.3.6"
+VERSION = "0.3.7"
 
 STYLE = """
 QWidget { background: #0b1420; color: #d9e6ef; font-family: 'Segoe UI'; font-size: 13px; }
@@ -43,7 +44,61 @@ QComboBox QAbstractItemView { selection-background-color: #236c70; }
 QCheckBox { spacing: 8px; padding: 5px 0; }
 QSplitter::handle { background: #1e3548; width: 3px; }
 QToolTip { background: #20394e; color: white; border: 1px solid #4c758e; }
+QToolButton#section { border: none; color: #83c6d1; font-weight: 600; padding: 6px 0; text-align: left; }
+QToolButton#section:hover { color: #b7e6ee; }
 """
+
+# 0.3.7: "Visual" presets of the AI look (restoration, specks, color, local
+# contrast, noise, sharpness) so the common case needs a single choice.
+VISUALS = [("Natural", (35, 0, 30, 50, 30, 15)),
+           ("Mais detalhe", (45, 0, 30, 70, 25, 35)),
+           ("Cores vivas", (35, 0, 90, 40, 30, 15))]
+
+
+def compact_form(parent=None):
+    """Form that fits a narrow panel: labels move above fields when needed."""
+    form = QFormLayout(parent)
+    form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+    form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+    form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+    form.setContentsMargins(0, 0, 0, 0)
+    return form
+
+
+def fit(widget):
+    """Never let a long item text force the panel wider than the screen."""
+    if isinstance(widget, QComboBox):
+        widget.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        widget.setMinimumContentsLength(6)
+    widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+    widget.setMinimumWidth(0)
+    return widget
+
+
+class Section(QWidget):
+    """Collapsible block of settings: a header and a hideable compact form."""
+    def __init__(self, title, expanded=False):
+        super().__init__()
+        box = QVBoxLayout(self)
+        box.setContentsMargins(0, 2, 0, 0)
+        box.setSpacing(2)
+        self.button = QToolButton()
+        self.button.setObjectName("section")
+        self.button.setText(title)
+        self.button.setCheckable(True)
+        self.button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.body = QWidget()
+        self.form = compact_form(self.body)
+        box.addWidget(self.button)
+        box.addWidget(self.body)
+        self.button.toggled.connect(self.expand)
+        self.button.setChecked(expanded)
+        self.expand(expanded)
+
+    def expand(self, expanded):
+        self.button.setArrowType(Qt.ArrowType.DownArrow if expanded else Qt.ArrowType.RightArrow)
+        self.body.setVisible(expanded)
+        self.updateGeometry()
 
 
 class VideoPanel(QWidget):
@@ -125,79 +180,106 @@ class Window(QMainWindow):
         body = QHBoxLayout()
         sidebar = QWidget()
         side = QVBoxLayout(sidebar)
-        side.setContentsMargins(0, 0, 6, 0)
+        side.setContentsMargins(0, 0, 8, 0)
+        # ---- 01 / Fonte: only the fields of the chosen input are shown.
         source_box = QGroupBox("01  /  Fonte de vídeo")
-        form = QFormLayout(source_box)
-        self.kind = QComboBox()
-        self.kind.addItems(["Placa de captura / câmera", "Arquivo de vídeo", "Fluxo IP (RTSP / HTTP)"])
-        self.kind.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        self.kind.setMinimumContentsLength(16)
+        source_layout = QVBoxLayout(source_box)
+        form = compact_form()
+        self.source_form = form
+        source_layout.addLayout(form)
+        self.kind = fit(QComboBox())
+        self.kind.addItems(["Placa de captura", "Arquivo de vídeo", "Câmera IP (RTSP)"])
         form.addRow("Entrada", self.kind)
-        self.device = QComboBox()
-        self.device.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        self.device.setMinimumContentsLength(16)
+        self.device = fit(QComboBox())
         self.device.setToolTip("Dispositivos de vídeo encontrados no Windows, pelo nome. "
                                "A Elgato é marcada e escolhida automaticamente quando presente.")
         form.addRow("Dispositivo", self.device)
-        self.index = QSpinBox()
+        self.index = fit(QSpinBox())
         self.index.setRange(0, 20)
         self.index.setValue(int(self.preferences.value("device_index", 0)))
         self.index.setToolTip("Índice do dispositivo no OpenCV. Teste 0, 1, 2… A webcam pode ser o índice 0.")
-        form.addRow("Índice manual", self.index)
-        device_buttons = QHBoxLayout()
-        self.refresh_devices_btn = QPushButton("Atualizar lista")
+        form.addRow("Índice", self.index)
+        self.device_buttons = QWidget()
+        device_buttons = QHBoxLayout(self.device_buttons)
+        device_buttons.setContentsMargins(0, 0, 0, 0)
+        self.refresh_devices_btn = fit(QPushButton("Atualizar lista"))
         self.refresh_devices_btn.clicked.connect(self.refresh_devices)
-        self.diagnose_btn = QPushButton("Diagnóstico")
+        self.diagnose_btn = fit(QPushButton("Diagnóstico"))
         self.diagnose_btn.setToolTip("Testa drivers, privacidade da câmera, programas que ocupam a placa "
                                      "e a abertura por DirectShow e Media Foundation. Salva um relatório.")
         self.diagnose_btn.clicked.connect(self.run_diagnosis)
         device_buttons.addWidget(self.refresh_devices_btn)
         device_buttons.addWidget(self.diagnose_btn)
-        form.addRow(device_buttons)
-        self.backend = QComboBox()
-        self.backend.addItems(["DirectShow", "Media Foundation", "Automático"])
-        self.backend.setToolTip("Se o escolhido falhar, o app tenta o formato nativo e o outro backend.")
-        form.addRow("Backend", self.backend)
-        self.path = QLineEdit()
-        self.path.setPlaceholderText("Selecione um arquivo ou informe a URL")
+        form.addRow(self.device_buttons)
+        self.path = fit(QLineEdit())
+        self.path.setPlaceholderText("Arquivo ou URL")
         form.addRow("Endereço", self.path)
-        self.browse = QPushButton("Escolher vídeo…")
+        self.browse = fit(QPushButton("Escolher vídeo…"))
         self.browse.clicked.connect(self.choose_file)
         form.addRow(self.browse)
-        self.resolution = QComboBox()
-        self.resolution.addItems(["1280 × 720", "1920 × 1080", "640 × 480", "960 × 540"])
-        self.resolution.setCurrentIndex(3)  # More CPU headroom for dehazing.
-        form.addRow("Resolução", self.resolution)
-        self.fps = QComboBox()
-        self.fps.addItems(["30", "25", "60"])
-        form.addRow("FPS solicitados", self.fps)
-        self.fourcc = QComboBox()
-        self.fourcc.addItems(["Auto", "MJPG", "YUY2"])
-        form.addRow("Formato captura", self.fourcc)
-        self.loop = QCheckBox("Repetir arquivo de teste")
+        self.loop = QCheckBox("Repetir o arquivo")
         self.loop.setChecked(True)
         form.addRow(self.loop)
-        self.start = QPushButton("Conectar")
+        self.start = fit(QPushButton("Conectar"))
         self.start.setObjectName("primary")
         self.start.clicked.connect(self.connect_source)
-        self.stop = QPushButton("Desconectar")
+        self.stop = fit(QPushButton("Desconectar"))
         self.stop.setEnabled(False)
         self.stop.clicked.connect(self.disconnect)
         buttons = QHBoxLayout()
         buttons.addWidget(self.start)
         buttons.addWidget(self.stop)
-        form.addRow(buttons)
+        source_layout.addLayout(buttons)
+        capture_options = Section("Opções de captura")
+        self.capture_options = capture_options
+        self.backend = fit(QComboBox())
+        self.backend.addItems(["DirectShow", "Media Foundation", "Automático"])
+        self.backend.setToolTip("Se o escolhido falhar, o app tenta o formato nativo e o outro backend.")
+        capture_options.form.addRow("Backend", self.backend)
+        self.resolution = fit(QComboBox())
+        self.resolution.addItems(["1280 × 720", "1920 × 1080", "640 × 480", "960 × 540"])
+        self.resolution.setCurrentIndex(3)  # More CPU headroom for dehazing.
+        self.resolution.setToolTip("Resolução de trabalho. Comece em 960 × 540; teste 1280 × 720 se houver folga.")
+        capture_options.form.addRow("Resolução", self.resolution)
+        self.fps = fit(QComboBox())
+        self.fps.addItems(["30", "25", "60"])
+        capture_options.form.addRow("FPS pedidos", self.fps)
+        self.fourcc = fit(QComboBox())
+        self.fourcc.addItems(["Auto", "MJPG", "YUY2"])
+        capture_options.form.addRow("Formato", self.fourcc)
+        source_layout.addWidget(capture_options)
+        source_box.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         side.addWidget(source_box)
+        # ---- 02 / Tratamento: simple choices first, details collapsed.
         treatment = QGroupBox("02  /  Tratamento")
-        controls = QFormLayout(treatment)
-        self.motor=QComboBox();self.motor.addItems(["IA — restauração automática", "Clássico — protegido"])
-        controls.addRow("Processamento",self.motor)
-        self.ai_quality=QComboBox();self.ai_quality.addItems(["Rápida — 128 × 72", "Detalhada — 256 × 144"]);self.ai_quality.setCurrentIndex(1)
-        controls.addRow("Análise IA",self.ai_quality)
-        self.ai_backend=QComboBox();self.ai_backend.addItems(["Automático (GPU/CPU)","CPU"])
-        controls.addRow("Execução IA",self.ai_backend)
-        self.ai_device=QComboBox()
-        self.ai_device.addItem("Automática — maior memória dedicada", -1)
+        treatment_layout = QVBoxLayout(treatment)
+        controls = compact_form()
+        self.treatment_form = controls
+        treatment_layout.addLayout(controls)
+        self.motor = fit(QComboBox())
+        self.motor.addItems(["IA (WaterNet)", "Clássico"])
+        controls.addRow("Modo", self.motor)
+        self.visual = fit(QComboBox())
+        self.visual.addItems([name for name, _ in VISUALS] + ["Personalizado"])
+        self.visual.setToolTip("Natural: cor fiel, contraste local moderado. Mais detalhe: abre mais as "
+                               "sombras e realça bordas. Cores vivas: aparência mais saturada.")
+        controls.addRow("Visual", self.visual)
+        self.strength = fit(self.number(0, 100, 80, 5, " %"))
+        controls.addRow("Intensidade", self.strength)
+        self.enabled = QCheckBox("Aplicar melhoria  [Espaço]")
+        self.enabled.setChecked(True)
+        controls.addRow(self.enabled)
+        self.ai_section = Section("Ajustes finos da IA")
+        ai = self.ai_section.form
+        self.ai_quality = fit(QComboBox())
+        self.ai_quality.addItems(["Rápida 128×72", "Detalhada 256×144"])
+        self.ai_quality.setCurrentIndex(1)
+        ai.addRow("Análise", self.ai_quality)
+        self.ai_backend = fit(QComboBox())
+        self.ai_backend.addItems(["Automático (GPU/CPU)", "CPU"])
+        ai.addRow("Execução", self.ai_backend)
+        self.ai_device = fit(QComboBox())
+        self.ai_device.addItem("Automática", -1)
         adapters = list_adapters()
         for adapter in adapters:
             self.ai_device.addItem(f"{adapter['index']}: {adapter_label(adapter)}"
@@ -207,69 +289,73 @@ class Window(QMainWindow):
                 self.ai_device.addItem(f"Índice {index}", index)
         self.ai_device.setToolTip("Adaptador usado pelo DirectML. Automática escolhe a placa com mais "
                                   "memória dedicada (ex.: GPU de 8 GB em vez da integrada).")
-        controls.addRow("GPU",self.ai_device)
-        self.ai_realtime=QCheckBox("Vídeo fluido IA (experimental)")
+        ai.addRow("GPU", self.ai_device)
+        self.ai_realtime = QCheckBox("Vídeo fluido (recomendado)")
         self.ai_realtime.setChecked(True)
         self.ai_realtime.setToolTip("Analisa em paralelo e reaplica correções com verificação de movimento. Quando a correção neural não serve, usa a restauração temporal, se ativada; caso contrário mostra o original. Desmarque para analisar cada quadro exibido.")
-        controls.addRow(self.ai_realtime)
-        self.ai_restore=self.number(0,100,35,5," %")
+        ai.addRow(self.ai_realtime)
+        self.ai_restore = fit(self.number(0, 100, 35, 5, " %"))
         self.ai_restore.setToolTip("Combina observações de quadros anteriores com verificação de movimento e realça a luminância. Partículas claras pequenas e passageiras, confirmadas em dois quadros anteriores alinhados, são limitadas ao nível observado nesses quadros. Pode atenuar pequenos objetos claros em movimento ou criar rastros se a correspondência falhar. Zero desativa. Protege as faixas superior e inferior da mistura temporal.")
-        controls.addRow("Restauração temporal",self.ai_restore)
-        self.ai_specks=self.number(0,100,0,5," %")
+        self.ai_specks = fit(self.number(0, 100, 0, 5, " %"))
         self.ai_specks.setToolTip("Atenua pontos claros muito pequenos. Pode atenuar detalhes reais. Comece em 15–25%; zero preserva esses pontos.")
-        controls.addRow("Suavizar pontos claros",self.ai_specks)
-        self.ai_color=self.number(0,100,30,5," %")
+        self.ai_color = fit(self.number(0, 100, 30, 5, " %"))
         self.ai_color.setToolTip("Quanto de cor a IA pode acrescentar. A cor vem da imagem original, sem parte do tom da água; 30% evita água violeta e amarelo exagerado. 100% fica próximo do visual mais vivo da 0.3.5.")
-        controls.addRow("Cor IA",self.ai_color)
-        self.ai_contrast=self.number(0,100,50,5," %")
+        self.ai_contrast = fit(self.number(0, 100, 50, 5, " %"))
         self.ai_contrast.setToolTip("Contraste local limitado na luminância (CLAHE): abre áreas escuras e veladas sem mudar a cor. Valores altos podem realçar ruído e o texto da telemetria.")
-        controls.addRow("Contraste local IA",self.ai_contrast)
-        self.ai_noise=self.number(0,100,30,5," %")
-        self.ai_sharp=self.number(0,100,15,5," %")
+        self.ai_noise = fit(self.number(0, 100, 30, 5, " %"))
         self.ai_noise.setToolTip("Suaviza granulação. Valores altos podem suavizar detalhes; não remove partículas reais com garantia.")
+        self.ai_sharp = fit(self.number(0, 100, 15, 5, " %"))
         self.ai_sharp.setToolTip("Realça bordas na resolução de saída. Ignora variações do tamanho do ruído estimado e nunca ultrapassa o claro/escuro vizinho (sem halos). Não recupera detalhes ausentes.")
-        controls.addRow("Redução de ruído IA",self.ai_noise)
-        controls.addRow("Nitidez IA",self.ai_sharp)
-        self.profile = QComboBox()
+        for label, widget in [("Partículas / temporal", self.ai_restore), ("Pontos claros", self.ai_specks),
+                              ("Cor", self.ai_color), ("Contraste local", self.ai_contrast),
+                              ("Redução de ruído", self.ai_noise), ("Nitidez", self.ai_sharp)]:
+            ai.addRow(label, widget)
+        treatment_layout.addWidget(self.ai_section)
+        self.classic_box = QWidget()
+        classic = compact_form(self.classic_box)
+        self.profile = fit(QComboBox())
         self.profile.addItems(["Água turva", "Névoa forte", "Suave / pouca névoa", "Personalizado"])
-        controls.addRow("Perfil", self.profile)
-        self.enabled = QCheckBox("Aplicar melhoria  [Espaço]")
-        self.enabled.setChecked(True)
-        controls.addRow(self.enabled)
-        self.strength = self.number(0, 100, 80, 5, " %")
-        self.exposure = self.number(-1, 2, 0, 0.1, "", 1)
-        self.color = self.number(0, 100, 15, 5, " %")
-        self.contrast = self.number(1, 2, 1.3, 0.1, "", 1)
-        self.haze = self.number(0, 100, 80, 5, " %")
+        classic.addRow("Perfil", self.profile)
+        self.exposure = fit(self.number(-1, 2, 0, 0.1, "", 1))
+        self.color = fit(self.number(0, 100, 15, 5, " %"))
+        self.contrast = fit(self.number(1, 2, 1.3, 0.1, "", 1))
+        self.haze = fit(self.number(0, 100, 80, 5, " %"))
         self.haze.setToolTip("Comece em 80%. Aumentar pode revelar contornos, mas também ruído, halos e artefatos de compressão.")
-        for label, widget in [("Intensidade", self.strength), ("Clareamento", self.exposure),
-                ("Correção de cor", self.color), ("Contraste local", self.contrast), ("Redução de névoa", self.haze)]:
-            controls.addRow(label, widget)
+        for label, widget in [("Clareamento", self.exposure), ("Correção de cor", self.color),
+                              ("Contraste local", self.contrast), ("Redução de névoa", self.haze)]:
+            classic.addRow(label, widget)
         self.denoise = QCheckBox("Redução de ruído (mais lenta)")
-        controls.addRow(self.denoise)
-        reset = QPushButton("Reaplicar perfil selecionado")
+        classic.addRow(self.denoise)
+        reset = fit(QPushButton("Reaplicar perfil"))
         reset.clicked.connect(self.reset_settings)
-        controls.addRow(reset)
+        classic.addRow(reset)
+        treatment_layout.addWidget(self.classic_box)
         for widget in [self.strength, self.exposure, self.color, self.contrast, self.haze]:
             widget.valueChanged.connect(self.update_settings)
         self.enabled.toggled.connect(self.update_settings)
         self.denoise.toggled.connect(self.update_settings)
         self.profile.currentIndexChanged.connect(self.reset_settings)
+        self._applying_visual = False
+        self.visual.currentIndexChanged.connect(self.apply_visual)
+        for widget in [self.ai_restore, self.ai_specks, self.ai_color, self.ai_contrast,
+                       self.ai_noise, self.ai_sharp]:
+            widget.valueChanged.connect(self.visual_edited)
+        treatment.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         side.addWidget(treatment)
-        note = QLabel("Comece em 540p; teste 720p se houver folga. Resolução e FPS são pedidos ao driver; o formato recebido pode ser diferente.")
-        note.setWordWrap(True)
-        note.setObjectName("sub")
-        side.addWidget(note)
         side.addStretch()
         scroll = QScrollArea()
+        self.panel = scroll
         scroll.setWidgetResizable(True)
         scroll.setWidget(sidebar)
-        scroll.setMinimumWidth(375)
-        scroll.setMaximumWidth(400)
+        scroll.setMinimumWidth(330)
+        scroll.setMaximumWidth(380)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         body.addWidget(scroll)
         right = QVBoxLayout()
         toolbar = QHBoxLayout()
+        self.panel_btn = QPushButton("Ocultar controles  [F9]")
+        self.panel_btn.clicked.connect(self.toggle_panel)
+        toolbar.addWidget(self.panel_btn)
         self.view = QComboBox()
         self.view.addItems(["Comparar", "Somente tratada", "Somente original"])
         self.view.currentIndexChanged.connect(self.change_view)
@@ -330,6 +416,7 @@ class Window(QMainWindow):
         self.timer.timeout.connect(self.refresh)
         self.timer.start(16)
         QShortcut(QKeySequence("F11"), self, activated=self.toggle_fullscreen)
+        QShortcut(QKeySequence("F9"), self, activated=self.toggle_panel)
         QShortcut(QKeySequence("Escape"), self, activated=self.showNormal)
         QShortcut(QKeySequence("Space"), self, activated=self.enabled.toggle)
 
@@ -354,9 +441,13 @@ class Window(QMainWindow):
 
     def update_settings(self, *_):
         classic=self.motor.currentIndex()==1
-        for widget in [self.profile,self.exposure,self.color,self.contrast,self.haze,self.denoise]:
-            widget.setEnabled(classic)
-        for widget in [self.ai_quality,self.ai_backend,self.ai_device,self.ai_noise,self.ai_sharp,self.ai_realtime,self.ai_specks,self.ai_restore,self.ai_color,self.ai_contrast]:widget.setEnabled(not classic)
+        # Show only the controls of the active mode (disabled rows were clutter).
+        self.classic_box.setVisible(classic)
+        self.classic_box.setEnabled(classic)
+        self.ai_section.setVisible(not classic)
+        self.ai_section.setEnabled(not classic)
+        self.visual.setEnabled(not classic)
+        self.treatment_form.setRowVisible(self.visual, not classic)
         if classic and not self._applying_profile and self.profile.currentIndex()<3:
             presets=[(100,0,15,1.3,80),(100,0,15,1.2,95),(65,.6,35,1.6,0)]
             actual=[w.value() for w in [self.strength,self.exposure,self.color,self.contrast,self.haze]]
@@ -366,6 +457,33 @@ class Window(QMainWindow):
                 del blocker
         if self.session:
             self.session.settings = self.settings()
+
+    def apply_visual(self, index):
+        if index >= len(VISUALS):
+            return
+        self._applying_visual = True
+        values = VISUALS[index][1]
+        for widget, value in zip([self.ai_restore, self.ai_specks, self.ai_color, self.ai_contrast,
+                                  self.ai_noise, self.ai_sharp], values):
+            widget.setValue(value)
+        self._applying_visual = False
+        self.update_settings()
+
+    def visual_edited(self, *_):
+        if self._applying_visual:
+            return
+        values = tuple(round(w.value()) for w in [self.ai_restore, self.ai_specks, self.ai_color,
+                                                   self.ai_contrast, self.ai_noise, self.ai_sharp])
+        match = next((i for i, (_, preset) in enumerate(VISUALS) if preset == values), len(VISUALS))
+        if match != self.visual.currentIndex():
+            blocker = QSignalBlocker(self.visual)
+            self.visual.setCurrentIndex(match)
+            del blocker
+
+    def toggle_panel(self):
+        visible = not self.panel.isVisible()
+        self.panel.setVisible(visible)
+        self.panel_btn.setText("Ocultar controles  [F9]" if visible else "Mostrar controles  [F9]")
 
     def reset_settings(self, *_):
         if self.profile.currentIndex()==3:return
@@ -483,13 +601,23 @@ class Window(QMainWindow):
 
     def source_visibility(self, *_):
         capture = self.kind.currentIndex() == 0
+        is_file = self.kind.currentIndex() == 1
+        form = self.source_form
+        # Only the fields of the selected input are shown (0.3.7).
+        form.setRowVisible(self.device, capture)
+        form.setRowVisible(self.index, capture and self.device.currentData() is None)
+        form.setRowVisible(self.device_buttons, capture)
+        form.setRowVisible(self.path, not capture)
+        form.setRowVisible(self.browse, is_file)
+        form.setRowVisible(self.loop, is_file)
+        self.capture_options.setVisible(capture)
         for widget in [self.device, self.backend, self.fourcc]:
             widget.setEnabled(capture)
         self.index.setEnabled(capture and self.device.currentData() is None)
         self.path.setEnabled(not capture)
         self.path.setEchoMode(QLineEdit.EchoMode.Password if self.kind.currentIndex() == 2 else QLineEdit.EchoMode.Normal)
-        self.browse.setEnabled(self.kind.currentIndex() == 1)
-        self.loop.setEnabled(self.kind.currentIndex() == 1)
+        self.browse.setEnabled(is_file)
+        self.loop.setEnabled(is_file)
 
     def choose_file(self):
         name, _ = QFileDialog.getOpenFileName(self, "Abrir vídeo", "", "Vídeos (*.mp4 *.avi *.mkv *.mov *.m4v);;Todos (*)")

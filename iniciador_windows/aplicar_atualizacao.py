@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 import tempfile
 
-VERSION = '0.3.6'
+VERSION = '0.3.7'
 NAMES = ['app.py', 'engine.py', 'processing.py', 'rov_ai.py', 'live_ai.py',
          'export_video.py', 'temporal_restore.py', 'capture_devices.py', 'benchmark_live.py']
 
@@ -39,7 +39,7 @@ def install(root):
             os.replace(temp, target / name)
             installed.append(name)
         (root / 'VERSAO_ROV_LIVE.txt').write_text(
-            f'{VERSION} — visual natural (cor, contraste local, sem halos), captura Elgato\n',
+            f'{VERSION} — interface simplificada, visual natural, captura Elgato\n',
             encoding='utf-8')
     except Exception:
         for name in installed:
