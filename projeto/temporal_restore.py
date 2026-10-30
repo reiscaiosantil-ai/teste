@@ -16,12 +16,61 @@ def working_frame(frame, max_width=640, max_height=360):
                       interpolation=cv2.INTER_AREA)
 
 
+_GRIDS = {}
+
+
+def pixel_grid(h, w):
+    """Cached float32 (x, y) coordinates for remap; avoids per-frame mgrid."""
+    grid = _GRIDS.get((h, w))
+    if grid is None:
+        if len(_GRIDS) > 16:
+            _GRIDS.clear()
+        xx, yy = np.meshgrid(np.arange(w, dtype=np.float32), np.arange(h, dtype=np.float32))
+        grid = _GRIDS[(h, w)] = np.dstack([xx, yy])
+        grid.setflags(write=False)
+    return grid
+
+
+def flow_map(flow, h, w):
+    """Absolute remap coordinates at (h, w) from a flow estimated on a guide."""
+    gh, gw = flow.shape[:2]
+    if (gh, gw) != (h, w):
+        # Resizing is linear, so scaling the small flow first is equivalent.
+        flow = cv2.resize(cv2.multiply(flow, (w / gw, h / gh, 0, 0)), (w, h),
+                          interpolation=cv2.INTER_LINEAR)
+    return cv2.add(pixel_grid(h, w), flow)
+
+
+def scene_flow(flow, cell=24):
+    """Flow of the scene on a coarse grid (cell means, then a 3 × 3 median of
+    cells), smoothly interpolated. One particle cannot dominate a cell."""
+    h, w = flow.shape[:2]
+    gw, gh = max(3, round(w / cell)), max(3, round(h / cell))
+    coarse = cv2.resize(flow, (gw, gh), interpolation=cv2.INTER_AREA)
+    coarse = cv2.merge([cv2.medianBlur(np.ascontiguousarray(coarse[:, :, c]), 3)
+                        for c in range(2)])
+    return cv2.resize(coarse, (w, h), interpolation=cv2.INTER_LINEAR)
+
+
+def within(a, b, limit):
+    """Mask where every channel of |a - b| is <= limit (max over channels)."""
+    return cv2.inRange(cv2.absdiff(a, b), (0, 0, 0), (limit, limit, limit)) > 0
+
+
 def lift_change(original, work, restored):
     """Lift only the signed restoration difference, preserving source pixels."""
     if original.shape == work.shape:
         return restored
     difference = cv2.subtract(restored, work, dtype=cv2.CV_16S)
     h, w = original.shape[:2]
+    low, high = cv2.minMaxLoc(difference.reshape(-1, 1))[:2]
+    if -128 <= low and high <= 127:
+        # Usual case: an offset 8-bit difference resizes with OpenCV's
+        # fixed-point SIMD path (about half the cost of int16 at 1080p).
+        # Interpolation rounding may differ by one level.
+        offset = cv2.add(difference, 128, dtype=cv2.CV_8U)
+        offset = cv2.resize(offset, (w, h), interpolation=cv2.INTER_LINEAR)
+        return cv2.addWeighted(original, 1, offset, 1, -128, dtype=cv2.CV_8U)
     difference = cv2.resize(difference, (w, h), interpolation=cv2.INTER_LINEAR)
     return cv2.add(original, difference, dtype=cv2.CV_8U)
 
@@ -35,12 +84,31 @@ class TemporalRestorer:
         self.older = None
         self.previous_guide = None
         self.levels = None
+        self.ceiling = None
+        self.overlay = None
         self.metrics = {'temporal_fraction': 0., 'particle_fraction': 0.}
 
     def clean(self, frame, amount, dt):
         work = working_frame(frame, 480, 270)
         result = self._clean_work(work, amount, dt)
-        return lift_change(frame, work, result)
+        return self.suppress(lift_change(frame, work, result))
+
+    def suppress(self, image):
+        """Clamp confirmed transient particles at any resolution.
+
+        The ceiling holds, only at particles found in the current frame, the
+        level observed at the same aligned place in the two previous frames
+        (plus a margin). Elsewhere it is 255, so nothing else changes. Clamping
+        at the output resolution removes the sharp particle core that a lifted
+        low-resolution difference would leave as a halo. It never adds texture.
+        """
+        if self.ceiling is None:
+            return image
+        h, w = image.shape[:2]
+        ceiling = self.ceiling
+        if ceiling.shape[:2] != (h, w):
+            ceiling = cv2.resize(ceiling, (w, h), interpolation=cv2.INTER_LINEAR)
+        return cv2.min(image, ceiling)
 
     def _clean_work(self, frame, amount, dt):
         if not np.isfinite(amount) or not np.isfinite(dt):
@@ -55,10 +123,13 @@ class TemporalRestorer:
         guide = cv2.cvtColor(cv2.resize(frame, (sw, sh), interpolation=cv2.INTER_AREA),
                              cv2.COLOR_BGR2GRAY)
         guide = cv2.GaussianBlur(guide, (5, 5), 1.2)
+        if self.overlay is not None and self.overlay.shape != (h, w):
+            self.overlay = None
         restart = (self.previous is None or self.previous.shape != frame.shape or
                    dt <= 0 or dt > .25 or self.previous_guide.shape != guide.shape or
                    float(cv2.absdiff(guide, self.previous_guide).mean()) > 28)
         self.metrics = {'temporal_fraction': 0., 'particle_fraction': 0.}
+        self.ceiling = None
         output = frame.copy()
         older = None
         if not restart:
@@ -67,58 +138,102 @@ class TemporalRestorer:
                                                .5, 2, 15, 2, 5, 1.1, 0)
             forward = cv2.calcOpticalFlowFarneback(self.previous_guide, guide, None,
                                                   .5, 2, 15, 2, 5, 1.1, 0)
-            yy, xx = np.mgrid[:sh, :sw].astype(np.float32)
-            mx, my = xx + back[:, :, 0], yy + back[:, :, 1]
+            back_map = cv2.add(pixel_grid(sh, sw), back)
+            mx, my = back_map[:, :, 0], back_map[:, :, 1]
             inside = (mx >= 1) & (my >= 1) & (mx < sw - 2) & (my < sh - 2)
-            matched_flow = cv2.remap(forward, mx, my, cv2.INTER_LINEAR,
+            matched_flow = cv2.remap(forward, back_map, None, cv2.INTER_LINEAR,
                                      borderMode=cv2.BORDER_REPLICATE)
-            consistent = np.linalg.norm(back + matched_flow, axis=2) < 1.25
-            matched = cv2.remap(self.previous_guide, mx, my, cv2.INTER_LINEAR,
+            loop = cv2.add(back, matched_flow)
+            consistent = cv2.magnitude(loop[:, :, 0], loop[:, :, 1]) < 1.25
+            matched = cv2.remap(self.previous_guide, back_map, None, cv2.INTER_LINEAR,
                                 borderMode=cv2.BORDER_REPLICATE)
             consistent &= cv2.absdiff(guide, matched) < 18
-            valid = cv2.resize((inside & consistent).astype(np.uint8), (w, h),
-                               interpolation=cv2.INTER_NEAREST).astype(bool)
-            full = cv2.resize(back, (w, h), interpolation=cv2.INTER_LINEAR)
-            fy, fx = np.mgrid[:h, :w].astype(np.float32)
-            fx += full[:, :, 0] * w / sw
-            fy += full[:, :, 1] * h / sh
-            previous = cv2.remap(self.previous, fx, fy, cv2.INTER_LINEAR,
+            valid_guide = (inside & consistent).astype(np.uint8)
+            valid = cv2.resize(valid_guide, (w, h), interpolation=cv2.INTER_NEAREST).astype(bool)
+            full_map = flow_map(back, h, w)
+            previous = cv2.remap(self.previous, full_map, None, cv2.INTER_LINEAR,
                                  borderMode=cv2.BORDER_REPLICATE)
             # Older remains a raw observation, aligned through each frame. It
             # never contains synthesized texture or an unbounded IIR history.
             older = previous
-            normal_error = cv2.absdiff(frame, previous).max(axis=2)
-            stable = valid & (normal_error <= 12)
+            stable = valid & within(frame, previous, 12)
             alpha = stable.astype(np.float32) * (.4 * amount)
             reference = previous
             particles = np.zeros((h, w), bool)
             if self.older is not None:
-                prior = cv2.remap(self.older, fx, fy, cv2.INTER_LINEAR,
+                # Particle references follow the scene, not a single spot: a
+                # large particle can drag the raw flow along with it, which
+                # would carry the earlier particle onto the current one.
+                robust_map = flow_map(scene_flow(back), h, w)
+                seen = cv2.remap(self.previous, robust_map, None, cv2.INTER_LINEAR,
+                                 borderMode=cv2.BORDER_REPLICATE)
+                prior = cv2.remap(self.older, robust_map, None, cv2.INTER_LINEAR,
                                   borderMode=cv2.BORDER_REPLICATE)
-                particle_reference = cv2.addWeighted(previous, .5, prior, .5, 0)
-                agreement = cv2.absdiff(previous, prior).max(axis=2) <= 9
+                particle_reference = cv2.addWeighted(seen, .5, prior, .5, 0)
+                # Both earlier aligned observations must agree (no particle in
+                # either). 12 instead of 9 tolerates the noise of turbid water.
+                agreement = within(seen, prior, 12)
+                older = seen
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 reference_gray = cv2.cvtColor(particle_reference, cv2.COLOR_BGR2GRAY)
                 opened = cv2.morphologyEx(gray, cv2.MORPH_OPEN,
-                                          np.ones((5, 5), np.uint8))
+                                          np.ones((7, 7), np.uint8))
                 local_spot = cv2.subtract(gray, opened) > 14
                 transient = cv2.subtract(gray, reference_gray) > 16
-                candidates = (local_spot & transient & agreement & valid).astype(np.uint8)
+                # Overlay (HUD, depth, logos): small bright marks that stay at
+                # the same screen position, unaligned, while the scene moves.
+                # A remembered map also protects digits when they change.
+                fixed = local_spot & within(frame, self.previous, 8)
+                if self.overlay is None:
+                    self.overlay = np.zeros((h, w), np.float32)
+                cv2.accumulateWeighted(fixed.astype(np.float32), self.overlay, .1)
+                protected = cv2.dilate((self.overlay > .25).astype(np.uint8),
+                                       np.ones((9, 9), np.uint8)).astype(bool)
+                protected |= fixed
+                # A visible particle fails the photometric test by definition,
+                # so its alignment is judged by the neighbourhood: most of the
+                # surrounding 5 × 5 guide pixels must be well aligned.
+                around = cv2.blur(valid_guide.astype(np.float32), (5, 5)) >= .6
+                around = cv2.resize(around.astype(np.uint8), (w, h),
+                                    interpolation=cv2.INTER_NEAREST).astype(bool)
+                candidates = (local_spot & transient & agreement & around & ~protected).astype(np.uint8)
+                # Include the soft rim of each spot (blur/compression) before
+                # measuring size; the core must still satisfy every test.
+                rim = cv2.subtract(gray, reference_gray) > 8
+                candidates = cv2.dilate(candidates, np.ones((3, 3), np.uint8)) & rim & around & ~protected
+                candidates = candidates.astype(np.uint8)
                 count, labels, stats, _ = cv2.connectedComponentsWithStats(candidates, 8)
                 accept = np.zeros(count, np.uint8)
                 if count > 1:
-                    accept[1:] = ((stats[1:, cv2.CC_STAT_AREA] <= 36) &
-                                  (stats[1:, cv2.CC_STAT_WIDTH] <= 9) &
-                                  (stats[1:, cv2.CC_STAT_HEIGHT] <= 9))
+                    width = stats[1:, cv2.CC_STAT_WIDTH]
+                    height = stats[1:, cv2.CC_STAT_HEIGHT]
+                    area = stats[1:, cv2.CC_STAT_AREA]
+                    # Compact blobs only: a thin elongated piece is more likely
+                    # a cable or edge slightly misaligned by the motion estimate.
+                    accept[1:] = ((area <= 64) & (width <= 13) & (height <= 13) &
+                                  (np.maximum(width, height) <= 2 * np.minimum(width, height) + 1) &
+                                  (area * 3 >= width * height))
                 particles = accept[labels].astype(bool)
                 # Bound the replacement even where both previous frames agree.
-                limited = cv2.max(particle_reference, cv2.subtract(frame, (50, 50, 50, 0)))
+                limited = cv2.max(particle_reference, cv2.subtract(frame, (70, 70, 70, 0)))
                 reference = cv2.copyTo(limited, particles.astype(np.uint8), reference.copy())
-                alpha[particles] = .8 * amount
+                # Particle suppression is stronger than ordinary blending: the
+                # spot is confirmed transient by two aligned earlier frames.
+                weight = min(1., 2.4 * amount)
+                alpha[particles] = weight
+                if particles.any():
+                    mask = cv2.dilate(particles.astype(np.uint8), np.ones((3, 3), np.uint8))
+                    target = cv2.addWeighted(frame, 1 - weight,
+                                             cv2.add(limited, (6, 6, 6, 0)), weight, 0)
+                    self.ceiling = np.full_like(frame, 255)
+                    cv2.copyTo(cv2.max(target, cv2.add(limited, (6, 6, 6, 0))), mask, self.ceiling)
             # Do not blend HUD/time/depth characters from different moments.
             top, bottom = max(1, round(h * .12)), max(1, round(h * .1))
             alpha[:top] = 0
             alpha[-bottom:] = 0
+            if self.ceiling is not None:
+                self.ceiling[:top] = 255
+                self.ceiling[-bottom:] = 255
             output = cv2.blendLinear(frame, reference, 1 - alpha, alpha)
             self.metrics = {'temporal_fraction': float(np.mean(alpha > 0)),
                             'particle_fraction': float(np.mean(particles & (alpha > 0)))}
@@ -156,13 +271,20 @@ def limit_added_chroma(source, enhanced, amount):
         return enhanced
     original = cv2.cvtColor(source, cv2.COLOR_BGR2YCrCb)
     result = cv2.cvtColor(enhanced, cv2.COLOR_BGR2YCrCb)
-    original_chroma = original[:, :, 1:].astype(np.int16) - 128
-    result_chroma = result[:, :, 1:].astype(np.int16) - 128
-    before = np.abs(original_chroma).sum(axis=2)
-    after = np.abs(result_chroma).sum(axis=2)
-    allowed = before + 10
-    scale = np.minimum(1., allowed / np.maximum(after, 1)).astype(np.float32)
+    # L1 chroma distance from neutral gray, computed with OpenCV SIMD
+    # operations instead of full-frame int16 NumPy reductions.
+    offset = (0, 128, 128, 0)
+    _, cr0, cb0 = cv2.split(cv2.absdiff(original, offset))
+    y, cr, cb = cv2.split(result)
+    _, cr1, cb1 = cv2.split(cv2.absdiff(result, offset))
+    before = cv2.add(cr0, cb0, dtype=cv2.CV_32F)
+    after = cv2.add(cr1, cb1, dtype=cv2.CV_32F)
+    scale = cv2.min(cv2.divide(cv2.add(before, 10), cv2.max(after, 1)), 1)
     # The restoration control sets how strongly the conservative cap is used.
-    scale = 1 - min(1., amount * 2) * (1 - scale)
-    result[:, :, 1:] = np.clip(np.rint(result_chroma * scale[:, :, None]) + 128, 0, 255).astype(np.uint8)
-    return cv2.cvtColor(result, cv2.COLOR_YCrCb2BGR)
+    strength = min(1., amount * 2)
+    scale = cv2.addWeighted(scale, strength, scale, 0, 1 - strength)
+    channels = [y]
+    for chroma in (cr, cb):
+        centered = cv2.subtract(chroma, 128, dtype=cv2.CV_32F)
+        channels.append(cv2.add(cv2.multiply(centered, scale), 128, dtype=cv2.CV_8U))
+    return cv2.cvtColor(cv2.merge(channels), cv2.COLOR_YCrCb2BGR)

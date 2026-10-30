@@ -2,3 +2,5 @@ __pycache__/
 .pytest_cache/
 *.pyc
 projeto/dados/
+logs/
+entregas/pacote_0.3.5/

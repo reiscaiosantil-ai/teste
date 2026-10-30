@@ -24,8 +24,9 @@ def test_static_bright_transient_is_reduced_using_two_observations():
     r.clean(f,.8,1/30);r.clean(f,.8,1/30)
     current=f.copy();current[60,90]=230
     y=r.clean(current,.8,1/30)
-    assert y[60,90,0]<current[60,90,0]
-    assert y[60,90,0]>=current[60,90,0]-33
+    assert y[60,90,0]<current[60,90,0]-40
+    # Bounded: at most 70 levels and never below the earlier aligned observations.
+    assert y[60,90,0]>=max(100, int(current[60,90,0])-70)
     assert r.metrics['particle_fraction']>0
     assert np.array_equal(y[75:90,120:150],current[75:90,120:150])
 

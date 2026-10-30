@@ -1,0 +1,13 @@
+restauração 35% baseline: excesso de brilho restante nas partículas  82.2% | MSE fora das partículas 6.92 -> 6.93
+restauração 35% novo    : excesso de brilho restante nas partículas  23.7% | MSE fora das partículas 6.92 -> 6.97
+restauração 60% baseline: excesso de brilho restante nas partículas  69.4% | MSE fora das partículas 6.92 -> 6.95
+restauração 60% novo    : excesso de brilho restante nas partículas  14.1% | MSE fora das partículas 6.92 -> 6.98
+novo sem partículas: MSE in/out, fração marcada (array([6.94581242, 6.91683476]), np.float64(9.77366255144033e-06))
+novo 40 partículas, exclusão 25px: (array([6.96050866, 6.91851745]), np.float64(0.0018739711934156376))
+baseline sem partículas (mesma execução anterior do ensaio): MSE 6.93, fração marcada 5.7e-05
+
+Leitura: fundo 1080p texturizado em panorâmica de 2 px/quadro, ruído sigma 3,
+40 partículas claras transitórias por quadro (raio 2-7 px, +40..+90 níveis).
+"Excesso restante" = brilho acima do fundo verdadeiro que sobra nas partículas
+(100% = nada removido). MSE fora das partículas mede dano ao restante da cena.
+Sintético com referência conhecida; não comprova o mesmo ganho em água real.

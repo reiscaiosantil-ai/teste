@@ -1,17 +1,19 @@
-"""ROV Live 0.3 IA — local capture and underwater dehazing workstation."""
+"""ROV Live 0.3.5 IA — local capture and underwater dehazing workstation."""
 import os
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 os.environ.setdefault("OPENCV_LOG_LEVEL", "SILENT")
+os.environ.setdefault("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS", "0")
 import argparse
 import json
 import multiprocessing as mp
 from pathlib import Path
 import sys
+import threading
 import time
 
 import cv2
 import numpy as np
-from PySide6.QtCore import Qt, QTimer, QSettings, QProcess, QSignalBlocker
+from PySide6.QtCore import Qt, QTimer, QSettings, QProcess, QSignalBlocker, QRect
 from PySide6.QtGui import QImage, QPixmap, QPainter, QColor, QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel, QPushButton,
     QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QFileDialog, QMessageBox, QCheckBox,
@@ -19,6 +21,10 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel, QPush
 
 from engine import Session, Source
 from processing import Settings
+import capture_devices
+from rov_ai import list_adapters, adapter_label
+
+VERSION = "0.3.5"
 
 STYLE = """
 QWidget { background: #0b1420; color: #d9e6ef; font-family: 'Segoe UI'; font-size: 13px; }
@@ -50,7 +56,11 @@ class VideoPanel(QWidget):
 
     def set_frame(self, frame):
         h, w = frame.shape[:2]
-        self.image = QImage(frame.data, w, h, frame.strides[0], QImage.Format.Format_BGR888).copy()
+        # Packets are never modified after publication: keep a reference to
+        # the array instead of copying a full frame into the QImage.
+        frame = np.ascontiguousarray(frame)
+        self._pixels = frame
+        self.image = QImage(frame.data, w, h, frame.strides[0], QImage.Format.Format_BGR888)
         self.overlay = ""
         self.update()
 
@@ -66,8 +76,8 @@ class VideoPanel(QWidget):
         if self.image is not None:
             size = self.image.size().scaled(view.size(), Qt.AspectRatioMode.KeepAspectRatio)
             x, y = view.x() + (view.width() - size.width()) // 2, view.y() + (view.height() - size.height()) // 2
-            painter.drawImage(x, y, self.image.scaled(size, Qt.AspectRatioMode.KeepAspectRatio,
-                                                     Qt.TransformationMode.FastTransformation))
+            # Let the paint engine scale while drawing; no scaled copy per paint.
+            painter.drawImage(QRect(x, y, size.width(), size.height()), self.image)
         painter.setPen(QColor(self.accent))
         painter.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         painter.drawText(14, 26, self.title)
@@ -100,7 +110,7 @@ class Window(QMainWindow):
         title = QLabel("ROV / LIVE")
         title.setObjectName("brand")
         heading.addWidget(title)
-        subtitle = QLabel("Melhoria subaquática  •  Protótipo 0.3.4 IA  •  Processamento local")
+        subtitle = QLabel(f"Melhoria subaquática  •  Protótipo {VERSION} IA  •  Processamento local")
         subtitle.setObjectName("sub")
         heading.addWidget(subtitle)
         heading.addStretch()
@@ -123,13 +133,30 @@ class Window(QMainWindow):
         self.kind.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.kind.setMinimumContentsLength(16)
         form.addRow("Entrada", self.kind)
+        self.device = QComboBox()
+        self.device.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.device.setMinimumContentsLength(16)
+        self.device.setToolTip("Dispositivos de vídeo encontrados no Windows, pelo nome. "
+                               "A Elgato é marcada e escolhida automaticamente quando presente.")
+        form.addRow("Dispositivo", self.device)
         self.index = QSpinBox()
         self.index.setRange(0, 20)
         self.index.setValue(int(self.preferences.value("device_index", 0)))
         self.index.setToolTip("Índice do dispositivo no OpenCV. Teste 0, 1, 2… A webcam pode ser o índice 0.")
-        form.addRow("Dispositivo", self.index)
+        form.addRow("Índice manual", self.index)
+        device_buttons = QHBoxLayout()
+        self.refresh_devices_btn = QPushButton("Atualizar lista")
+        self.refresh_devices_btn.clicked.connect(self.refresh_devices)
+        self.diagnose_btn = QPushButton("Diagnóstico")
+        self.diagnose_btn.setToolTip("Testa drivers, privacidade da câmera, programas que ocupam a placa "
+                                     "e a abertura por DirectShow e Media Foundation. Salva um relatório.")
+        self.diagnose_btn.clicked.connect(self.run_diagnosis)
+        device_buttons.addWidget(self.refresh_devices_btn)
+        device_buttons.addWidget(self.diagnose_btn)
+        form.addRow(device_buttons)
         self.backend = QComboBox()
         self.backend.addItems(["DirectShow", "Media Foundation", "Automático"])
+        self.backend.setToolTip("Se o escolhido falhar, o app tenta o formato nativo e o outro backend.")
         form.addRow("Backend", self.backend)
         self.path = QLineEdit()
         self.path.setPlaceholderText("Selecione um arquivo ou informe a URL")
@@ -169,14 +196,24 @@ class Window(QMainWindow):
         controls.addRow("Análise IA",self.ai_quality)
         self.ai_backend=QComboBox();self.ai_backend.addItems(["Automático (GPU/CPU)","CPU"])
         controls.addRow("Execução IA",self.ai_backend)
-        self.ai_device=QSpinBox();self.ai_device.setRange(0,8)
-        controls.addRow("Índice GPU",self.ai_device)
+        self.ai_device=QComboBox()
+        self.ai_device.addItem("Automática — maior memória dedicada", -1)
+        adapters = list_adapters()
+        for adapter in adapters:
+            self.ai_device.addItem(f"{adapter['index']}: {adapter_label(adapter)}"
+                                   + (" • software" if adapter["software"] else ""), adapter["index"])
+        if not adapters:
+            for index in range(3):
+                self.ai_device.addItem(f"Índice {index}", index)
+        self.ai_device.setToolTip("Adaptador usado pelo DirectML. Automática escolhe a placa com mais "
+                                  "memória dedicada (ex.: GPU de 8 GB em vez da integrada).")
+        controls.addRow("GPU",self.ai_device)
         self.ai_realtime=QCheckBox("Vídeo fluido IA (experimental)")
         self.ai_realtime.setChecked(True)
         self.ai_realtime.setToolTip("Analisa em paralelo e reaplica correções com verificação de movimento. Quando a correção neural não serve, usa a restauração temporal, se ativada; caso contrário mostra o original. Desmarque para analisar cada quadro exibido.")
         controls.addRow(self.ai_realtime)
         self.ai_restore=self.number(0,100,35,5," %")
-        self.ai_restore.setToolTip("Combina observações de quadros anteriores com verificação de movimento e realça a luminância. Pode suavizar detalhes ou criar rastros se a correspondência falhar. Zero desativa. Protege as faixas superior e inferior da mistura temporal.")
+        self.ai_restore.setToolTip("Combina observações de quadros anteriores com verificação de movimento e realça a luminância. Partículas claras pequenas e passageiras, confirmadas em dois quadros anteriores alinhados, são limitadas ao nível observado nesses quadros. Pode atenuar pequenos objetos claros em movimento ou criar rastros se a correspondência falhar. Zero desativa. Protege as faixas superior e inferior da mistura temporal.")
         controls.addRow("Restauração temporal",self.ai_restore)
         self.ai_specks=self.number(0,100,0,5," %")
         self.ai_specks.setToolTip("Atenua pontos claros muito pequenos. Pode atenuar detalhes reais. Comece em 15–25%; zero preserva esses pontos.")
@@ -184,7 +221,7 @@ class Window(QMainWindow):
         self.ai_noise=self.number(0,100,30,5," %")
         self.ai_sharp=self.number(0,100,15,5," %")
         self.ai_noise.setToolTip("Suaviza granulação. Valores altos podem suavizar detalhes; não remove partículas reais com garantia.")
-        self.ai_sharp.setToolTip("Realça bordas com limite para não amplificar muito o ruído. Não recupera detalhes ausentes.")
+        self.ai_sharp.setToolTip("Realça bordas na resolução de saída. Ignora variações do tamanho do ruído estimado e nunca ultrapassa o claro/escuro vizinho (sem halos). Não recupera detalhes ausentes.")
         controls.addRow("Redução de ruído IA",self.ai_noise)
         controls.addRow("Nitidez IA",self.ai_sharp)
         self.profile = QComboBox()
@@ -266,10 +303,15 @@ class Window(QMainWindow):
         body.addLayout(right, 1)
         layout.addLayout(body, 1)
         self.kind.currentIndexChanged.connect(self.source_visibility)
+        self.device.currentIndexChanged.connect(self.source_visibility)
+        self._device_listing = None
+        self._diagnosis = None
+        self.fill_devices([])
         self.source_visibility()
+        self.refresh_devices()
         for control in [self.motor,self.ai_quality,self.ai_backend]:
             control.currentIndexChanged.connect(self.update_settings)
-        self.ai_device.valueChanged.connect(self.update_settings)
+        self.ai_device.currentIndexChanged.connect(self.update_settings)
         self.ai_noise.valueChanged.connect(self.update_settings)
         self.ai_sharp.valueChanged.connect(self.update_settings)
         self.ai_restore.valueChanged.connect(self.update_settings)
@@ -299,7 +341,7 @@ class Window(QMainWindow):
             self.haze.value() / 100, self.denoise.isChecked(),
             "ai" if self.motor.currentIndex()==0 else "classic",
             "fast" if self.ai_quality.currentIndex()==0 else "detail",
-            "auto" if self.ai_backend.currentIndex()==0 else "cpu",self.ai_device.value(),self.ai_noise.value()/100,self.ai_sharp.value()/100,self.ai_realtime.isChecked(),self.ai_specks.value()/100,self.ai_restore.value()/100)
+            "auto" if self.ai_backend.currentIndex()==0 else "cpu",int(self.ai_device.currentData()),self.ai_noise.value()/100,self.ai_sharp.value()/100,self.ai_realtime.isChecked(),self.ai_specks.value()/100,self.ai_restore.value()/100)
 
     def update_settings(self, *_):
         classic=self.motor.currentIndex()==1
@@ -328,10 +370,113 @@ class Window(QMainWindow):
         self._applying_profile=False
         self.update_settings()
 
+    def fill_devices(self, devices):
+        blocker = QSignalBlocker(self.device)
+        self.device.clear()
+        for device in devices:
+            label = device["name"] + ("  • ELGATO" if device["elgato"] else "")
+            self.device.addItem(label, device)
+        self.device.addItem("Índice manual", None)
+        remembered = self.preferences.value("device_name", "")
+        names = [d["name"] for d in devices]
+        if remembered in names:
+            self.device.setCurrentIndex(names.index(remembered))
+        elif capture_devices.preferred_device(devices) is not None:
+            self.device.setCurrentIndex(capture_devices.preferred_device(devices))
+        else:
+            self.device.setCurrentIndex(len(devices))
+        del blocker
+        self.source_visibility()
+
+    def refresh_devices(self):
+        """List devices in a background process; the GUI never waits on drivers."""
+        if self._device_listing is not None or not capture_devices.WINDOWS:
+            return
+        self.refresh_devices_btn.setEnabled(False)
+        self.refresh_devices_btn.setText("Procurando…")
+        box = {}
+        def work():
+            try:
+                box["result"] = capture_devices.list_devices()
+            except Exception as exc:
+                box["result"] = {"devices": [], "errors": [type(exc).__name__]}
+        self._device_listing = (threading.Thread(target=work, daemon=True), box)
+        self._device_listing[0].start()
+
+    def poll_background(self):
+        if self._device_listing is not None and not self._device_listing[0].is_alive():
+            result = self._device_listing[1].get("result", {"devices": [], "errors": []})
+            self._device_listing = None
+            self.refresh_devices_btn.setEnabled(True)
+            self.refresh_devices_btn.setText("Atualizar lista")
+            self.fill_devices(result["devices"])
+            if not self.session:
+                found = len(result["devices"])
+                elgato = [d["name"] for d in result["devices"] if d["elgato"]]
+                self.status.setText(
+                    (f"Elgato encontrada: {', '.join(elgato)}. " if elgato else
+                     f"{found} dispositivo(s) de vídeo encontrado(s); nenhuma Elgato pelo nome. "
+                     if found else "Nenhum dispositivo de vídeo listado. Use Diagnóstico. ")
+                    + "Selecione a fonte e clique em Conectar.")
+        if self._diagnosis is not None:
+            thread, box = self._diagnosis
+            if box.get("progress"):
+                self.status.setText("Diagnóstico: " + box["progress"])
+            if not thread.is_alive():
+                self._diagnosis = None
+                self.diagnose_btn.setEnabled(True)
+                self.diagnose_btn.setText("Diagnóstico")
+                text = box.get("report", "Falha ao gerar o diagnóstico.")
+                path = box.get("path")
+                self.status.setText("Diagnóstico concluído" + (f" • salvo em {path}" if path else ""))
+                dialog = QMessageBox(self)
+                dialog.setWindowTitle("Diagnóstico da captura")
+                dialog.setText("Relatório" + (f" salvo em:\n{path}" if path else "") +
+                               "\n\nEnvie o arquivo ao suporte se a placa não abrir.")
+                dialog.setDetailedText(text)
+                dialog.show()
+
+    def run_diagnosis(self):
+        if self._diagnosis is not None:
+            return
+        if self.session and self.session.source.kind == "capture":
+            # A capture card normally accepts one client at a time.
+            self.disconnect()
+        self.diagnose_btn.setEnabled(False)
+        self.diagnose_btn.setText("Testando…")
+        w, h = [(1280, 720), (1920, 1080), (640, 480), (1920, 1080)][self.resolution.currentIndex()]
+        fps = int(self.fps.currentText())
+        box = {}
+        def work():
+            try:
+                box["report"] = capture_devices.diagnose(w, h, fps, progress=lambda t: box.__setitem__("progress", t))
+                box["path"] = str(capture_devices.save_report(box["report"]))
+            except Exception as exc:
+                box["report"] = f"Falha ao gerar o diagnóstico: {type(exc).__name__}"
+        self._diagnosis = (threading.Thread(target=work, daemon=True), box)
+        self._diagnosis[0].start()
+
+    def write_session_log(self, session):
+        log = getattr(session, "log", None)
+        if not log:
+            return
+        try:
+            path = capture_devices.log_dir() / f"rov_live_{time.strftime('%Y%m%d')}.log"
+            with open(path, "a", encoding="utf-8") as handle:
+                source = session.source
+                handle.write(f"--- sessão {source.kind} {getattr(source, 'device_name', '') or ''} "
+                             f"{source.backend if source.kind == 'capture' else ''}\n")
+                for stamp, kind, text in log:
+                    handle.write(f"{time.strftime('%H:%M:%S', time.localtime(stamp))} [{kind}] {text}\n")
+            session.log = []
+        except OSError:
+            pass
+
     def source_visibility(self, *_):
         capture = self.kind.currentIndex() == 0
-        for widget in [self.index, self.backend, self.fourcc]:
+        for widget in [self.device, self.backend, self.fourcc]:
             widget.setEnabled(capture)
+        self.index.setEnabled(capture and self.device.currentData() is None)
         self.path.setEnabled(not capture)
         self.path.setEchoMode(QLineEdit.EchoMode.Password if self.kind.currentIndex() == 2 else QLineEdit.EchoMode.Normal)
         self.browse.setEnabled(self.kind.currentIndex() == 1)
@@ -344,7 +489,15 @@ class Window(QMainWindow):
 
     def connect_source(self):
         kind = ["capture", "file", "stream"][self.kind.currentIndex()]
+        device = self.device.currentData() if kind == "capture" else None
         value = str(self.index.value()) if kind == "capture" else self.path.text().strip()
+        named = {}
+        if device:
+            dshow = device["dshow_index"] if device["dshow_index"] is not None else -1
+            msmf = device["msmf_index"] if device["msmf_index"] is not None else -1
+            chosen = msmf if self.backend.currentText() == "Media Foundation" and msmf >= 0 else dshow
+            value = str(chosen if chosen >= 0 else msmf)
+            named = dict(device_name=device["name"], dshow_index=dshow, msmf_index=msmf)
         if kind == "file" and not Path(value).is_file():
             QMessageBox.warning(self, "Arquivo", "Selecione um arquivo de vídeo existente.")
             return
@@ -354,13 +507,15 @@ class Window(QMainWindow):
         self.disconnect()
         w, h = [(1280, 720), (1920, 1080), (640, 480), (960, 540)][self.resolution.currentIndex()]
         source = Source(kind, value, self.backend.currentText(), w, h, int(self.fps.currentText()),
-                        self.fourcc.currentText(), self.loop.isChecked())
+                        self.fourcc.currentText(), self.loop.isChecked(), **named)
         try:
             self.session = Session(source, self.settings())
         except Exception:
             QMessageBox.critical(self, "Inicialização", "Não foi possível iniciar a captura. Feche outros aplicativos de câmera e tente novamente.")
             return
         self.preferences.setValue("device_index", self.index.value())
+        if kind == "capture":
+            self.preferences.setValue("device_name", device["name"] if device else "")
         self.start.setText("Reconectar")
         self.stop.setEnabled(True)
         self.status.setText("Conectando… O primeiro quadro pode levar alguns segundos.")
@@ -369,6 +524,7 @@ class Window(QMainWindow):
     def disconnect(self):
         if self.session:
             self.session.close()
+            self.write_session_log(self.session)
             self.session = None
         self.current = None
         self.last_sequence = -1
@@ -381,6 +537,7 @@ class Window(QMainWindow):
         self.metrics.setText("FPS: —   |   Filtro: — ms   |   Idade no app: — ms")
 
     def refresh(self):
+        self.poll_background()
         if not self.session:
             return
         packet = self.session.snapshot()
@@ -393,12 +550,21 @@ class Window(QMainWindow):
             return
         if packet is None:
             self.status.setText(self.session.message)
-            if now - self.session.started > 15 and not self.failed_open:
+            failure = getattr(self.session, "failure", "")
+            # Capture tries several backends/formats; allow time while it works.
+            limit = 45 if self.session.source.kind == "capture" and self.session.process.is_alive() else 15
+            if (failure or now - self.session.started > limit) and not self.failed_open:
                 self.failed_open = True
-                self.status.setText("Nenhum quadro recebido em 15 s. Confira o dispositivo/backend e clique em Reconectar.")
+                if not failure:
+                    hints = " ".join(capture_devices.quick_hints()) if self.session.source.kind == "capture" else ""
+                    failure = (f"Nenhum quadro recebido em {limit} s. Confira o dispositivo/backend e clique "
+                               f"em Reconectar. {hints} Use Diagnóstico para um relatório completo.")
+                self.status.setText(failure)
                 self.session.close()
+                self.write_session_log(self.session)
                 self.session = None
                 self.stop.setEnabled(False)
+                self.start.setText("Conectar")
             return
         age = now - packet["received"]
         if not capture_active:
@@ -436,12 +602,19 @@ class Window(QMainWindow):
             self.status.setText("ERRO NO FILTRO • Exibindo original nos dois painéis. Reconecte a fonte.")
             self.enhanced.title = "FILTRO INDISPONÍVEL • original"
         else:
-            self.status.setText(f"{mode} • Entrada {source_w} × {source_h} • {w} × {h} • {packet.get('processor','')}")
+            info = getattr(self.session, "capture_info", "")
+            warning = getattr(self.session, "warning", "")
+            self.status.setText((f"⚠ {warning}  •  " if warning else "") +
+                f"{mode} • Entrada {source_w} × {source_h} • {w} × {h}"
+                + (f" • {info}" if info else "") + f" • {packet.get('processor','')}")
         if 'ai_state' in packet:
             state = {"waiting":"Aguardando IA — original", "changed":"Cena mudou — original",
                      "expired":"Correção antiga — original", "black":"Quadro preto — original", "temporal":"Somente restauração temporal — IA aguardando", "applied":"Correção aplicada"}.get(packet['ai_state'], '')
-            self.metrics.setText(f"Vídeo: {packet['fps']:.1f} FPS | Aplicação: {packet['processing_ms']:.1f} ms | "
-                f"IA: {packet['ai_fps']:.1f} análises/s • {packet['ai_ms']:.0f} ms | "
+            stages = (f" ({packet['prepare_ms']:.0f} + {packet['render_ms']:.0f} em paralelo)"
+                      if 'render_ms' in packet else "")
+            latency = f" | Latência no app: {packet['latency_ms']:.0f} ms" if 'latency_ms' in packet else ""
+            self.metrics.setText(f"Vídeo: {packet['fps']:.1f} FPS | Aplicação: {packet['processing_ms']:.1f} ms{stages}"
+                f"{latency} | IA: {packet['ai_fps']:.1f} análises/s • {packet['ai_ms']:.0f} ms | "
                 f"Idade da correção: {packet['ai_age_ms']:.0f} ms | {state}")
         else:
             self.metrics.setText(f"Processados: {packet['fps']:.1f} FPS | Filtro: {packet['processing_ms']:.1f} ms | "
@@ -494,10 +667,13 @@ class Window(QMainWindow):
     def show_help(self):
         QMessageBox.information(self,"ROV Live IA — ajuda",
             "Selecione Arquivo de vídeo ou Placa de captura e clique em Conectar.\n"
-            "A IA detalhada está selecionada. Vídeo fluido analisa em paralelo.\n"
+            "Placa de captura: escolha a Elgato pelo nome. Se o backend falhar, o app tenta o formato nativo e o outro backend.\n"
+            "Se não abrir: feche 4K Capture Utility, Camera Hub, OBS e apps de câmera; confira Privacidade > Câmera do Windows.\n"
+            "O botão Diagnóstico gera um relatório (pasta logs) com drivers, programas abertos e testes de abertura.\n"
+            "A IA detalhada está selecionada. Vídeo fluido analisa em paralelo e trata em dois estágios.\n"
             "Intensidade controla a força da correção. Os outros ajustes pertencem ao modo Clássico.\n"
             "Automático tenta DirectML no Windows; CPU é usada quando não disponível.\n"
-            "Índice GPU 0 é o adaptador padrão, que pode ser a integrada.\n"
+            "GPU Automática escolhe o adaptador com mais memória dedicada; o nome aparece no status.\n"
             "Se houver erro, tente CPU e Reconectar.\n"
             "A rede analisa uma versão reduzida e transfere correções ao original.\n"
             "Vídeo fluido verifica correções por até 2 s; sem correspondência usa somente restauração temporal, se ativada.\n"

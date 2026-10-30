@@ -1,6 +1,10 @@
-# ROV Live IA — fonte consolidada 0.3.4
+# ROV Live IA — fonte 0.3.5
 
-Esta pasta reúne a base 0.3.2 e os sete módulos/testes da atualização 0.3.4.
+Base 0.3.4 (0.3.2 + módulos 0.3.4) com as mudanças da 0.3.5: captura com
+identificação por nome e diagnóstico (`capture_devices.py`), vídeo fluido em
+dois estágios, escolha automática da GPU, partículas e nitidez. O resumo das
+mudanças, medidas e pendências de validação no Windows está em
+`../ENTREGA_0.3.5.md`.
 Os modelos ONNX estão em `models/`. Não é o portátil Windows com runtime
 vendorizado. Documentos antigos foram preservados em `documentacao_anterior/`.
 Leia o contexto atualizado na pasta acima antes de alterar o algoritmo.
@@ -59,6 +63,21 @@ QT_QPA_PLATFORM=offscreen python -m pytest -q
 
 Mantenha os testes na mesma pasta durante esta primeira reprodução: alguns
 importam fixtures de `test_rov.py`. Não reorganizar a suíte sem ajustar imports.
+
+## Diagnóstico da captura e medição
+
+```bat
+python capture_devices.py --diagnostico
+python capture_devices.py --listar-json
+python benchmark_live.py dados\1029.mp4 --largura 960 --altura 540 --segundos 30
+python benchmark_live.py --dispositivo 0 --backend DirectShow --largura 1920 --altura 1080
+```
+
+O diagnóstico lista os dispositivos na ordem do índice do OpenCV (DirectShow e
+Media Foundation), drivers com erro, privacidade da câmera, programas que
+ocupam a placa e testa a abertura de cada um em processo isolado. Relatórios e
+logs vão para `logs/` ao lado de `app/` (ou na pasta temporária do usuário).
+O benchmark grava JSON com FPS, latência no app, estágios p50/p95 e estados.
 
 ## Abrir vídeo e exportar
 

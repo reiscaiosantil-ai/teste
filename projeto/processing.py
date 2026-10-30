@@ -1,6 +1,7 @@
 """Conservative, non-generative underwater enhancement. BGR uint8 in/out."""
 from dataclasses import dataclass
 import math
+import threading
 import cv2
 import numpy as np
 
@@ -17,7 +18,7 @@ class Settings:
     mode: str = "classic"
     quality: str = "fast"
     backend: str = "auto"
-    device_id: int = 0
+    device_id: int = 0  # DirectML adapter index; -1 = most dedicated memory
     ai_noise: float = 0.0
     ai_sharp: float = 0.0
     ai_realtime: bool = False
@@ -65,18 +66,21 @@ class Enhancer:
             if self.ai_failure:
                 self.status="IA indisponível; reconecte ou use Clássico"
                 raise RuntimeError(self.ai_failure)
-            self.status="IA WaterNet • " + "/".join(self.ai.providers) + " • " + settings.quality
+            self.status="IA WaterNet • " + (getattr(self.ai, "description", None) or "/".join(self.ai.providers)) + " • " + settings.quality
             try:
                 from temporal_restore import TemporalRestorer, working_frame, lift_change, limit_added_chroma
                 if self.temporal is None:
                     self.temporal = TemporalRestorer()
                 work = working_frame(frame)
                 cleaned = self.temporal.clean(work, settings.ai_restore, dt)
+                if self.temporal.ceiling is not None:
+                    frame = self.temporal.suppress(frame)
+                    work = self.temporal.suppress(work)
                 enhanced = self.ai.process(cleaned, settings.strength)
                 enhanced = limit_added_chroma(work, enhanced, settings.ai_restore * settings.strength)
                 enhanced = self.temporal.clarify(enhanced, settings.ai_restore * settings.strength, dt)
-                enhanced = finish_ai(enhanced, settings.ai_noise, settings.ai_sharp, settings.ai_specks)
-                return lift_change(frame, work, enhanced)
+                enhanced = finish_ai(enhanced, settings.ai_noise, 0., settings.ai_specks)
+                return sharpen_detail(lift_change(frame, work, enhanced), settings.ai_sharp)
             except Exception as exc:
                 self.ai_failure=str(exc)
                 raise
@@ -203,8 +207,82 @@ def finish_ai(frame, noise=0.0, sharp=0.0, specks=0.0):
     if sharp>0:
         # Sharpen luminance transitions above a noise deadband; cap the change.
         gray=cv2.cvtColor(work,cv2.COLOR_BGR2GRAY).astype(np.float32)
-        detail=gray-cv2.GaussianBlur(gray,(5,5),1.0)
-        correction=np.sign(detail)*np.maximum(np.abs(detail)-2,0)*sharp
-        correction=np.clip(correction,-10*sharp,10*sharp)
+        detail=cv2.subtract(gray,cv2.GaussianBlur(gray,(5,5),1.0))
+        # Soft threshold: sign(d) * max(|d| - 2, 0), without NumPy temporaries.
+        correction=cv2.add(cv2.max(cv2.subtract(detail,2),0),cv2.min(cv2.add(detail,2),0))
+        correction=cv2.max(cv2.min(correction*sharp,10*sharp),-10*sharp)
         work=cv2.add(work, cv2.merge([correction] * 3), dtype=cv2.CV_8U)
     return work
+
+
+def sharpen_detail(frame, amount=0.0):
+    """Sharpen `frame` from its own luminance; see detail_layers()."""
+    return apply_detail(frame, detail_layers(frame, amount))
+
+
+def detail_layers(frame, amount=0.0):
+    """Noise-aware, halo-free luminance sharpening layers (up, down) or None.
+
+    Detail below a noise threshold estimated from the frame itself is not
+    amplified. The sharpened value of each pixel is clamped to the minimum and
+    maximum of its own 3 × 3 neighbourhood in the input, so edges get steeper
+    but no halos, ringing or values absent from the neighbourhood appear.
+    It increases contrast of existing transitions; it does not recover detail.
+    """
+    if not math.isfinite(amount):
+        raise ValueError("Controles devem ser finitos.")
+    amount = float(np.clip(amount, 0, 1))
+    if amount == 0:
+        return None
+    h, w = frame.shape[:2]
+    scratch = _scratch((h, w))
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY, dst=scratch[0])
+    blur = cv2.GaussianBlur(gray, (7, 7), 1.2, dst=scratch[1])
+    # Saturated uint8 arithmetic keeps every step on OpenCV's SIMD path:
+    # positive and negative detail are handled as two separate layers.
+    above = cv2.subtract(gray, blur, dst=scratch[2])
+    below = cv2.subtract(blur, gray, dst=scratch[3])
+    # Robust noise level (MAD) from a sparse sample of the detail layer.
+    sample = cv2.max(above[::8, ::8], below[::8, ::8])
+    sigma = 1.4826 * float(np.median(sample)) if sample.size else 0.
+    threshold = max(1.5, 2.5 * sigma)
+    gain = 3. * amount
+    up = cv2.convertScaleAbs(cv2.subtract(above, threshold, dst=above), alpha=gain, dst=above)
+    down = cv2.convertScaleAbs(cv2.subtract(below, threshold, dst=below), alpha=gain, dst=below)
+    sharp = cv2.subtract(cv2.add(gray, up, dst=scratch[4]), down, dst=scratch[4])
+    kernel = np.ones((3, 3), np.uint8)
+    cv2.max(sharp, cv2.erode(gray, kernel, dst=scratch[1]), dst=sharp)
+    cv2.min(sharp, cv2.dilate(gray, kernel, dst=scratch[1]), dst=sharp)
+    # New arrays: the layers may be applied later on another thread.
+    return cv2.subtract(sharp, gray), cv2.subtract(gray, sharp)
+
+
+def apply_detail(frame, layers):
+    """Add luminance layers from detail_layers() equally to B, G and R.
+
+    The layers may come from the input frame of a restoration whose change is
+    smooth (lifted from a small grid); the neighbourhood limit still holds
+    approximately. Returns a new array; published frames are immutable.
+    """
+    if layers is None:
+        return frame
+    up, down = layers
+    if up.shape[:2] != frame.shape[:2]:
+        raise ValueError("Camadas de nitidez com tamanho diferente do quadro.")
+    scratch = _scratch(frame.shape[:2])
+    out = cv2.add(frame, cv2.merge([up, up, up], dst=scratch[5]))
+    return cv2.subtract(out, cv2.merge([down, down, down], dst=scratch[5]), dst=out)
+
+
+_local = threading.local()
+
+
+def _scratch(shape):
+    """Per-thread reusable buffers; avoids page faults of fresh 1080p arrays."""
+    cached = getattr(_local, "buffers", None)
+    if cached is None or cached[0] != shape:
+        h, w = shape
+        cached = (shape, [np.empty((h, w), np.uint8) for _ in range(5)] +
+                  [np.empty((h, w, 3), np.uint8)])
+        _local.buffers = cached
+    return cached[1]
