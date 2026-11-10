@@ -1,0 +1,6 @@
+rápidas  0.3.4  partícula restante  82.4% | MSE fora 6.92 -> 6.93
+rápidas  0.3.8  partícula restante  22.6% | MSE fora 6.92 -> 7.28
+rápidas  novo   partícula restante  16.1% | MSE fora 6.92 -> 5.56
+lentas   0.3.4  partícula restante  95.0% | MSE fora 6.92 -> 6.93
+lentas   0.3.8  partícula restante  49.1% | MSE fora 6.92 -> 7.31
+lentas   novo   partícula restante  27.3% | MSE fora 6.92 -> 5.76

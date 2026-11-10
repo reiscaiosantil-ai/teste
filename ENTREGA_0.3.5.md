@@ -341,3 +341,69 @@ Pedido: “uma linha para controlar o trecho do vídeo (apenas se for vídeo)”
   Nada muda para placa ou IP.
 - 85 testes passam. Os novos cobrem ir a um ponto, pausar com a imagem viva,
   ir a outro ponto pausado, continuar, e a barra visível só para arquivo.
+
+---
+
+# 0.3.9: melhor visualização no fundo (automático, ruído, partículas, estabilização)
+
+Pedido: aplicar as melhorias propostas para enxergar ainda melhor.
+
+**Visual Automático (novo padrão).** Mede, na própria cena:
+- **véu:** faixa de luminância p2–p98;
+- **granulação:** desvio robusto (MAD) na resolução de trabalho;
+- **escuridão;**
+- **partículas medidas.**
+
+Com isso ajusta aos poucos (constante de ~1,5 s) o contraste local, a
+nitidez, a redução de ruído e a restauração. Em água turva ele abre mais as
+sombras e **reduz** a nitidez, porque nitidez alta contornava blocos de
+compressão e partículas no teste. O rodapé mostra os valores em uso
+(“Auto: contraste … nitidez …”). Natural, Mais detalhe e Cores vivas
+continuam fixos.
+
+**Redução de ruído em resolução cheia.** A cada quadro, o atual é misturado
+com o anterior, alinhado por uma transformação global robusta (RANSAC sobre
+o fluxo já medido), só onde os três canais concordam dentro de 10 níveis.
+Não é recursivo e não deixa rastros: onde houve movimento ou partícula, o
+pixel fica intacto. As faixas do HUD não são misturadas. Custa cerca de
+13 ms em 1080p e é controlado por “Redução de ruído”.
+
+**Partículas lentas.** A referência usa até 4 observações anteriores
+alinhadas e descarta a mais clara. Assim, uma partícula lenta ainda visível
+num quadro anterior não contamina a referência.
+
+**Estabilização digital (opcional, desligada por padrão).**
+- O movimento é medido com pontos rastreados e RANSAC, que ignora partículas
+  e as faixas do HUD.
+- Só o tremor é compensado: a panorâmica intencional é seguida.
+- Um zoom de ~5% esconde as bordas. Em teste, o tremor caiu de 8,5 px para
+  1,1 px por quadro.
+- O HUD da FIFISH está gravado na imagem e acompanha a correção.
+- Tentei mantê-lo parado colando o texto original, mas isso deixou letras
+  duplicadas e contornos em pontos fixos. Removi para não criar artefatos.
+
+**Medidas (mesmo ensaio, p50; IA em GPU emulada / CPU):**
+
+| | 0.3.8 | 0.3.9 |
+|---|---:|---:|
+| 960 × 540 | 29,4 / 24,7 FPS | **29,7 / 27,0 FPS** |
+| 1920 × 1080 | 18,9 / 16,2 FPS | **22,9 / 18,3 FPS** |
+
+A 0.3.9 ficou mais rápida mesmo com mais processamento, porque a nitidez
+passou para o estágio 2 e o alinhamento do ruído virou uma passada só.
+Em todos os casos, 100% dos quadros saíram com correção aplicada.
+
+Ensaio sintético com referência conhecida (`particulas_e_ruido.txt`):
+
+| Medida | 0.3.8 | 0.3.9 |
+|---|---:|---:|
+| Partículas rápidas que sobram | 22,6% | **16,1%** |
+| Partículas lentas que sobram | 49,1% | **27,3%** |
+| Erro fora das partículas (MSE) | 7,3 | **5,6** (original 6,9) |
+
+Ou seja, o ruído fica abaixo do original. 90 testes passam (3.12 e 3.13).
+
+**A validar no Windows:**
+- o Automático em cenas reais longas (se oscila, se escolhe bem);
+- se a estabilização ajuda o piloto e se o HUD acompanhando incomoda;
+- o FPS real no PC com GPU integrada e no de 8 GB.

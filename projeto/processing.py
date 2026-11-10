@@ -26,12 +26,16 @@ class Settings:
     ai_restore: float = 0.0
     ai_color: float = 0.3      # 0.3.6: chroma gain limit / network chroma share
     ai_contrast: float = 0.5   # 0.3.6: limited local contrast on luminance
+    ai_auto: bool = False      # 0.3.9: fine controls follow the scene
+    stabilize: float = 0.0     # 0.3.9: digital stabilization of the treated view
 
 
 class Enhancer:
     def __init__(self):
         self.ai = None
         self.temporal = None
+        self.auto = None
+        self.stabilizer = None
         self.ai_key = None
         self.ai_failure = None
         self.status = "Clássico"
@@ -45,6 +49,8 @@ class Enhancer:
         self.previous_small = None
         if self.temporal is not None:
             self.temporal.reset()
+        if self.stabilizer is not None:
+            self.stabilizer.reset()
 
     def process(self, frame, settings, dt=1 / 30):
         if frame.dtype != np.uint8 or frame.ndim != 3 or frame.shape[2] != 3:
@@ -74,16 +80,29 @@ class Enhancer:
                 if self.temporal is None:
                     self.temporal = TemporalRestorer()
                 work = working_frame(frame)
+                if self.auto is None:
+                    from auto_visual import AutoVisual
+                    from stabilize import Stabilizer
+                    self.auto, self.stabilizer = AutoVisual(), Stabilizer()
+                settings = self.auto.apply(settings, work, dt,
+                                           self.temporal.metrics.get('particle_fraction', 0.))
                 cleaned = self.temporal.clean(work, settings.ai_restore, dt)
                 if self.temporal.ceiling is not None:
                     frame = self.temporal.suppress(frame)
                     work = self.temporal.suppress(work)
+                frame = self.temporal.denoise(frame, settings.ai_noise)
+                correction = (self.stabilizer.update(work, dt, settings.stabilize)
+                              if settings.stabilize > 0 else None)
                 enhanced = self.ai.process(cleaned, settings.strength)
                 enhanced = self.temporal.natural(work, enhanced, settings.ai_color,
                                                  settings.ai_contrast * settings.strength, dt)
                 enhanced = self.temporal.clarify(enhanced, settings.ai_restore * settings.strength, dt)
                 enhanced = finish_ai(enhanced, settings.ai_noise, 0., settings.ai_specks)
-                return sharpen_detail(lift_change(frame, work, enhanced), settings.ai_sharp)
+                result = sharpen_detail(lift_change(frame, work, enhanced), settings.ai_sharp)
+                if correction is not None:
+                    result = self.stabilizer.warp(result, correction,
+                                                  min(self.stabilizer.width, work.shape[1]))
+                return result
             except Exception as exc:
                 self.ai_failure=str(exc)
                 raise

@@ -16,15 +16,22 @@ def window():
 def test_visual_presets_set_fine_controls_and_editing_becomes_custom():
     qt, w = window()
     try:
-        assert w.visual.currentText() == "Natural"
+        assert w.visual.currentText() == "Automático"
         s = w.settings()
+        assert s.ai_auto and s.stabilize == 0.0
+        w.stabilize.setChecked(True)
+        assert w.settings().stabilize == 1.0
         assert (s.ai_color, s.ai_contrast, s.ai_sharp) == (.3, .5, .15)
-        w.visual.setCurrentIndex(1)  # Mais detalhe
+        w.visual.setCurrentIndex(1)  # Natural: same base values, fixed
+        assert w.visual.currentText() == "Natural" and not w.settings().ai_auto
+        w.stabilize.setChecked(False)
+        assert w.settings().stabilize == 0
+        w.visual.setCurrentIndex(2)  # Mais detalhe
         assert w.settings().ai_contrast == .7 and w.settings().ai_sharp == .35
         w.ai_color.setValue(55)
         assert w.visual.currentText() == "Personalizado"
         w.visual.setCurrentIndex(0)
-        assert w.settings().ai_color == .3
+        assert w.settings().ai_color == .3 and w.settings().ai_auto
     finally:
         w.close()
 

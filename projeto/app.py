@@ -25,7 +25,7 @@ from processing import Settings
 import capture_devices
 from rov_ai import list_adapters, adapter_label
 
-VERSION = "0.3.8"
+VERSION = "0.3.9"
 
 STYLE = """
 QWidget { background: #0b1420; color: #d9e6ef; font-family: 'Segoe UI'; font-size: 13px; }
@@ -53,7 +53,9 @@ QSlider::handle:horizontal { background: #e8f6f3; width: 16px; height: 16px; mar
 
 # 0.3.7: "Visual" presets of the AI look (restoration, specks, color, local
 # contrast, noise, sharpness) so the common case needs a single choice.
-VISUALS = [("Natural", (35, 0, 30, 50, 30, 15)),
+# "Automático" starts from the Natural values and adapts them to the scene.
+VISUALS = [("Automático", (35, 0, 30, 50, 30, 15)),
+           ("Natural", (35, 0, 30, 50, 30, 15)),
            ("Mais detalhe", (45, 0, 30, 70, 25, 35)),
            ("Cores vivas", (35, 0, 90, 40, 30, 15))]
 
@@ -281,14 +283,22 @@ class Window(QMainWindow):
         controls.addRow("Modo", self.motor)
         self.visual = fit(QComboBox())
         self.visual.addItems([name for name, _ in VISUALS] + ["Personalizado"])
-        self.visual.setToolTip("Natural: cor fiel, contraste local moderado. Mais detalhe: abre mais as "
+        self.visual.setToolTip("Automático: mede véu, ruído e escuridão da cena e ajusta contraste, nitidez, "
+                               "ruído e restauração aos poucos. Natural: cor fiel, contraste local moderado. Mais detalhe: abre mais as "
                                "sombras e realça bordas. Cores vivas: aparência mais saturada.")
         controls.addRow("Visual", self.visual)
+        self.stabilize = QCheckBox("Estabilizar imagem")
+        self.stabilize.setChecked(False)
+        self.stabilize.setToolTip("Compensa o tremor do ROV na imagem tratada, com zoom de ~5% para esconder "
+                                  "as bordas. Movimentos intencionais são seguidos. O texto gravado na imagem "
+                                  "(profundidade, hora) acompanha a correção e pode balançar um pouco.")
         self.strength = fit(self.number(0, 100, 80, 5, " %"))
         controls.addRow("Intensidade", self.strength)
         self.enabled = QCheckBox("Aplicar melhoria  [Espaço]")
         self.enabled.setChecked(True)
         controls.addRow(self.enabled)
+        controls.addRow(self.stabilize)
+        self.stabilize.toggled.connect(self.update_settings)
         self.ai_section = Section("Ajustes finos da IA")
         ai = self.ai_section.form
         self.ai_quality = fit(QComboBox())
@@ -479,7 +489,8 @@ class Window(QMainWindow):
             "ai" if self.motor.currentIndex()==0 else "classic",
             "fast" if self.ai_quality.currentIndex()==0 else "detail",
             "auto" if self.ai_backend.currentIndex()==0 else "cpu",int(self.ai_device.currentData()),self.ai_noise.value()/100,self.ai_sharp.value()/100,self.ai_realtime.isChecked(),self.ai_specks.value()/100,self.ai_restore.value()/100,
-            self.ai_color.value()/100,self.ai_contrast.value()/100)
+            self.ai_color.value()/100,self.ai_contrast.value()/100,
+            self.visual.currentIndex()==0, 1.0 if self.stabilize.isChecked() else 0.0)
 
     def update_settings(self, *_):
         classic=self.motor.currentIndex()==1
@@ -490,6 +501,7 @@ class Window(QMainWindow):
         self.ai_section.setEnabled(not classic)
         self.visual.setEnabled(not classic)
         self.treatment_form.setRowVisible(self.visual, not classic)
+        self.treatment_form.setRowVisible(self.stabilize, not classic)
         if classic and not self._applying_profile and self.profile.currentIndex()<3:
             presets=[(100,0,15,1.3,80),(100,0,15,1.2,95),(65,.6,35,1.6,0)]
             actual=[w.value() for w in [self.strength,self.exposure,self.color,self.contrast,self.haze]]
@@ -516,7 +528,10 @@ class Window(QMainWindow):
             return
         values = tuple(round(w.value()) for w in [self.ai_restore, self.ai_specks, self.ai_color,
                                                    self.ai_contrast, self.ai_noise, self.ai_sharp])
-        match = next((i for i, (_, preset) in enumerate(VISUALS) if preset == values), len(VISUALS))
+        current = self.visual.currentIndex()
+        if current < len(VISUALS) and VISUALS[current][1] == values:
+            return
+        match = next((i for i, (_, preset) in enumerate(VISUALS) if i and preset == values), len(VISUALS))
         if match != self.visual.currentIndex():
             blocker = QSignalBlocker(self.visual)
             self.visual.setCurrentIndex(match)
@@ -842,7 +857,8 @@ class Window(QMainWindow):
             latency = f" | Latência no app: {packet['latency_ms']:.0f} ms" if 'latency_ms' in packet else ""
             self.metrics.setText(f"Vídeo: {packet['fps']:.1f} FPS | Aplicação: {packet['processing_ms']:.1f} ms{stages}"
                 f"{latency} | IA: {packet['ai_fps']:.1f} análises/s • {packet['ai_ms']:.0f} ms | "
-                f"Idade da correção: {packet['ai_age_ms']:.0f} ms | {state}")
+                f"Idade da correção: {packet['ai_age_ms']:.0f} ms | {state}"
+                + (f" | {packet['auto']}" if packet.get('auto') else ""))
         else:
             self.metrics.setText(f"Processados: {packet['fps']:.1f} FPS | Filtro: {packet['processing_ms']:.1f} ms | "
                 f"Idade no app: {age * 1000:.0f} ms | Quadros pulados pelo app: {packet['skipped']}")
@@ -935,7 +951,7 @@ class Window(QMainWindow):
         process.finished.connect(self.export_finished)
         process.errorOccurred.connect(self.export_error)
         process.start(sys.executable,[str(Path(__file__).with_name('export_video.py')),source,dest,
-            '--quality',settings.quality,'--backend',settings.backend,'--device',str(settings.device_id),'--strength',str(settings.strength),'--noise',str(settings.ai_noise),'--sharp',str(settings.ai_sharp),'--specks',str(settings.ai_specks),'--restore',str(settings.ai_restore),'--color',str(settings.ai_color),'--contrast',str(settings.ai_contrast)])
+            '--quality',settings.quality,'--backend',settings.backend,'--device',str(settings.device_id),'--strength',str(settings.strength),'--noise',str(settings.ai_noise),'--sharp',str(settings.ai_sharp),'--specks',str(settings.ai_specks),'--restore',str(settings.ai_restore),'--color',str(settings.ai_color),'--contrast',str(settings.ai_contrast),'--stabilize',str(settings.stabilize)]+(['--auto'] if settings.ai_auto else []))
 
     def export_read(self):
         if self.export_process:

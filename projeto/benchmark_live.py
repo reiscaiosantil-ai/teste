@@ -94,6 +94,8 @@ def main():
     parser.add_argument("--execucao", default="auto", choices=["auto", "cpu"])
     parser.add_argument("--gpu", type=int, default=-1, help="-1 = escolha automática")
     parser.add_argument("--sem-fluido", action="store_true")
+    parser.add_argument("--sem-auto", action="store_true", help="Visual fixo (Natural)")
+    parser.add_argument("--estabilizar", action="store_true")
     parser.add_argument("--saida", default="benchmark_rov_live.json")
     args = parser.parse_args()
     if args.dispositivo is None and not args.video:
@@ -106,9 +108,10 @@ def main():
     # Same values the GUI shows by default (0.3.4 approved look).
     settings = Settings(True, .8, mode="ai", quality=args.qualidade, backend=args.execucao,
                         device_id=args.gpu, ai_noise=.3, ai_sharp=.15,
-                        ai_realtime=not args.sem_fluido, ai_specks=0, ai_restore=.35)
+                        ai_realtime=not args.sem_fluido, ai_specks=0, ai_restore=.35,
+                        ai_auto=not args.sem_auto, stabilize=1. if args.estabilizar else 0.)
     cv2.setNumThreads(2)
-    result = {"versao": "0.3.8", "python": sys.version.split()[0], "opencv": cv2.__version__,
+    result = {"versao": "0.3.9", "python": sys.version.split()[0], "opencv": cv2.__version__,
               "sistema": platform.platform(), "cpu": platform.processor(),
               "nucleos": os.cpu_count(), "fonte": source.kind,
               "controles": settings.__dict__, **run(source, settings, args.segundos, args.aquecimento)}

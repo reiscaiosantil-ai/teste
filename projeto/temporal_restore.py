@@ -52,6 +52,39 @@ def scene_flow(flow, cell=24):
     return cv2.resize(coarse, (w, h), interpolation=cv2.INTER_LINEAR)
 
 
+def robust_reference(observations):
+    """Reference from 2–4 aligned earlier observations, robust to ONE bright
+    outlier (a particle still visible in one of them, e.g. a slow one).
+
+    Returns (reference, spread): the mean of all but the brightest value per
+    channel (both values when only two exist) and, as agreement measure, the
+    gap between the lowest and the second-brightest value (|a - b| for two).
+    Only real observed pixels are combined; nothing is synthesized.
+    """
+    if len(observations) == 2:
+        a, b = observations
+        return cv2.addWeighted(a, .5, b, .5, 0), cv2.absdiff(a, b)
+    values = observations[:4]
+    low = values[0]
+    for value in values[1:]:
+        low = cv2.min(low, value)
+    if len(values) == 3:
+        a, b, c = values
+        high = cv2.max(cv2.max(a, b), c)
+        second = cv2.max(cv2.min(a, b), cv2.min(cv2.max(a, b), c))
+    else:
+        a, b, c, d = values
+        p, q, r, t = cv2.max(a, b), cv2.min(a, b), cv2.max(c, d), cv2.min(c, d)
+        high = cv2.max(p, r)
+        second = cv2.max(cv2.min(p, r), cv2.max(q, t))
+    total = values[0].astype(np.int16)
+    for value in values[1:]:
+        total = cv2.add(total, value, dtype=cv2.CV_16S)
+    total = cv2.subtract(total, high, dtype=cv2.CV_16S)
+    reference = cv2.convertScaleAbs(total, alpha=1 / (len(values) - 1))
+    return reference, cv2.subtract(second, low)
+
+
 def within(a, b, limit):
     """Mask where every channel of |a - b| is <= limit (max over channels)."""
     return cv2.inRange(cv2.absdiff(a, b), (0, 0, 0), (limit, limit, limit)) > 0
@@ -82,7 +115,10 @@ class TemporalRestorer:
     def reset(self):
         self.previous = None
         self.older = None
+        self.history = []          # earlier observations aligned to the last frame
         self.previous_guide = None
+        self.flow = None           # guide flow current -> previous (last frame)
+        self.previous_full = None  # raw full-resolution previous frame
         self.levels = None
         self.ceiling = None
         self.overlay = None
@@ -161,20 +197,23 @@ class TemporalRestorer:
             alpha = stable.astype(np.float32) * (.4 * amount)
             reference = previous
             particles = np.zeros((h, w), bool)
-            if self.older is not None:
+            self.flow = back
+            if self.history:
                 # Particle references follow the scene, not a single spot: a
                 # large particle can drag the raw flow along with it, which
                 # would carry the earlier particle onto the current one.
                 robust_map = flow_map(scene_flow(back), h, w)
                 seen = cv2.remap(self.previous, robust_map, None, cv2.INTER_LINEAR,
                                  borderMode=cv2.BORDER_REPLICATE)
-                prior = cv2.remap(self.older, robust_map, None, cv2.INTER_LINEAR,
-                                  borderMode=cv2.BORDER_REPLICATE)
-                particle_reference = cv2.addWeighted(seen, .5, prior, .5, 0)
-                # Both earlier aligned observations must agree (no particle in
-                # either). 12 instead of 9 tolerates the noise of turbid water.
-                agreement = within(seen, prior, 12)
-                older = seen
+                earlier = [cv2.remap(item, robust_map, None, cv2.INTER_LINEAR,
+                                     borderMode=cv2.BORDER_REPLICATE) for item in self.history]
+                # 0.3.9: up to four earlier observations; the brightest one is
+                # discarded, so a slow particle still present in one of them
+                # does not spoil the reference. The rest must agree (12 levels
+                # tolerates the noise of turbid water).
+                particle_reference, spread = robust_reference([seen] + earlier)
+                agreement = within(spread, np.zeros_like(spread), 12)
+                older = [seen] + earlier[:2]
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 reference_gray = cv2.cvtColor(particle_reference, cv2.COLOR_BGR2GRAY)
                 opened = cv2.morphologyEx(gray, cv2.MORPH_OPEN,
@@ -240,10 +279,72 @@ class TemporalRestorer:
                             'particle_fraction': float(np.mean(particles & (alpha > 0)))}
         else:
             self.levels = None
+            self.flow = None
         self.previous = frame.copy()
-        self.older = older
+        self.history = older if isinstance(older, list) else ([older] if older is not None else [])
+        self.older = self.history[0] if self.history else None
         self.previous_guide = guide
         return output
+
+    def denoise(self, frame, amount):
+        """Full-resolution two-observation noise reduction (0.3.9).
+
+        Averages the current frame with the previous RAW frame aligned by the
+        motion just measured, only where every channel agrees within 10 levels
+        (noise, not motion or particles). Non-recursive: one earlier
+        observation, never an accumulated history, so no trails. HUD bands
+        and remembered overlay marks are left untouched.
+        """
+        amount = float(np.clip(amount, 0, 1))
+        previous, self.previous_full = self.previous_full, frame
+        if (amount == 0 or self.flow is None or previous is None or
+                previous.shape != frame.shape):
+            return frame
+        h, w = frame.shape[:2]
+        # A global similarity fitted robustly to the measured flow aligns the
+        # whole frame in one pass (a dense full-resolution map costs ~3× more).
+        # Where it does not fit (parallax), the 10-level test below simply
+        # leaves those pixels untouched.
+        matrix = self._global_motion(w, h)
+        if matrix is None:
+            return frame
+        aligned = cv2.warpAffine(previous, matrix, (w, h), flags=cv2.INTER_LINEAR,
+                                 borderMode=cv2.BORDER_REPLICATE)
+        keep = cv2.inRange(cv2.absdiff(frame, aligned), (11, 11, 11), (255, 255, 255))
+        top, bottom = max(1, round(h * .12)), max(1, round(h * .1))
+        keep[:top] = 255
+        keep[-bottom:] = 255
+        if self.overlay is not None:
+            hud = cv2.resize((self.overlay > .25).astype(np.uint8), (w, h),
+                             interpolation=cv2.INTER_NEAREST)
+            keep[cv2.dilate(hud, np.ones((5, 5), np.uint8)) > 0] = 255
+        weight = min(.5, 1.2 * amount)
+        out = cv2.addWeighted(frame, 1 - weight, aligned, weight, 0)
+        cv2.copyTo(frame, keep, out)
+        return out
+
+    def _global_motion(self, w, h):
+        """Forward matrix for cv2.warpAffine that brings the previous frame
+        onto the current one, fitted robustly to the guide flow."""
+        flow = self.flow
+        gh, gw = flow.shape[:2]
+        step = max(1, gw // 24)
+        ys, xs = np.mgrid[step // 2:gh:step, step // 2:gw:step]
+        source = np.stack([xs.ravel(), ys.ravel()], 1).astype(np.float32)
+        target = source + flow[ys.ravel(), xs.ravel()]
+        matrix, inliers = cv2.estimateAffinePartial2D(source, target, method=cv2.RANSAC,
+                                                      ransacReprojThreshold=.6, maxIters=100)
+        if matrix is None or inliers is None or inliers.mean() < .5:
+            return None
+        # Scale guide coordinates to the frame: x' = S·M·S⁻¹·x.
+        sx, sy = w / gw, h / gh
+        matrix = matrix.copy()
+        matrix[0, 1] *= sx / sy
+        matrix[1, 0] *= sy / sx
+        matrix[0, 2] *= sx
+        matrix[1, 2] *= sy
+        # The fit maps current -> previous; warpAffine expects previous -> current.
+        return cv2.invertAffineTransform(matrix)
 
     def natural(self, source, enhanced, color, contrast, dt):
         """Final composition used by the AI paths (0.3.6).

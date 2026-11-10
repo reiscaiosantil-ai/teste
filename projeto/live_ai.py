@@ -11,6 +11,8 @@ import cv2
 import numpy as np
 
 from rov_ai import RovAI
+from auto_visual import AutoVisual
+from stabilize import Stabilizer
 from processing import finish_ai, detail_layers, apply_detail
 from temporal_restore import (TemporalRestorer, working_frame, lift_change,
                               pixel_grid, flow_map)
@@ -82,6 +84,8 @@ class LiveAI:
         self.last_submit = 0.
         self.analysis_fps = 0.
         self.temporal = TemporalRestorer()
+        self.auto = AutoVisual()
+        self.stabilizer = Stabilizer()
         self.last_received = None
         self.thread = threading.Thread(target=self._infer, name='ROV-IA', daemon=True)
         self.thread.start()
@@ -93,6 +97,7 @@ class LiveAI:
             self.key = None
         self.previous_thumb = None
         self.temporal.reset()
+        self.stabilizer.reset()
         self.last_received = None
 
     def _infer(self):
@@ -161,6 +166,9 @@ class LiveAI:
         self.previous_thumb = thumb
         dt = 1 / 30 if self.last_received is None else received - self.last_received
         self.last_received = received
+        # 0.3.9: the automatic Visual sets the fine controls from the scene.
+        settings = self.auto.apply(settings, frame, dt,
+                                   self.temporal.metrics.get('particle_fraction', 0.))
         clean_start = time.perf_counter()
         cleaned = self.temporal.clean(frame, settings.ai_restore, dt)
         if self.temporal.ceiling is not None:
@@ -168,10 +176,15 @@ class LiveAI:
             # the base that receives the restoration difference.
             original = self.temporal.suppress(original)
             frame = self.temporal.suppress(frame)
+        # Full-resolution noise reduction from the previous aligned frame.
+        original = self.temporal.denoise(original, settings.ai_noise)
         clean_ms = (time.perf_counter() - clean_start) * 1000
-        # Sharpening layers from the full-resolution input (particles already
-        # clamped); stage 2 only adds them, which balances both stages.
-        detail = detail_layers(original, settings.ai_sharp)
+        stabilization = None
+        if getattr(settings, 'stabilize', 0) > 0:
+            correction = self.stabilizer.update(frame, dt, settings.stabilize)
+            stabilization = (correction, min(self.stabilizer.width, frame.shape[1]))
+        else:
+            self.stabilizer.reset()
         with self.condition:
             self.key = key
             # Avoid filling the CPU with analyses faster than the display needs.
@@ -184,9 +197,10 @@ class LiveAI:
                 'ai_fps': self.analysis_fps, 'filter_error': bool(error),
                 'processor': error or 'IA inicializando • original enquanto aguarda',
                 'work_size': (frame.shape[1], frame.shape[0]), 'temporal_ms': clean_ms,
-                'particle_fraction': self.temporal.metrics.get('particle_fraction', 0.)}
+                'particle_fraction': self.temporal.metrics.get('particle_fraction', 0.),
+                'auto': self.auto.summary() if getattr(settings, 'ai_auto', False) else ''}
         return {'original': original, 'frame': frame, 'cleaned': cleaned,
-                'detail': detail, 'settings': settings, 'dt': dt, 'result': result, 'error': error,
+                'settings': settings, 'stabilization': stabilization, 'dt': dt, 'result': result, 'error': error,
                 'info': info, 'start': start,
                 'prepare_ms': (time.perf_counter() - start) * 1000}
 
@@ -197,6 +211,9 @@ class LiveAI:
             return job['output'], info
         original, frame, cleaned = job['original'], job['frame'], job['cleaned']
         settings, dt, result = job['settings'], job['dt'], job['result']
+        # Sharpening layers from the full-resolution input (particles clamped,
+        # noise reduced). Computed here: stage 1 carries the heavier work.
+        job['detail'] = detail_layers(original, settings.ai_sharp)
         restore = settings.ai_restore * settings.strength
         if result is None:
             if settings.ai_restore > 0 and not job['error']:
@@ -207,7 +224,7 @@ class LiveAI:
                 info.update(ai_state='temporal', ai_reason='waiting',
                             processor='Restauração temporal • aguardando a IA')
                 output = lift_change(original, frame, output)
-                return apply_detail(output, job['detail']), info
+                return self._stabilize(apply_detail(output, job['detail']), job), info
             return original.copy(), info
         transfer_start = time.perf_counter()
         output, state, age, confidence = transfer(cleaned, result, transfer_start,
@@ -234,12 +251,24 @@ class LiveAI:
             output = apply_detail(output, job['detail'])
         else:
             output = original.copy()
+        if state in ('applied', 'temporal'):
+            output = self._stabilize(output, job)
         info['finish_ms'] = (time.perf_counter() - finish_start) * 1000
         info.update(ai_state=state, ai_ms=result.milliseconds, ai_age_ms=age * 1000,
                     ai_confidence=confidence,
                     processor='IA WaterNet • ' + '/'.join(result.providers) +
                               ' • ' + settings.quality + ' • vídeo fluido')
         return output, info
+
+    def _stabilize(self, output, job):
+        """Move the treated view by the shake correction (HUD moves with it)."""
+        stabilization = job.get('stabilization')
+        if stabilization is None:
+            return output
+        correction, width = stabilization
+        if not np.any(np.abs(correction) > 1e-3):
+            return output
+        return self.stabilizer.warp(output, correction, width)
 
     def close(self):
         with self.condition:
