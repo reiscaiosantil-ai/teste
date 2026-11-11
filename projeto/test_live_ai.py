@@ -27,19 +27,33 @@ def test_transfer_uses_current_pixels_and_bounded_correction():
     assert float(y[8:-8,8:-8].mean()-f[8:-8,8:-8].mean())>7
 
 
-def test_stale_or_unrelated_correction_returns_current_original():
-    f=scene()
-    for c,now in [(correction(f),11), (correction(np.full_like(f,240)),10.1)]:
-        y,state,_,_=transfer(f,c,now,.8)
-        assert state in ('expired','changed') and np.array_equal(y,f)
+def test_unmatched_or_aging_correction_falls_back_to_coarse_veil_not_original():
+    """0.3.10: no white flash. Without a local match (fast motion) or after the
+    detailed budget, only the coarse 8×5 veil correction is applied: smooth,
+    bounded, and unable to carry structure from the analyzed frame."""
+    f = scene()
+    unrelated = correction(np.full_like(f, 240))
+    unrelated = replace(unrelated, delta=np.random.default_rng(1).normal(12, 20, f.shape).astype(np.float32))
+    y, state, _, _ = transfer(f, unrelated, 10.1, .8)
+    assert state == 'global'
+    change = y.astype(int) - f.astype(int)
+    # The veil part survives, reduced to 35% because the analyzed frame had a
+    # very different brightness (lights/cut): 12 × 0.8 × 0.35 ≈ 3.4 levels.
+    assert 2.5 < change[8:-8, 8:-8].mean() < 4.5
+    assert np.abs(cv2.Laplacian(change.astype(np.float32), cv2.CV_32F)).mean() < 2  # smooth
+    old = correction(f)
+    assert transfer(f, old, 11, .8)[1] == 'global'
+    y, state, _, _ = transfer(f, old, 13.1, .8)  # beyond 3 s: original
+    assert state == 'expired' and np.array_equal(y, f)
 
 
 def test_age_budget_tracks_slow_analysis_but_has_absolute_limit():
     f = scene()
     slow = replace(correction(f), milliseconds=700)
-    # 0.3.6: budget min(1.2, max(0.5, 3 × analysis + 0.15)) seconds.
+    # Detailed budget min(1.2, max(0.5, 3 × analysis + 0.15)) s, then coarse up to 3 s.
     assert transfer(f, slow, 11.1, .8)[1] == 'applied'
-    assert transfer(f, slow, 11.3, .8)[1] == 'expired'
+    assert transfer(f, slow, 11.3, .8)[1] == 'global'
+    assert transfer(f, slow, 13.1, .8)[1] == 'expired'
 
 
 def test_translated_scene_matches_only_color_not_old_scene_pixels():

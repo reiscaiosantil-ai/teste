@@ -30,25 +30,70 @@ class Correction:
     providers: tuple
 
 
-def transfer(frame, correction, now, strength):
-    """Return current-frame restoration, state, correction age and confidence."""
+GLOBAL_AGE = 3.0   # seconds the coarse (veil) correction stays usable
+
+
+def coarse_map(delta, size=(8, 5)):
+    """Low-frequency part of a correction: the water veil/tint changes slowly
+    across the image, so a coarse grid stays valid while the camera moves."""
+    return cv2.resize(delta, size, interpolation=cv2.INTER_AREA)
+
+
+def similarity(analyzed, current):
+    """0–1: how well the analyzed frame's color and contrast still describe the
+    current frame. A correction is an absolute color/brightness change; reused
+    on a scene with other light or water color (lights switched, turning from
+    a wall to open water, a cut) it over-corrects and flashes."""
+    a = analyzed.reshape(-1, 3).astype(np.float32)
+    c = current.reshape(-1, 3).astype(np.float32)
+    color = float(np.abs(a.mean(0) - c.mean(0)).max())
+    ga, gc = a.mean(1), c.mean(1)
+    spread = abs(float(np.log((gc.std() + 2) / (ga.std() + 2))))
+    # Only large changes count (lights, a cut): panning across the same water
+    # changes the mean color by 10–20 levels and must keep the correction.
+    return float(np.clip(1 - (color - 22) / 30, 0, 1) * np.clip(1 - (spread - .45) / .6, 0, 1))
+
+
+def transfer(frame, correction, now, strength, coarse=None, return_delta=False):
+    """Return current-frame restoration, state, correction age and confidence.
+
+    0.3.10: where the detailed correction cannot be matched to the current
+    frame (fast motion, occlusion, particles), the coarse correction fills in
+    instead of dropping to the hazy original. Losing it made white "flashes"
+    and pale patches while the ROV moved.
+    """
+    def done(delta, state, age, fraction):
+        if return_delta:
+            return delta, state, age, fraction
+        if delta is None:
+            return frame.copy(), state, age, fraction
+        return RovAI.apply(frame, delta, strength), state, age, fraction
+
     age = max(0., now - correction.received)
-    # 0.3.6: shorter reuse (was 0.9–2 s) so an old correction does not trail
-    # behind moving edges; the temporal path now has the same color/contrast.
+    gh, gw = correction.delta.shape[:2]
+    coarse = coarse_map(correction.delta) if coarse is None else coarse
+    smooth = cv2.resize(coarse, (gw, gh), interpolation=cv2.INTER_CUBIC)
+    # Full-detail budget; after it the detail fades out gradually (below) and
+    # the coarse veil correction stays up to GLOBAL_AGE.
     max_age = min(1.2, max(.5, correction.milliseconds / 1000 * 3 + .15))
-    if age > max_age:
-        return frame.copy(), 'expired', age, 0.
+    if age > GLOBAL_AGE:
+        return done(None, 'expired', age, 0.)
     guide = correction.guide
-    gh, gw = guide.shape[:2]
     fw = min(128, gw)
     fh = max(8, round(gh * fw / gw))
     base = cv2.resize(guide, (fw, fh), interpolation=cv2.INTER_AREA)
     current = cv2.resize(frame, (fw, fh), interpolation=cv2.INTER_AREA)
+    # Different light/water color than the analyzed frame: weaker reuse.
+    match = .35 + .65 * similarity(base, current)
+    fade = np.float32(min(1., max(0., (GLOBAL_AGE - age) / .5)))
+    smooth *= np.float32(match) * fade
     base_gray = cv2.cvtColor(base, cv2.COLOR_BGR2GRAY)
     current_gray = cv2.cvtColor(current, cv2.COLOR_BGR2GRAY)
     # Backward flow samples the analysis correction at each current location.
+    # 4 pyramid levels (was 2): follows the larger displacements of a fast
+    # pan between the analyzed frame and now, on a 128-pixel-wide guide.
     flow = cv2.calcOpticalFlowFarneback(current_gray, base_gray, None,
-                                      .5, 2, 15, 2, 5, 1.1, 0)
+                                      .5, 4, 15, 3, 5, 1.1, 0)
     flow_xy = cv2.add(pixel_grid(fh, fw), flow)
     mx, my = flow_xy[:, :, 0], flow_xy[:, :, 1]
     inside = (mx >= 0) & (mx <= fw - 1) & (my >= 0) & (my <= fh - 1)
@@ -59,14 +104,21 @@ def transfer(frame, correction, now, strength):
     confidence = np.clip((38. - error) / 24., 0., 1.) * inside
     fraction = float(np.mean(confidence > .5))
     if fraction < .45 or float(error.mean()) > 32:
-        return frame.copy(), 'changed', age, fraction
+        return done(smooth, 'global', age, fraction)
     confidence = cv2.GaussianBlur(confidence, (3, 3), .65)
-    confidence *= min(1., max(0., (max_age - age) / .2))
+    # Analysis late (busy GPU/CPU): keep the detailed correction where it
+    # still matches, shifting gradually to the coarse one over 1.5 s instead
+    # of dropping it (a dropped correction showed as a white flicker).
+    late = age > max_age
+    if late:
+        confidence *= max(.35, 1 - (age - max_age) / 1.5)
     # Keep the full detailed correction grid; flow is estimated on a small guide.
     warped = cv2.remap(correction.delta, flow_map(flow, gh, gw), None, cv2.INTER_LINEAR,
                        borderMode=cv2.BORDER_REPLICATE)
-    warped *= cv2.resize(confidence, (gw, gh), interpolation=cv2.INTER_LINEAR)[:, :, None]
-    return RovAI.apply(frame, warped, strength), 'applied', age, fraction
+    # Confident places get the detailed correction, the rest the coarse one.
+    weight = cv2.resize(confidence, (gw, gh), interpolation=cv2.INTER_LINEAR)[:, :, None]
+    warped = smooth + (warped * (np.float32(match) * fade) - smooth) * weight
+    return done(warped, 'global' if late else 'applied', age, fraction)
 
 
 class LiveAI:
@@ -86,6 +138,8 @@ class LiveAI:
         self.temporal = TemporalRestorer()
         self.auto = AutoVisual()
         self.stabilizer = Stabilizer()
+        self.coarse = None          # (correction seq, smoothed coarse map)
+        self.perf_level = 0         # economy level set by engine.Governor
         self.last_received = None
         self.thread = threading.Thread(target=self._infer, name='ROV-IA', daemon=True)
         self.thread.start()
@@ -98,6 +152,8 @@ class LiveAI:
         self.previous_thumb = None
         self.temporal.reset()
         self.stabilizer.reset()
+        self.coarse = None
+        self.applied = None
         self.last_received = None
 
     def _infer(self):
@@ -151,7 +207,8 @@ class LiveAI:
         start = time.perf_counter()
         key = (settings.quality, settings.backend, settings.device_id)
         original = frame
-        frame = working_frame(frame)
+        level = self.perf_level
+        frame = working_frame(frame, *((512, 288) if level >= 3 else (640, 360)))
         if not np.any(frame):
             self.reset()
             return {'output': original.copy(), 'start': start, 'info': {
@@ -177,7 +234,10 @@ class LiveAI:
             original = self.temporal.suppress(original)
             frame = self.temporal.suppress(frame)
         # Full-resolution noise reduction from the previous aligned frame.
-        original = self.temporal.denoise(original, settings.ai_noise)
+        if level >= 1:
+            self.temporal.previous_full = None  # Skipped: no stale pair later.
+        else:
+            original = self.temporal.denoise(original, settings.ai_noise)
         clean_ms = (time.perf_counter() - clean_start) * 1000
         stabilization = None
         if getattr(settings, 'stabilize', 0) > 0:
@@ -213,7 +273,7 @@ class LiveAI:
         settings, dt, result = job['settings'], job['dt'], job['result']
         # Sharpening layers from the full-resolution input (particles clamped,
         # noise reduced). Computed here: stage 1 carries the heavier work.
-        job['detail'] = detail_layers(original, settings.ai_sharp)
+        job['detail'] = None if self.perf_level >= 2 else detail_layers(original, settings.ai_sharp)
         restore = settings.ai_restore * settings.strength
         if result is None:
             if settings.ai_restore > 0 and not job['error']:
@@ -227,11 +287,21 @@ class LiveAI:
                 return self._stabilize(apply_detail(output, job['detail']), job), info
             return original.copy(), info
         transfer_start = time.perf_counter()
-        output, state, age, confidence = transfer(cleaned, result, transfer_start,
-                                                  settings.strength)
+        target, state, age, confidence = transfer(cleaned, result, transfer_start,
+                                                  settings.strength, self._coarse(result, dt),
+                                                  return_delta=True)
+        delta = self._ease(target, dt)
+        if delta is not None:
+            # A new analysis eases in over ~0.1 s and an expiring one fades
+            # out, instead of popping (brightness jumps read as flashes).
+            if state in ('expired', 'changed'):
+                state = 'global'
+            output = RovAI.apply(cleaned, delta, settings.strength)
+        else:
+            output = cleaned
         info['transfer_ms'] = (time.perf_counter() - transfer_start) * 1000
         finish_start = time.perf_counter()
-        if state == 'applied':
+        if state in ('applied', 'global'):
             # Same look whether the network or only the temporal stage acted.
             output = self.temporal.natural(frame, output, settings.ai_color,
                                            settings.ai_contrast * settings.strength, dt)
@@ -251,7 +321,7 @@ class LiveAI:
             output = apply_detail(output, job['detail'])
         else:
             output = original.copy()
-        if state in ('applied', 'temporal'):
+        if state in ('applied', 'global', 'temporal'):
             output = self._stabilize(output, job)
         info['finish_ms'] = (time.perf_counter() - finish_start) * 1000
         info.update(ai_state=state, ai_ms=result.milliseconds, ai_age_ms=age * 1000,
@@ -259,6 +329,35 @@ class LiveAI:
                     processor='IA WaterNet • ' + '/'.join(result.providers) +
                               ' • ' + settings.quality + ' • vídeo fluido')
         return output, info
+
+    def _coarse(self, result, dt):
+        """Coarse correction smoothed over ~0.4 s: a new analysis changes the
+        veil gradually instead of popping (stage 2 only, frames in order)."""
+        target = coarse_map(result.delta)
+        if self.coarse is None or self.coarse[1].shape != target.shape:
+            self.coarse = (result.seq, target)
+        else:
+            blend = 1 - np.exp(-min(max(dt, .001), .25) / .4)
+            self.coarse = (result.seq, self.coarse[1] + np.float32(blend) * (target - self.coarse[1]))
+        return self.coarse[1]
+
+    def _ease(self, target, dt, tau=.12):
+        """Short exponential easing of the applied correction (stage 2, in
+        order). Consecutive frames differ by a few pixels at most on the
+        correction grid, and the correction itself is smooth, so no trail."""
+        previous = getattr(self, 'applied', None)
+        if target is None:
+            if previous is None:
+                return None
+            target = np.zeros_like(previous)
+        if previous is None or previous.shape != target.shape:
+            self.applied = target
+            return target
+        blend = np.float32(1 - np.exp(-min(max(dt, .001), .25) / tau))
+        self.applied = previous + blend * (target - previous)
+        if float(np.abs(self.applied).max()) < .5:
+            self.applied = None
+        return self.applied
 
     def _stabilize(self, output, job):
         """Move the treated view by the shake correction (HUD moves with it)."""

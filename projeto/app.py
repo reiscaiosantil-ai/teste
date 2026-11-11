@@ -25,7 +25,7 @@ from processing import Settings
 import capture_devices
 from rov_ai import list_adapters, adapter_label
 
-VERSION = "0.3.9"
+VERSION = "0.3.10"
 
 STYLE = """
 QWidget { background: #0b1420; color: #d9e6ef; font-family: 'Segoe UI'; font-size: 13px; }
@@ -158,7 +158,17 @@ class VideoPanel(QWidget):
         painter.setPen(QColor(self.accent))
         painter.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         painter.drawText(14, 26, self.title)
-        if self.overlay:
+        if self.overlay and self.image is not None:
+            # 0.3.10: a delay notice is a small badge in the header, never a
+            # text over the video (it looked like a white glitch).
+            painter.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
+            text = self.overlay.splitlines()[0]
+            width = painter.fontMetrics().horizontalAdvance(text) + 18
+            badge = QRect(self.width() - width - 10, 10, width, 24)
+            painter.fillRect(badge, QColor(120, 70, 10, 220))
+            painter.setPen(QColor("#ffd9a0"))
+            painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, text)
+        elif self.overlay:
             painter.setPen(QColor("#8da7b8"))
             painter.setFont(QFont("Segoe UI", 12))
             painter.drawText(view, Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap, self.overlay)
@@ -817,7 +827,7 @@ class Window(QMainWindow):
             self.metrics.setText(f"Sem quadro na captura há {max(0, now - capture_received):.1f} s. A imagem anterior foi retirada da tela.")
             self.status.setText(self.session.message if not self.session.process.is_alive() else "A captura não está entregando quadros recentes. Confira a fonte.")
             return
-        if age > 0.75:
+        if age > 1.5:  # 0.3.10: was 0.75 s; brief processing hiccups are normal.
             self.current = packet
             self.snapshot_btn.setEnabled(False)
             if packet["seq"] != self.last_sequence or self.original.image is None:
@@ -851,14 +861,16 @@ class Window(QMainWindow):
                 + (f" • {info}" if info else "") + f" • {packet.get('processor','')}")
         if 'ai_state' in packet:
             state = {"waiting":"Aguardando IA — original", "changed":"Cena mudou — original",
-                     "expired":"Correção antiga — original", "black":"Quadro preto — original", "temporal":"Somente restauração temporal — IA aguardando", "applied":"Correção aplicada"}.get(packet['ai_state'], '')
+                     "expired":"Correção antiga — original", "black":"Quadro preto — original", "temporal":"Somente restauração temporal — IA aguardando", "applied":"Correção aplicada",
+                     "global":"Correção mantida (IA atrasada ou movimento rápido)"}.get(packet['ai_state'], '')
             stages = (f" ({packet['prepare_ms']:.0f} + {packet['render_ms']:.0f} em paralelo)"
                       if 'render_ms' in packet else "")
             latency = f" | Latência no app: {packet['latency_ms']:.0f} ms" if 'latency_ms' in packet else ""
             self.metrics.setText(f"Vídeo: {packet['fps']:.1f} FPS | Aplicação: {packet['processing_ms']:.1f} ms{stages}"
                 f"{latency} | IA: {packet['ai_fps']:.1f} análises/s • {packet['ai_ms']:.0f} ms | "
                 f"Idade da correção: {packet['ai_age_ms']:.0f} ms | {state}"
-                + (f" | {packet['auto']}" if packet.get('auto') else ""))
+                + (f" | {packet['auto']}" if packet.get('auto') else "")
+                + (f" | Desempenho automático: {packet['perf_text']}" if packet.get('perf_text') else ""))
         else:
             self.metrics.setText(f"Processados: {packet['fps']:.1f} FPS | Filtro: {packet['processing_ms']:.1f} ms | "
                 f"Idade no app: {age * 1000:.0f} ms | Quadros pulados pelo app: {packet['skipped']}")

@@ -15,6 +15,7 @@ import numpy as np
 from processing import Enhancer, Settings
 from live_ai import LiveAI
 import capture_devices
+from performance import Governor, LEVEL_TEXT
 
 MAX_BYTES = 1920 * 1080 * 3
 
@@ -341,6 +342,7 @@ class Session:
         self._render_job = None
         self._published_seq = 0
         self._rate = {"count": 0, "window": time.perf_counter(), "fps": 0.0}
+        self.governor = Governor()
         self.worker = threading.Thread(target=self._process, name="ROV-estagio1", daemon=True)
         self.renderer = threading.Thread(target=self._render, name="ROV-estagio2", daemon=True)
         self.process.start()
@@ -354,6 +356,9 @@ class Session:
             if seq <= self._published_seq:
                 return  # A slower job finished after a newer frame was shown.
             self._published_seq = seq
+            # Economy level follows how many source frames are being skipped.
+            level = self.governor.update(now, seq)
+            self.live_ai.perf_level = level
             rate = self._rate
             rate["count"] += 1
             elapsed = now - rate["window"]
@@ -363,7 +368,9 @@ class Session:
                 "enhanced": enhanced, "processing_ms": processing_ms, "fps": rate["fps"],
                 "latency_ms": (now - received) * 1000,
                 "skipped": skipped, "source_size": source_size, "filter_error": filter_error,
-                "mode": settings.mode, "enabled": settings.enabled, "processor": processor, **info}
+                "mode": settings.mode, "enabled": settings.enabled, "processor": processor,
+                "perf_level": level, "perf_text": LEVEL_TEXT[level],
+                "drop_ratio": self.governor.drop, **info}
 
     def _render(self):
         while True:

@@ -1,14 +1,14 @@
-"""Local-only update of an existing ROV Live IA 0.3.2 – 0.3.8 installation."""
+"""Local-only update of an existing ROV Live IA 0.3.2 – 0.3.9 installation."""
 import ast
 import os
 from pathlib import Path
 import shutil
 import tempfile
 
-VERSION = '0.3.9'
+VERSION = '0.3.10'
 NAMES = ['app.py', 'engine.py', 'processing.py', 'rov_ai.py', 'live_ai.py',
          'export_video.py', 'temporal_restore.py', 'capture_devices.py', 'benchmark_live.py',
-         'auto_visual.py', 'stabilize.py']
+         'auto_visual.py', 'stabilize.py', 'performance.py']
 
 
 def install(root):
@@ -40,7 +40,7 @@ def install(root):
             os.replace(temp, target / name)
             installed.append(name)
         (root / 'VERSAO_ROV_LIVE.txt').write_text(
-            f'{VERSION} — visual automatico, menos ruido e particulas, estabilizacao opcional\n',
+            f'{VERSION} — sem falha branca, desempenho automatico, visual automatico\n',
             encoding='utf-8')
     except Exception:
         for name in installed:

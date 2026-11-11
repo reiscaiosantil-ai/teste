@@ -111,7 +111,7 @@ def main():
                         ai_realtime=not args.sem_fluido, ai_specks=0, ai_restore=.35,
                         ai_auto=not args.sem_auto, stabilize=1. if args.estabilizar else 0.)
     cv2.setNumThreads(2)
-    result = {"versao": "0.3.9", "python": sys.version.split()[0], "opencv": cv2.__version__,
+    result = {"versao": "0.3.10", "python": sys.version.split()[0], "opencv": cv2.__version__,
               "sistema": platform.platform(), "cpu": platform.processor(),
               "nucleos": os.cpu_count(), "fonte": source.kind,
               "controles": settings.__dict__, **run(source, settings, args.segundos, args.aquecimento)}

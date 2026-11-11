@@ -407,3 +407,66 @@ Ou seja, o ruído fica abaixo do original. 90 testes passam (3.12 e 3.13).
 - o Automático em cenas reais longas (se oscila, se escolhe bem);
 - se a estabilização ajuda o piloto e se o HUD acompanhando incomoda;
 - o FPS real no PC com GPU integrada e no de 8 GB.
+
+---
+
+# 0.3.10: sem falha branca e vídeo mais regular
+
+Retorno do usuário: “ainda tá meio travadinho… ainda tem aquela falha branca,
+como se o vídeo estivesse atrasando”.
+
+**Causa da falha branca.** A correção da IA é calculada em alguns quadros e
+reaplicada aos seguintes. Ela era descartada, e o quadro voltava ao véu
+branco original, em três situações:
+- a análise da IA atrasava mais que o prazo (0,5 s com IA rápida, reduzido
+  na 0.3.6);
+- a correspondência falhava em movimento rápido;
+- regiões de baixa confiança ficavam sem correção, em manchas.
+
+Num PC com a GPU disputada pela captura e pela tela, isso pisca. Uma
+análise nova também trocava a correção de uma vez (brilho médio saltando até
+~18 níveis).
+
+**Correções:**
+- A correção detalhada continua sendo usada onde ainda corresponde à imagem
+  quando a IA atrasa. Ela passa aos poucos (1,5 s) para uma versão grossa
+  (grade 8 × 5) do véu, que vale até 3 s e esmaece no fim.
+- Regiões ou quadros sem correspondência recebem a versão grossa, nunca o
+  véu cru.
+- A correção aplicada é suavizada no tempo (~0,12 s): uma análise nova entra
+  em 3–4 quadros e uma expirada sai aos poucos.
+- Correções analisadas com luz ou cor muito diferentes da atual (luzes,
+  cortes) recebem peso menor (mínimo 35%).
+- Fluxo da reaplicação com 4 níveis de pirâmide, para deslocamentos maiores.
+- O aviso “IMAGEM ATRASADA” deixou de cobrir o vídeo com texto claro. Agora é
+  um selo pequeno no canto e só aparece após 1,5 s (antes 0,75 s).
+
+**Ensaio com IA travando** (12% das análises com 0,9 s, movimento contínuo,
+310 quadros):
+
+| Medida | 0.3.9 | 0.3.10 |
+|---|---:|---:|
+| Quadros com véu | 83–120 | **4–12** |
+| Maior salto de força | 33–43 | **8,6–11** |
+
+Faixas de várias rodadas: o travamento simulado é aleatório.
+
+**Causa do travamento.** Quando o PC não acompanha a fonte, o app pulava
+quadros de forma irregular. Medido em 1080p aqui: 17,8 FPS com 243 pulos
+irregulares em 400 quadros.
+
+**Desempenho automático (`performance.py`).** Mede os quadros pulados. Se
+passar de ~12% por mais de 1 s, sobe um nível de economia:
+1. sem redução de ruído em resolução cheia;
+2. também sem nitidez em resolução cheia;
+3. também com resolução interna de 512 × 288.
+
+Com quase nenhum pulo por 4 s, tenta voltar. Se a tentativa falhar logo,
+espera o dobro (até 64 s), para não ficar oscilando. O rodapé mostra
+“Desempenho automático: economia N”. Em 1080p aqui: **25–28 FPS com 36–79
+pulos irregulares** (antes 17,8 FPS / 243).
+
+94 testes passam (Python 3.12 e 3.13).
+
+**A validar no Windows:** se a falha branca sumiu no PC com GPU integrada e
+qual nível de economia aparece no rodapé em 960 × 540 e em 1080p.
