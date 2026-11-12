@@ -11,13 +11,18 @@ Economy levels, cheapest image loss first (see live_ai.LiveAI):
   1 - no full-resolution two-frame noise reduction
   2 - no full-resolution sharpening
   3 - smaller internal working resolution (512 × 288 instead of 640 × 360)
+  4 - lighter temporal fusion (384 × 216, two observations)
+  5 - lightest temporal fusion (320 × 180, one optical flow instead of two)
+The network analysis itself is never reduced (its quality was approved).
 """
 from collections import deque
 
-MAX_LEVEL = 3
+MAX_LEVEL = 5
 LEVEL_TEXT = {0: "", 1: "economia 1 (sem ruído em resolução cheia)",
               2: "economia 2 (sem ruído/nitidez em resolução cheia)",
-              3: "economia 3 (resolução interna menor)"}
+              3: "economia 3 (resolução interna menor)",
+              4: "economia 4 (fusão temporal mais leve)",
+              5: "economia 5 (máxima)"}
 
 
 class Governor:

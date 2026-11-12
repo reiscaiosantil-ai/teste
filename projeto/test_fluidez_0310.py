@@ -86,3 +86,27 @@ def test_late_analysis_keeps_matching_detail():
     change = out.astype(int) - f.astype(int)
     assert state == 'global'
     assert change[:, 10:50].mean() > 15 and change[:, 80:120].mean() < 6
+
+
+def test_economy_levels_4_and_5_lighten_temporal_fusion_but_keep_it_working():
+    import cv2
+    from live_ai import LiveAI
+    from temporal_restore import TemporalRestorer
+    truths, noisy = pan_sequence(frames=8)
+    for economy, size in [(1, (216, 384)), (2, (180, 320))]:
+        restorer = TemporalRestorer()
+        restorer.economy = economy
+        for frame in noisy:
+            out = restorer.clean(frame, .35, 1 / 30)
+        assert restorer.previous.shape[:2] == size          # Lighter internal size.
+        assert out.shape == frame.shape
+        assert restorer.metrics['temporal_fraction'] > .3    # Fusion still active.
+    live = LiveAI()
+    try:
+        s = Settings(True, .8, mode='ai', quality='fast', backend='cpu', ai_restore=.35, ai_realtime=True)
+        for level, economy in [(3, 0), (4, 1), (5, 2)]:
+            live.perf_level = level
+            live.render(live.prepare(noisy[0], s, level, time.perf_counter()))
+            assert live.temporal.economy == economy
+    finally:
+        live.close()

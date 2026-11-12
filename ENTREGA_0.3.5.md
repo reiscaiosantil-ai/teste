@@ -470,3 +470,45 @@ pulos irregulares** (antes 17,8 FPS / 243).
 
 **A validar no Windows:** se a falha branca sumiu no PC com GPU integrada e
 qual nível de economia aparece no rodapé em 960 × 540 e em 1080p.
+
+---
+
+# 0.3.11: mais degraus de desempenho automático
+
+Retorno do usuário sobre a 0.3.10: o nível de economia fica **sempre em 3**.
+A qualidade melhorou e o “erro branco” diminuiu muito.
+
+**Leitura.** No nível 3, que era o máximo, o PC do usuário ainda está no
+limite. Simulei isso aqui com 2 núcleos e a IA fora da CPU. Na 0.3.10,
+1080p ficava no nível 3 com 23,8 FPS e 27% de quadros pulados. No nível 3,
+o maior custo restante é a fusão temporal: 18 ms de 23 ms no estágio 1, com
+dois fluxos ópticos, alinhamento de 4 observações e detecção de partículas
+em 480 × 270.
+
+**Novos níveis.** A análise da IA nunca é reduzida.
+- **Nível 4:** fusão em 384 × 216 e guia de 160 px. Custo de 12,7 ms (era 17,8).
+- **Nível 5:** fusão em 320 × 180, guia de 128 px e um único fluxo óptico.
+  Custo de 6,8 ms.
+
+Os dois mantêm 3 observações para as partículas. Com só 2, as partículas
+lentas voltavam a sobrar em 48–51%.
+
+**Ensaio sintético** (1080p, 20 quadros, mesma cena):
+
+| Nível | Partículas rápidas restantes | Partículas lentas restantes | Erro fora delas (original 6,92) |
+|---|---:|---:|---:|
+| 0 a 3 | 15,6% | 24,0% | 5,61–5,80 |
+| 4 | 16,9% | 27,3% | 5,60–5,74 |
+| 5 | 17,7% | 27,8% | 6,60–6,65 |
+
+**Ritmo com 2 núcleos e IA fora da CPU:**
+
+| Resolução | 0.3.10 | 0.3.11 |
+|---|---|---|
+| 1080p | 23,8 FPS, 27% pulados (nível 3) | **29,2 FPS, 3% pulados** (níveis 4–5) |
+| 960 × 540 | 28,3 FPS | **28,7 FPS** (níveis 1–4) |
+
+95 testes passam.
+
+**A validar no Windows:** qual nível aparece no rodapé no PC com GPU
+integrada (esperado 4 ou 5) e se o vídeo deixou de engasgar.

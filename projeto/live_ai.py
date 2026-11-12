@@ -208,6 +208,7 @@ class LiveAI:
         key = (settings.quality, settings.backend, settings.device_id)
         original = frame
         level = self.perf_level
+        self.temporal.economy = max(0, min(2, level - 3))
         frame = working_frame(frame, *((512, 288) if level >= 3 else (640, 360)))
         if not np.any(frame):
             self.reset()

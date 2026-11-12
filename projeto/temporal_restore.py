@@ -125,8 +125,17 @@ class TemporalRestorer:
         self.tone = None
         self.metrics = {'temporal_fraction': 0., 'particle_fraction': 0.}
 
+    # Economy (0.3.11, set by the automatic performance level on weak PCs):
+    # internal size, guide width, earlier observations kept, forward check.
+    # Three observations stay even in economy: with only two, slow particles
+    # (still visible in the previous frame) are no longer removed.
+    ECONOMY = {0: ((480, 270), 192, 3, True), 1: ((384, 216), 160, 2, True),
+               2: ((320, 180), 128, 2, False)}
+    economy = 0
+
     def clean(self, frame, amount, dt):
-        work = working_frame(frame, 480, 270)
+        size, _, _, _ = self.ECONOMY[self.economy]
+        work = working_frame(frame, *size)
         result = self._clean_work(work, amount, dt)
         return self.suppress(lift_change(frame, work, result))
 
@@ -155,7 +164,8 @@ class TemporalRestorer:
             self.reset()
             return frame.copy()
         h, w = frame.shape[:2]
-        sw = min(192, w)
+        _, guide_width, keep, forward_check = self.ECONOMY[self.economy]
+        sw = min(guide_width, w)
         sh = max(8, round(h * sw / w))
         guide = cv2.cvtColor(cv2.resize(frame, (sw, sh), interpolation=cv2.INTER_AREA),
                              cv2.COLOR_BGR2GRAY)
@@ -173,15 +183,20 @@ class TemporalRestorer:
             # Current-to-previous backward flow plus a forward consistency test.
             back = cv2.calcOpticalFlowFarneback(guide, self.previous_guide, None,
                                                .5, 2, 15, 2, 5, 1.1, 0)
-            forward = cv2.calcOpticalFlowFarneback(self.previous_guide, guide, None,
-                                                  .5, 2, 15, 2, 5, 1.1, 0)
             back_map = cv2.add(pixel_grid(sh, sw), back)
             mx, my = back_map[:, :, 0], back_map[:, :, 1]
             inside = (mx >= 1) & (my >= 1) & (mx < sw - 2) & (my < sh - 2)
-            matched_flow = cv2.remap(forward, back_map, None, cv2.INTER_LINEAR,
-                                     borderMode=cv2.BORDER_REPLICATE)
-            loop = cv2.add(back, matched_flow)
-            consistent = cv2.magnitude(loop[:, :, 0], loop[:, :, 1]) < 1.25
+            if forward_check:
+                forward = cv2.calcOpticalFlowFarneback(self.previous_guide, guide, None,
+                                                      .5, 2, 15, 2, 5, 1.1, 0)
+                matched_flow = cv2.remap(forward, back_map, None, cv2.INTER_LINEAR,
+                                         borderMode=cv2.BORDER_REPLICATE)
+                loop = cv2.add(back, matched_flow)
+                consistent = cv2.magnitude(loop[:, :, 0], loop[:, :, 1]) < 1.25
+            else:
+                # Highest economy: photometric check only (the blend still
+                # requires every channel to agree within 12 levels).
+                consistent = np.ones((sh, sw), bool)
             matched = cv2.remap(self.previous_guide, back_map, None, cv2.INTER_LINEAR,
                                 borderMode=cv2.BORDER_REPLICATE)
             consistent &= cv2.absdiff(guide, matched) < 18
@@ -213,7 +228,7 @@ class TemporalRestorer:
                 # tolerates the noise of turbid water).
                 particle_reference, spread = robust_reference([seen] + earlier)
                 agreement = within(spread, np.zeros_like(spread), 12)
-                older = [seen] + earlier[:2]
+                older = [seen] + earlier[:keep - 1]
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 reference_gray = cv2.cvtColor(particle_reference, cv2.COLOR_BGR2GRAY)
                 opened = cv2.morphologyEx(gray, cv2.MORPH_OPEN,
