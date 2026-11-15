@@ -41,3 +41,17 @@ test('entende o erro do Google mesmo dentro de uma lista', async () => {
   global.fetch = async () => ({ ok: false, status: 400, json: async () => ([{ error: { code: 400, message: 'API key not valid. Please pass a valid API key.', details: [{ reason: 'API_KEY_INVALID' }] } }]) });
   await assert.rejects(V.sintetizar({ chave: 'x', modelo: 'm', voz: 'Leda', texto: 'oi' }), /chave do Google AI Studio não foi aceita/);
 });
+
+test('reserva Chirp 3 HD: pede a mesma voz no Google Cloud e trata erros', async () => {
+  let pedido;
+  global.fetch = async (url, op) => { pedido = { url, op, corpo: JSON.parse(op.body) }; return { ok: true, status: 200, json: async () => ({ audioContent: Buffer.from('ID3mp3').toString('base64') }) }; };
+  const buf = await V.sintetizarCloud({ chave: 'k', voz: 'Leda', texto: 'Oi!' });
+  assert.equal(pedido.url, 'https://texttospeech.googleapis.com/v1/text:synthesize');
+  assert.equal(pedido.corpo.voice.name, 'pt-BR-Chirp3-HD-Leda');
+  assert.equal(pedido.corpo.voice.languageCode, 'pt-BR');
+  assert.equal(new Uint8Array(buf)[0], 0x49);
+  global.fetch = async () => ({ ok: false, status: 403, json: async () => ({ error: { message: 'Cloud Text-to-Speech API has not been used in project 123 before or it is disabled.' } }) });
+  await assert.rejects(V.sintetizarCloud({ chave: 'k', voz: 'Leda', texto: 'oi' }), /não está ativada/);
+  global.fetch = async () => ({ ok: false, status: 429, json: async () => ({ error: { message: 'Quota exceeded' } }) });
+  await assert.rejects(V.sintetizarCloud({ chave: 'k', voz: 'Leda', texto: 'oi' }), (e) => e.semCota === true);
+});

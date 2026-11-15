@@ -69,7 +69,7 @@
       const e = Array.isArray(d) ? d[0] : d; // o Google às vezes devolve o erro dentro de uma lista
       const msg = (e && e.error && (e.error.message + ' ' + JSON.stringify(e.error.details || ''))) || '';
       if (/API key not valid|API_KEY_INVALID/i.test(msg)) throw new Error('a chave do Google AI Studio não foi aceita');
-      if (r.status === 429) throw new Error('limite de uso da voz do Google atingido');
+      if (r.status === 429) { const e429 = new Error('limite de uso da voz do Google atingido'); e429.status = 429; e429.semCota = true; throw e429; }
       if (r.status === 403) throw new Error('essa chave não tem acesso à voz do Gemini');
       if (r.status === 404) throw new Error('modelo de voz não encontrado');
       throw new Error(`o Google respondeu com erro ${r.status}${e && e.error && e.error.message ? ': ' + e.error.message : ''}`);
@@ -83,7 +83,45 @@
     return pcmParaWav(bytes, taxa);
   }
 
-  const api = { sintetizar, extrairAudio, pcmParaWav, VOZES, MODELOS };
+  /**
+   * Reserva: Google Cloud Text-to-Speech com as vozes Chirp 3 HD — as mesmas vozes do Gemini (Leda, Kore…),
+   * com cota própria (1 milhão de caracteres grátis por mês). Precisa da API "Cloud Text-to-Speech" ativada no projeto.
+   * Devolve um ArrayBuffer (MP3) pronto para decodeAudioData.
+   */
+  async function sintetizarCloud({ chave, voz, texto, velocidade, sinal }) {
+    let r;
+    try {
+      r = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
+        method: 'POST', signal: sinal,
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': chave },
+        body: JSON.stringify({
+          input: { text: texto },
+          voice: { languageCode: 'pt-BR', name: `pt-BR-Chirp3-HD-${voz}` },
+          audioConfig: { audioEncoding: 'MP3', ...(velocidade && velocidade !== 1 ? { speakingRate: velocidade } : {}) },
+        }),
+      });
+    } catch (e) {
+      if (e && e.name === 'AbortError') throw e;
+      throw new Error('sem conexão com o Google Cloud');
+    }
+    const d = await r.json().catch(() => null);
+    if (!r.ok) {
+      const e = Array.isArray(d) ? d[0] : d;
+      const msg = (e && e.error && (e.error.message + ' ' + JSON.stringify(e.error.details || ''))) || '';
+      const erro = new Error(
+        /API key not valid|API_KEY_INVALID/i.test(msg) ? 'a chave do Google Cloud não foi aceita'
+          : /billing/i.test(msg) ? 'o projeto do Google Cloud precisa ter o faturamento ativado (o uso até 1 milhão de caracteres por mês é grátis)'
+            : /has not been used|is disabled|SERVICE_DISABLED|API_NOT_ACTIVATED/i.test(msg) ? 'a API Cloud Text-to-Speech não está ativada nesse projeto'
+              : r.status === 429 ? 'limite de uso do Google Cloud atingido'
+                : `o Google Cloud respondeu com erro ${r.status}${e && e.error && e.error.message ? ': ' + e.error.message : ''}`);
+      erro.status = r.status; erro.semCota = r.status === 429;
+      throw erro;
+    }
+    if (!d || !d.audioContent) throw new Error('o Google Cloud não devolveu áudio');
+    return base64ParaBytes(d.audioContent).buffer;
+  }
+
+  const api = { sintetizar, sintetizarCloud, extrairAudio, pcmParaWav, VOZES, MODELOS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   raiz.VOZ_GOOGLE = api;
 })(typeof window !== 'undefined' ? window : globalThis);

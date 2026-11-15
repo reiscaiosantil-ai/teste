@@ -20,7 +20,7 @@
   const PADRAO = () => ({
     cfg: {
       nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo', cilios: true, blush: true, batom: false, cabelo: 'nenhum', corCabelo: 0,
-      voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', somenteExecutar: false, sempreOuvindo: false,
+      voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', cloudChave: '', usarChirp: true, somenteExecutar: false, sempreOuvindo: false,
       cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', volume: 70, pausas: false,
     },
     xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [],
@@ -345,27 +345,53 @@
       speechSynthesis.speak(u);
     } catch (_) { /* sem síntese de voz */ }
   }
+  // ordem das vozes do Google: Gemini (modelo escolhido) → Gemini (o outro modelo, cota separada) → Cloud Chirp 3 HD (mesma voz, 1 mi de caracteres grátis/mês)
+  const pausaMotor = {}; // motor → até quando pular (cota acabou ou não está configurado)
+  const NOME_MOTOR = { 'gemini-3.8-flash-tts': 'Gemini Flash', 'gemini-3.8-flash-lite-tts': 'Gemini Flash-Lite', chirp: 'Google Cloud (Chirp 3 HD)', computador: 'voz do computador' };
+  function motoresGoogle() {
+    const c = S.cfg, lista = [];
+    if (c.geminiChave) {
+      lista.push(c.geminiModelo);
+      window.VOZ_GOOGLE.MODELOS.map(([m]) => m).filter((m) => m !== c.geminiModelo).forEach((m) => lista.push(m));
+    }
+    if (c.usarChirp !== false && (c.cloudChave || c.geminiChave)) lista.push('chirp');
+    return lista.filter((m) => !(pausaMotor[m] > Date.now()));
+  }
   async function falarGoogle(limpo, seq) {
-    const c = S.cfg, chave = `${c.geminiModelo}|${c.geminiVoz}|${c.personalidade}|${limpo}`;
+    const c = S.cfg, chave = `${c.geminiVoz}|${c.personalidade}|${limpo}`;
+    let ultimoErro = null;
     try {
-      let wav = cacheFala.get(chave);
-      if (!wav) {
-        falaCtl = new AbortController();
-        wav = await window.VOZ_GOOGLE.sintetizar({ chave: c.geminiChave, modelo: c.geminiModelo, voz: c.geminiVoz, texto: limpo, estilo: ESTILOS_FALA[c.personalidade], sinal: falaCtl.signal });
-        falaCtl = null;
-        cacheFala.set(chave, wav); if (cacheFala.size > 30) cacheFala.delete(cacheFala.keys().next().value);
+      let audio = cacheFala.get(chave);
+      if (!audio) {
+        for (const motor of motoresGoogle()) {
+          try {
+            falaCtl = new AbortController();
+            audio = motor === 'chirp'
+              ? await window.VOZ_GOOGLE.sintetizarCloud({ chave: c.cloudChave || c.geminiChave, voz: c.geminiVoz, texto: limpo, sinal: falaCtl.signal })
+              : await window.VOZ_GOOGLE.sintetizar({ chave: c.geminiChave, modelo: motor, voz: c.geminiVoz, texto: limpo, estilo: ESTILOS_FALA[c.personalidade], sinal: falaCtl.signal });
+            falaCtl = null; R.ultimaVoz = NOME_MOTOR[motor] || motor; break;
+          } catch (e) {
+            if (e && e.name === 'AbortError') throw e;
+            ultimoErro = e;
+            // cota acabou: pula esse motor por 30 min; outro problema (chave, API desligada): pula por 6 h
+            pausaMotor[motor] = Date.now() + (e && e.semCota ? 30 : 360) * 60e3;
+          }
+        }
+        if (!audio) throw ultimoErro || new Error('nenhuma voz do Google configurada');
+        cacheFala.set(chave, audio); if (cacheFala.size > 30) cacheFala.delete(cacheFala.keys().next().value);
       }
       if (seq !== falaSeq) return;
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') await audioCtx.resume();
-      const buf = await audioCtx.decodeAudioData(wav.slice(0));
+      const buf = await audioCtx.decodeAudioData(audio.slice(0));
       if (seq !== falaSeq) return;
       const src = audioCtx.createBufferSource(); src.buffer = buf; src.connect(audioCtx.destination);
       src.onended = () => { if (falaFonte === src) { falaFonte = null; fimFala(); } };
       falaFonte = src; inicioFala(); src.start();
     } catch (e) {
       if ((e && e.name === 'AbortError') || seq !== falaSeq) return;
-      if (!avisouGoogle) { avisouGoogle = true; aviso(`Voz do Google: ${e && e.message ? e.message : 'erro'}. Usando a voz do navegador.`); }
+      R.ultimaVoz = NOME_MOTOR.computador;
+      if (!avisouGoogle) { avisouGoogle = true; aviso(`Voz do Google: ${e && e.message ? e.message : 'erro'}. Usando a voz do computador.`); }
       falarNavegador(limpo);
     }
   }
@@ -374,7 +400,7 @@
     const limpo = textoFalavel(texto); if (!limpo) return;
     calar();
     const seq = ++falaSeq;
-    if (S.cfg.vozMotor === 'google' && S.cfg.geminiChave && window.VOZ_GOOGLE) falarGoogle(limpo, seq);
+    if (S.cfg.vozMotor === 'google' && (S.cfg.geminiChave || S.cfg.cloudChave) && window.VOZ_GOOGLE) falarGoogle(limpo, seq);
     else falarNavegador(limpo);
   }
   function calar() {
@@ -1012,7 +1038,10 @@
       ${c.vozMotor === 'google' ? `<div class="nota-aviso">Vozes femininas do Gemini, bem naturais. Precisa de internet e de uma chave grátis do Google AI Studio (aistudio.google.com → Get API key). A chave fica salva só neste navegador; o uso conta na cota da sua conta Google. Se a voz do Google falhar, ela usa a voz do computador.</div>
       <div class="grade2"><div class="campo"><label for="cGemini">Chave do Google AI Studio</label><input id="cGemini" type="password" data-cfg="geminiChave" value="${esc(c.geminiChave)}" placeholder="AIza…" autocomplete="off"></div>
       <div class="campo"><label for="cGVoz">Voz feminina</label><select id="cGVoz" data-cfg="geminiVoz">${window.VOZ_GOOGLE ? window.VOZ_GOOGLE.VOZES.map(([n, d]) => `<option value="${n}"${n === c.geminiVoz ? ' selected' : ''}>${n} · ${d}</option>`).join('') : ''}</select></div>
-      <div class="campo"><label for="cGModelo">Modelo de voz</label><select id="cGModelo" data-cfg="geminiModelo">${window.VOZ_GOOGLE ? window.VOZ_GOOGLE.MODELOS.map(([v, n]) => `<option value="${v}"${v === c.geminiModelo ? ' selected' : ''}>${n}</option>`).join('') : ''}</select><small>O jeito de falar segue a personalidade escolhida acima</small></div></div>`
+      <div class="campo"><label for="cGModelo">Modelo de voz principal</label><select id="cGModelo" data-cfg="geminiModelo">${window.VOZ_GOOGLE ? window.VOZ_GOOGLE.MODELOS.map(([v, n]) => `<option value="${v}"${v === c.geminiModelo ? ' selected' : ''}>${n}</option>`).join('') : ''}</select><small>Se a cota dele acabar, ela usa o outro modelo sozinha</small></div></div>
+      <div class="chave"><div>Reserva: Google Cloud (Chirp 3 HD)<small>As mesmas vozes (Leda, Kore…), com cota própria de 1 milhão de caracteres grátis por mês. Entra quando as duas cotas do Gemini acabarem. ${R.ultimaVoz ? 'Última voz usada: ' + esc(R.ultimaVoz) + '.' : ''}</small></div><button class="tog${c.usarChirp !== false ? ' on' : ''}" data-acao="tog" data-cfg="usarChirp" aria-label="Usar o Google Cloud como reserva"></button></div>
+      ${c.usarChirp !== false ? `<div class="campo"><label for="cCloud">Chave do Google Cloud (opcional)</label><input id="cCloud" type="password" data-cfg="cloudChave" value="${esc(c.cloudChave || '')}" placeholder="vazio = tenta a mesma chave do AI Studio" autocomplete="off">
+        <small>No console.cloud.google.com, no mesmo projeto da chave: ative a API "Cloud Text-to-Speech" (pede faturamento ativado, mas até 1 milhão de caracteres por mês não é cobrado) e use a chave dele aqui. Dica: crie um alerta de orçamento de R$ 1.</small></div>` : ''}`
       : `<div class="grade2"><div class="campo"><label for="cVoz">Voz</label><select id="cVoz" data-cfg="vozNome"><option value="">Automática</option>${vozes.map((v) => `<option value="${esc(v.name)}"${v.name === c.vozNome ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select></div><div></div>
       <div class="campo"><label for="cVel">Velocidade · ${c.velocidade.toFixed(2)}</label><input id="cVel" type="range" min="0.6" max="1.6" step="0.05" value="${c.velocidade}" data-cfg="velocidade" data-num></div>
       <div class="campo"><label for="cTom">Tom (mais alto = mais fofinho) · ${c.tom.toFixed(2)}</label><input id="cTom" type="range" min="0.5" max="2" step="0.05" value="${c.tom}" data-cfg="tom" data-num></div></div>`}
@@ -1136,7 +1165,7 @@
       if (k === 'pausas' && S.cfg.pausas) R.ultimaPausa = Date.now();
       if (k === 'voz' && !S.cfg.voz) calar();
     },
-    'testar-voz': () => { avisouGoogle = false; falar(`Oi${S.cfg.usuario ? ' ' + S.cfg.usuario : ''}! Eu sou a ${S.cfg.nome}. É assim que eu falo.`, true); },
+    'testar-voz': () => { avisouGoogle = false; for (const m in pausaMotor) delete pausaMotor[m]; falar(`Oi${S.cfg.usuario ? ' ' + S.cfg.usuario : ''}! Eu sou a ${S.cfg.nome}. É assim que eu falo.`, true); },
     notificacoes: () => pedirNotificacoes(),
     'cc-nova': async () => { if (CC) await CC.nova(); aviso('🧹 Comecei uma conversa nova'); },
     'cc-status': async () => { if (!CC) return; R.cc = null; renderPrincipal(); R.cc = await CC.status().catch(() => ({ instalado: false })); },
@@ -1181,7 +1210,7 @@
     if (k === 'nome') v = v || 'Lumi';
     S.cfg[k] = v; salvar();
     if (k === 'cidade') { R.lugar = null; atualizarWidgetClima(); }
-    if (/^(vozMotor|gemini)/.test(k)) { avisouGoogle = false; cacheFala.clear(); }
+    if (/^(vozMotor|gemini|cloud)/.test(k)) { avisouGoogle = false; cacheFala.clear(); for (const m in pausaMotor) delete pausaMotor[m]; }
     if (k === 'vozMotor' || k === 'cerebro') renderPrincipal();
     if (k === 'nome' || k === 'usuario') renderLado();
   });
