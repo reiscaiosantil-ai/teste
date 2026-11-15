@@ -1,5 +1,7 @@
 # UnderWater — Reativação de leads
 
+> Também neste repositório: [`assistente/`](assistente/README.md) — **Lumi**, assistente virtual que mora no topo da tela (web + app de computador).
+
 Piloto local baseado no briefing de novembro de 2026. Python 3.12 ou superior, SQLite e interface web sem dependências externas.
 
 ## Executar

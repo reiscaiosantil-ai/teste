@@ -1,0 +1,24 @@
+{
+  "name": "lumi-assistente",
+  "version": "1.0.0",
+  "description": "Lumi: assistente virtual que mora no topo da tela",
+  "main": "desktop/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.js",
+    "dist:win": "electron-builder --win nsis portable",
+    "dist:mac": "electron-builder --mac dmg"
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "br.com.lumi.assistente",
+    "productName": "Lumi",
+    "files": ["index.html", "manifest.webmanifest", "icone.svg", "css/**", "js/**", "desktop/**"],
+    "win": { "target": ["nsis", "portable"] },
+    "mac": { "category": "public.app-category.productivity" }
+  }
+}

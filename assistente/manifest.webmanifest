@@ -1,0 +1,10 @@
+{
+  "name": "Lumi — assistente no topo da tela",
+  "short_name": "Lumi",
+  "lang": "pt-BR",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0B1020",
+  "theme_color": "#0B1020",
+  "icons": [{ "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
