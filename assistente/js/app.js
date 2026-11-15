@@ -20,7 +20,7 @@
   const PADRAO = () => ({
     cfg: {
       nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo', cilios: true, blush: true, batom: false, cabelo: 'nenhum', corCabelo: 0,
-      voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', cloudChave: '', usarChirp: true, somenteExecutar: false, sempreOuvindo: false,
+      voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', cloudChave: '', usarChirp: true, reconhecimento: 'whisper', whisperModelo: 'small', somenteExecutar: false, sempreOuvindo: false,
       cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', volume: 70, pausas: false,
     },
     xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [],
@@ -453,11 +453,12 @@
   }
   function tirarChamado(frase) {
     const nome = basePalavra(S.cfg.nome).split(' ').filter(Boolean);
-    const orig = String(frase).trim().split(/\s+/), base = basePalavra(frase).split(' ');
-    const ps = base.length === orig.length ? orig : base;
+    // cada palavra "simplificada" lembra de qual palavra original veio ("sexta-feira," vira "sexta" e "feira")
+    const orig = String(frase).trim().split(/\s+/).filter(Boolean), base = [], dono = [];
+    orig.forEach((o, i) => basePalavra(o).split(' ').filter(Boolean).forEach((b) => { base.push(b); dono.push(i); }));
     const parecido = (a, b) => a === b || (b.length >= 4 && distancia(a, b) <= 1);
     for (let i = 0; i + nome.length <= base.length; i++) {
-      if (nome.every((w, k) => parecido(base[i + k], w))) return ps.slice(i + nome.length).join(' ').replace(/^[,\s]+/, '');
+      if (nome.every((w, k) => parecido(base[i + k], w))) return orig.slice(dono[i + nome.length - 1] + 1).join(' ').replace(/^[,\s]+/, '');
     }
     return null;
   }
@@ -532,20 +533,47 @@
     R.parcial = t; renderPilula();
     clearTimeout(tComando); tComando = setTimeout(() => { if (modoVoz === 'comando') encerrarComando(); }, 6000); // ainda falando
   }
-  function aoResultadoOffline(t) {
+  // Whisper (app instalado): reescuta a frase inteira com um modelo bem mais preciso que o Vosk
+  const WH = window.lumiDesktop && window.lumiDesktop.whisper ? window.lumiDesktop.whisper : null;
+  const usarWhisper = () => !!(WH && (S.cfg.reconhecimento || 'whisper') === 'whisper');
+  function prepararWhisper() {
+    if (!usarWhisper() || (R.whisper && (R.whisper.baixando || (R.whisper.pronto && R.whisper.modelo === S.cfg.whisperModelo)))) return;
+    R.whisper = { ...(R.whisper || {}), baixando: true, progresso: 0, modelo: S.cfg.whisperModelo };
+    WH.preparar(S.cfg.whisperModelo || 'small').then((e) => { R.whisper = e; if (R.view === 'ajustes' && R.aberto) renderPrincipal(); }).catch(() => {});
+  }
+  async function refinar(t, audio) {
+    if (!usarWhisper() || !audio || audio.length < 4000) return t;
+    if (!(R.whisper && R.whisper.pronto && R.whisper.modelo === (S.cfg.whisperModelo || 'small'))) { prepararWhisper(); return t; } // ainda baixando: usa o Vosk por enquanto
+    R.trabalho = { icone: '🎧', rotulo: 'Entendendo', inicio: Date.now() }; renderPilula();
+    try {
+      const r = await WH.transcrever(audio, S.cfg.whisperModelo || 'small');
+      if (r && r.texto) { if (R.ouvidos && R.ouvidos[0]) R.ouvidos[0].w = r.texto; mostrarOuvido(); return r.texto; }
+    } catch (_) { /* fica com o Vosk */ } finally { R.trabalho = null; renderPilula(); }
+    return t;
+  }
+  function mostrarOuvido() {
+    if (R.view !== 'ajustes' || !R.aberto) return;
+    const el = $('#ultimoOuvido'), o = R.ouvidos && R.ouvidos[0];
+    if (el && o) el.textContent = o.w ? `${o.w}  (Vosk ouviu: ${o.t})` : o.t;
+  }
+  async function aoResultadoOffline(t, audio) {
     R.ouvidos = [{ t, modo: modoVoz, quando: Date.now() }, ...(R.ouvidos || [])].slice(0, 8); // para Ajustes e diagnóstico
-    if (R.view === 'ajustes' && R.aberto) { const el = $('#ultimoOuvido'); if (el) el.textContent = t; }
+    mostrarOuvido();
     if (R.falando) return;
     if (modoVoz === 'comando') {
       const resto = tirarChamado(t); // "ei sexta-feira" repetido no começo não atrapalha
       if (resto === '') { esperarComando(8000); return; } // falou só o nome de novo: continua esperando o pedido
-      encerrarComando(); processar(resto !== null ? resto : t, { voz: true }); return;
+      encerrarComando();
+      const w = await refinar(t, audio), rw = tirarChamado(w);
+      processar(rw !== null ? (rw || resto || t) : w, { voz: true }); return;
     }
     if (modoVoz !== 'chamado') return;
     const resto = tirarChamado(t);
     if (resto === null) return;
-    if (resto.length > 1) processar(resto, { voz: true });
-    else { abrir(); melodia(SOM_OUVIR); esperarComando(8000); }
+    if (resto.length > 1) {
+      const w = await refinar(t, audio), rw = tirarChamado(w);
+      processar(rw && rw.length > 1 ? rw : resto, { voz: true });
+    } else { abrir(); melodia(SOM_OUVIR); esperarComando(8000); }
   }
 
   /* ================= conversa ================= */
@@ -1031,7 +1059,10 @@
       <div class="secao">Voz</div>
       ${tog('voz', 'Responder em voz alta', 'Uma voz de robozinho lê as respostas')}
       ${tog('somenteExecutar', 'Modo só executar', 'Faz o que você pediu e fica quieto')}
-      ${usarOffline() ? `<div class="chave"><div>Última coisa que eu ouvi<small id="ultimoOuvido">${esc((R.ouvidos && R.ouvidos[0] && R.ouvidos[0].t) || '—')}</small></div></div>` : ''}
+      ${usarOffline() ? `<div class="chave"><div>Última coisa que eu ouvi<small id="ultimoOuvido">${esc((R.ouvidos && R.ouvidos[0] && (R.ouvidos[0].w ? R.ouvidos[0].w + '  (Vosk ouviu: ' + R.ouvidos[0].t + ')' : R.ouvidos[0].t)) || '—')}</small></div></div>` : ''}
+      ${WH ? `<div class="grade2"><div class="campo"><label for="cRec">Reconhecimento da fala</label><select id="cRec" data-cfg="reconhecimento"><option value="whisper"${(c.reconhecimento || 'whisper') === 'whisper' ? ' selected' : ''}>Whisper — bem mais preciso (recomendado)</option><option value="vosk"${c.reconhecimento === 'vosk' ? ' selected' : ''}>Só o Vosk — mais leve</option></select>
+        <small>${(() => { const w = R.whisper; if ((c.reconhecimento || 'whisper') !== 'whisper') return 'O Vosk entende os pedidos sozinho.'; if (!w) return 'Verificando…'; if (w.erro) return 'Não consegui baixar o Whisper: ' + esc(w.erro) + '. Por enquanto uso o Vosk.'; if (w.baixando) return `Baixando o Whisper… ${w.progresso || 0}% (uma vez só). Enquanto isso, uso o Vosk.`; if (w.pronto) return '✅ Whisper pronto. O Vosk só espera o chamado; o pedido é entendido pelo Whisper, no seu PC.'; return 'Será baixado uma vez só e roda offline.'; })()}</small></div>
+      <div class="campo"><label for="cWm">Modelo do Whisper</label><select id="cWm" data-cfg="whisperModelo">${[['base', 'Base — rápido (80 MB)'], ['small', 'Small — preciso (240 MB, recomendado)'], ['turbo', 'Turbo — máxima precisão, mais lento (730 MB)']].map(([v, n]) => `<option value="${v}"${v === (c.whisperModelo || 'small') ? ' selected' : ''}>${n}</option>`).join('')}</select></div></div>` : ''}
       ${tog('sempreOuvindo', `Sempre ouvindo "Ei, ${esc(c.nome)}"`, usarOffline() ? 'Reconhecimento offline, feito no seu computador: nada do que você fala sai do PC. Funciona melhor com nomes que são palavras em português.' : temVoz() ? 'O microfone fica ligado enquanto esta janela estiver aberta. O reconhecimento é feito pelo navegador.' : window.lumiDesktop ? 'A voz offline não foi encontrada neste app' : 'Precisa do Chrome ou do Edge', !temVoz())}
       <div class="grade2"><div class="campo"><label for="cMotor">Tipo de voz</label><select id="cMotor" data-cfg="vozMotor"><option value="navegador"${c.vozMotor !== 'google' ? ' selected' : ''}>Voz do computador (grátis, offline)</option><option value="google"${c.vozMotor === 'google' ? ' selected' : ''}>Google AI Studio (Gemini)</option></select></div>
       <div class="campo"><span>&nbsp;</span><button class="btn fantasma" data-acao="testar-voz">🔊 Testar voz</button></div></div>
@@ -1211,6 +1242,7 @@
     S.cfg[k] = v; salvar();
     if (k === 'cidade') { R.lugar = null; atualizarWidgetClima(); }
     if (/^(vozMotor|gemini|cloud)/.test(k)) { avisouGoogle = false; cacheFala.clear(); for (const m in pausaMotor) delete pausaMotor[m]; }
+    if (k === 'reconhecimento' || k === 'whisperModelo') { prepararWhisper(); renderPrincipal(); }
     if (k === 'vozMotor' || k === 'cerebro') renderPrincipal();
     if (k === 'nome' || k === 'usuario') renderLado();
   });
@@ -1240,6 +1272,10 @@
   function relogio() { const d = new Date(); $('#wHora').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`; $('#wData').textContent = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' }); }
 
   /* app de computador (Electron) */
+  if (WH) {
+    WH.aoMudar((e) => { R.whisper = e; if (R.view === 'ajustes' && R.aberto) { const a = document.activeElement; if (!(a && /^(INPUT|SELECT)$/.test(a.tagName))) renderPrincipal(); } });
+    WH.estado().then((e) => { R.whisper = e; prepararWhisper(); }).catch(() => {});
+  }
   if (window.lumiDesktop && window.lumiDesktop.vozInfo) {
     window.lumiDesktop.vozInfo().then((i) => { R.vozOff = i; render(); if (S.cfg.sempreOuvindo) iniciarEscuta(); }).catch(() => { R.vozOff = { disponivel: false }; });
   }
@@ -1267,5 +1303,5 @@
   if (S.cfg.sempreOuvindo && !window.lumiDesktop) iniciarEscuta();
 
   // para testes e depuração no console
-  window.LUMI = { processar, estado: S, sessao: R, abrir, fechar, ouvir, iniciarEscuta, interpretar: (t) => C.interpretar(t, { agora: Date.now(), nome: S.cfg.nome }) };
+  window.LUMI = { processar, estado: S, sessao: R, abrir, fechar, ouvir, iniciarEscuta, tirarChamado, interpretar: (t) => C.interpretar(t, { agora: Date.now(), nome: S.cfg.nome }) };
 })();

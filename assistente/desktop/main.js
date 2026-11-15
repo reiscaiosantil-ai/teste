@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const spotify = require('./spotify');
 const claudeCode = require('./claude-code');
+const whisper = require('./whisper');
 
 const LARGURA = 900, ALTURA = 580;
 let janela = null, olhoSpotify = null;
@@ -57,6 +58,15 @@ app.whenReady().then(() => {
 });
 
 // cérebro pelo Claude Code instalado no PC (usa a assinatura do Claude)
+// Whisper: transcreve a frase do pedido (áudio 16 kHz mono vindo da página)
+const avisarWhisper = (e) => { if (janela && !janela.isDestroyed()) janela.webContents.send('lumi:whisper', e); };
+ipcMain.handle('lumi:whisper-estado', () => whisper.estado());
+ipcMain.handle('lumi:whisper-preparar', (_e, nome) => whisper.carregar(String(nome || 'small'), app.getPath('userData'), avisarWhisper).then(() => whisper.estado()).catch(() => whisper.estado()));
+ipcMain.handle('lumi:transcrever', async (_e, audio, nome) => {
+  if (!(audio instanceof Float32Array) || audio.length < 1600 || audio.length > 16000 * 30) return { texto: '' };
+  try { return { texto: await whisper.transcrever(audio, String(nome || 'small'), app.getPath('userData'), avisarWhisper) }; }
+  catch (e) { return { erro: String(e && e.message ? e.message : e).slice(0, 200) }; }
+});
 ipcMain.handle('lumi:voz-info', () => ({ disponivel: fs.existsSync(MODELO_VOZ), url: 'lumivoz://modelo/pt.tar.gz' }));
 ipcMain.handle('lumi:cc-status', () => claudeCode.status());
 ipcMain.handle('lumi:cc-pensar', (_e, p) => claudeCode.pensar({

@@ -3,6 +3,15 @@
 (function (raiz) {
   'use strict';
   const cont = { resultados: 0, parciais: 0, blocos: 0 };
+  // áudio dos últimos 30 s (16 kHz), para mandar a frase inteira ao Whisper
+  const TAM = 16000 * 30, anel = new Float32Array(TAM);
+  let escrito = 0, inicioFrase = -1;
+  function guardar(dados) { for (let i = 0; i < dados.length; i++) anel[(escrito + i) % TAM] = dados[i]; escrito += dados.length; }
+  function recorte(de, ate) {
+    de = Math.max(de, escrito - TAM + 1, 0); const n = Math.max(0, ate - de), out = new Float32Array(n);
+    for (let i = 0; i < n; i++) out[i] = anel[(de + i) % TAM];
+    return out;
+  }
   let modelo = null, carregando = null, ctx = null, stream = null, no = null, fonte = null, rec = null, ouvintes = null, pausado = false;
 
   function carregarScript() {
@@ -37,9 +46,17 @@
       fonte = ctx.createMediaStreamSource(stream);
       no = ctx.createScriptProcessor(4096, 1, 1);
       rec = new modelo.KaldiRecognizer(16000);
-      rec.on('result', (m) => { cont.resultados++; const t = ((m.result && m.result.text) || '').trim(); if (t && ouvintes && !pausado) ouvintes.resultado(t); });
-      rec.on('partialresult', (m) => { cont.parciais++; const t = ((m.result && m.result.partial) || '').trim(); if (ouvintes && !pausado) ouvintes.parcial(t); });
-      no.onaudioprocess = (e) => { cont.blocos++; if (pausado) return; try { rec.acceptWaveform(e.inputBuffer); } catch (_) { /* pedaço perdido */ } };
+      rec.on('result', (m) => {
+        cont.resultados++; const t = ((m.result && m.result.text) || '').trim();
+        const audio = t && inicioFrase >= 0 ? recorte(inicioFrase, escrito) : null; inicioFrase = -1;
+        if (t && ouvintes && !pausado) ouvintes.resultado(t, audio);
+      });
+      rec.on('partialresult', (m) => {
+        cont.parciais++; const t = ((m.result && m.result.partial) || '').trim();
+        if (t && inicioFrase < 0) inicioFrase = Math.max(0, escrito - 16000 * 1.2); // começa 1,2 s antes da 1ª palavra percebida
+        if (ouvintes && !pausado) ouvintes.parcial(t);
+      });
+      no.onaudioprocess = (e) => { cont.blocos++; if (pausado) return; guardar(e.inputBuffer.getChannelData(0)); try { rec.acceptWaveform(e.inputBuffer); } catch (_) { /* pedaço perdido */ } };
       fonte.connect(no); no.connect(ctx.destination);
     }
     if (ctx.state === 'suspended') await ctx.resume();

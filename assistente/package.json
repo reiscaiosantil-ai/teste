@@ -25,15 +25,23 @@
       "css/**",
       "js/**",
       "desktop/**",
-      "node_modules/vosk-browser/dist/vosk.js",
-      "node_modules/vosk-browser/package.json"
+      "node_modules/**",
+      "!node_modules/onnxruntime-web/**",
+      "!node_modules/.cache/**",
+      "!node_modules/electron/**",
+      "!node_modules/electron-builder/**"
     ],
     "win": {
       "target": [
         "nsis",
         "portable"
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "files": [
+        "!node_modules/onnxruntime-node/bin/napi-v*/linux/**",
+        "!node_modules/onnxruntime-node/bin/napi-v*/darwin/**",
+        "!node_modules/onnxruntime-node/bin/napi-v*/win32/arm64/**"
+      ]
     },
     "mac": {
       "category": "public.app-category.productivity"
@@ -54,10 +62,16 @@
         "from": "voz/modelo-pt.tar.gz",
         "to": "voz/modelo-pt.tar.gz"
       }
+    ],
+    "asarUnpack": [
+      "node_modules/onnxruntime-node/**",
+      "node_modules/sharp/**",
+      "node_modules/@img/**"
     ]
   },
   "author": "Lumi",
   "dependencies": {
+    "@huggingface/transformers": "3.8.1",
     "vosk-browser": "^0.0.8"
   }
 }
