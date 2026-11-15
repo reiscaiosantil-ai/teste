@@ -130,7 +130,9 @@ test('mascote: todos os humores, olhos e acessórios geram SVG', () => {
     assert.doesNotMatch(s, /undefined|NaN/);
   }
   assert.equal(Object.keys(M.HUMORES).length, 13);
-  assert.equal(Object.keys(M.ACESSORIOS).length - 1, 12);
+  assert.ok(Object.keys(M.ACESSORIOS).length - 1 >= 17);
+  assert.match(M.svg({ humor: 'idle', cilios: true, batom: true }), /lm-cilios/);
+  assert.match(M.svg({ humor: 'idle', batom: true }), /#E0457B/);
 });
 
 test('chamado com nome composto, com ou sem hífen (como o reconhecimento de voz escreve)', () => {
@@ -140,4 +142,14 @@ test('chamado com nome composto, com ou sem hífen (como o reconhecimento de voz
   assert.equal(d('Ei, Sexta-feira, conta uma piada').tipo, 'piada');
   assert.deepEqual(diz('cinco minutos'), { tipo: 'timer', segundos: 300, nome: 'Timer' });
   assert.equal(diz('coloca dez minutos').segundos, 600);
+});
+
+test('personalização feminina pela voz', () => {
+  assert.deepEqual(diz('coloca a tiara'), { tipo: 'visual', acessorio: 'tiara' });
+  assert.deepEqual(diz('coloca a coroa de flores'), { tipo: 'visual', acessorio: 'coroaflores' });
+  assert.deepEqual(diz('coloca a coroa'), { tipo: 'visual', acessorio: 'coroa' });
+  assert.deepEqual(diz('passa batom'), { tipo: 'visual', detalhe: 'batom', ligar: true });
+  assert.deepEqual(diz('tira os cílios'), { tipo: 'visual', detalhe: 'cilios', ligar: false });
+  assert.deepEqual(diz('muda sua cor para rosé'), { tipo: 'visual', corpo: 9 });
+  assert.deepEqual(diz('muda sua cor para rosa'), { tipo: 'visual', corpo: 6 });
 });

@@ -165,10 +165,11 @@
     tradutor: 'https://translate.google.com', 'notícias': 'https://news.google.com/?hl=pt-BR&gl=BR&ceid=BR:pt-419', noticias: 'https://news.google.com/?hl=pt-BR&gl=BR&ceid=BR:pt-419',
   };
   const ACESSORIOS_FALA = [
+    [/coroa de flores|coroinha de flores|guirlanda/, 'coroaflores'], [/tiara/, 'tiara'], [/brincos?/, 'brincos'], [/presilha|cora[cç][aã]o/, 'presilha'], [/la[cç][aã]o|la[cç]o grande/, 'lacao'],
     [/chap[eé]u de festa|festa/, 'festa'], [/coroa/, 'coroa'], [/fones?/, 'fones'], [/la[cç]o|lacinho/, 'laco'], [/gorro de natal|touca de natal|natal/, 'natal'], [/gorro|touca/, 'gorro'],
     [/bon[eé]/, 'bone'], [/[oó]culos/, 'oculos'], [/aur[eé]ola|anjinho/, 'aureola'], [/chifr/, 'chifres'], [/flor/, 'flor'], [/cartola/, 'cartola'],
   ];
-  const CORES_FALA = [[/branc|nuvem/, 0], [/verde[- ]?[aá]gua|[aá]gua|turquesa|menta/, 1], [/coral|laranja|p[eê]ssego/, 2], [/lavanda|roxo|lil[aá]s/, 3], [/lim[aã]o|amarel/, 4], [/azul|c[eé]u/, 5], [/rosa/, 6], [/preto|cinza|escur|noite|grafite/, 7], [/dourad|ouro|mel/, 8], [/verde/, 1]];
+  const CORES_FALA = [[/ros[eé](?![a-z])|rosa clar|rosinha/, 9], [/lil[aá]s/, 10], [/framboesa|pink|rosa forte/, 11], [/branc|nuvem/, 0], [/verde[- ]?[aá]gua|[aá]gua|turquesa|menta/, 1], [/coral|laranja|p[eê]ssego/, 2], [/lavanda|roxo|lil[aá]s/, 3], [/lim[aã]o|amarel/, 4], [/azul|c[eé]u/, 5], [/rosa/, 6], [/preto|cinza|escur|noite|grafite/, 7], [/dourad|ouro|mel/, 8], [/verde/, 1]];
 
   const PIADAS = [
     'Por que o livro de matemática ficou triste? Porque tinha muitos problemas.',
@@ -373,7 +374,9 @@
     // personalização
     m = /(?:muda|mudar|troca|trocar|fica|deixa)\s+(?:a\s+)?(?:sua\s+)?(?:cor\s+)?(?:para|pra|de|em)?\s*(?:a\s+cor\s+)?([a-zà-ú\s-]+)$/u.exec(s);
     if (m && /cor/.test(s)) { const c = CORES_FALA.find(([re]) => re.test(m[1])); if (c) return { tipo: 'visual', corpo: c[1] }; }
-    if (/(?:tira|tirar|remove)\s+(?:o\s+|a\s+|os\s+|seu\s+|sua\s+)?(?:acess[oó]rio|chap[eé]u|coroa|fones?|la[cç]o|gorro|bon[eé]|[oó]culos|aur[eé]ola|chifr|flor|cartola)/u.test(s)) return { tipo: 'visual', acessorio: 'nenhum' };
+    m = /(?:passa|passar|coloca|colocar|p[oõ]e|usa|bota|tira|tirar|remove|apaga)\s+(?:o\s+|a\s+|os\s+|um\s+|seu\s+|sua\s+|seus\s+)?(batom|c[ií]lios|blush)/u.exec(s);
+    if (m) return { tipo: 'visual', detalhe: /batom/.test(m[1]) ? 'batom' : /blush/.test(m[1]) ? 'blush' : 'cilios', ligar: !/^(?:tira|tirar|remove|apaga)/.test(s) };
+    if (/(?:tira|tirar|remove)\s+(?:o\s+|a\s+|os\s+|seu\s+|sua\s+)?(?:acess[oó]rio|chap[eé]u|coroa|fones?|la[cç]o|gorro|bon[eé]|[oó]culos|aur[eé]ola|chifr|flor|cartola|tiara|brinco|presilha)/u.test(s)) return { tipo: 'visual', acessorio: 'nenhum' };
     m = /(?:coloca|colocar|p[oõ]e|bota|usa|veste|vestir|quero (?:ver )?voc[eê] de)\s+(?:o\s+|a\s+|um\s+|uma\s+|seu\s+|sua\s+)?(.+)$/u.exec(s);
     if (m) { const a = ACESSORIOS_FALA.find(([re]) => re.test(m[1])); if (a) return { tipo: 'visual', acessorio: a[1] }; }
     m = /(?:seu nome (?:agora )?(?:[eé]|vai ser|ser[aá])|vou te chamar de|te chamar de|teu nome [eé])\s+([a-zà-ú]+)/u.exec(s);

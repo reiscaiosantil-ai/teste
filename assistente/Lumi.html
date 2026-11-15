@@ -240,15 +240,17 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   const ACESSORIOS = {
     nenhum: 'Nenhum', festa: 'Chapéu de festa', coroa: 'Coroa', fones: 'Fones', laco: 'Laço', gorro: 'Gorro',
     natal: 'Gorro de Natal', bone: 'Boné', oculos: 'Óculos', aureola: 'Auréola', chifres: 'Chifrinhos', flor: 'Florzinha', cartola: 'Cartola',
+    tiara: 'Tiara', coroaflores: 'Coroa de flores', brincos: 'Brincos', presilha: 'Presilha de coração', lacao: 'Lação',
   };
   const CORPOS = [
     ['Nuvem', '#F5F8FF', '#C7D3F7'], ['Água', '#E6FFFA', '#8FE8D6'], ['Coral', '#FFF0EA', '#FFB59A'], ['Lavanda', '#F4EEFF', '#C9B5FF'],
     ['Limão', '#FAFFE4', '#D8EA86'], ['Céu', '#EAF6FF', '#93CCFF'], ['Algodão-doce', '#FFEFF7', '#FFB0D3'], ['Noite', '#5E6580', '#30354A'], ['Mel', '#FFF7DB', '#F0C24E'],
+    ['Rosé', '#FFF0F4', '#F4B3C6'], ['Lilás', '#F8F0FF', '#D7B6F4'], ['Framboesa', '#FFE9F1', '#EE7AA6'],
   ];
   const CORES_OLHO = [
-    ['Tinta', '#1B1E2B'], ['Oceano', '#1F5AA6'], ['Floresta', '#1E7A4F'], ['Uva', '#5B3A9E'], ['Cacau', '#6B3F2A'], ['Rubi', '#B3264A'], ['Neon', '#46E3C8'],
+    ['Tinta', '#1B1E2B'], ['Oceano', '#1F5AA6'], ['Floresta', '#1E7A4F'], ['Uva', '#5B3A9E'], ['Cacau', '#6B3F2A'], ['Rubi', '#B3264A'], ['Neon', '#46E3C8'], ['Rosa', '#D63A7F'], ['Violeta', '#7B3FC4'],
   ];
-  const CHAPEUS = ['festa', 'coroa', 'gorro', 'natal', 'bone', 'cartola', 'aureola'];
+  const CHAPEUS = ['festa', 'coroa', 'gorro', 'natal', 'bone', 'cartola', 'aureola', 'lacao'];
 
   const L = 18.5, R = 29.5, Y = 24.5;
 
@@ -276,6 +278,21 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
       case 'think': return `<g transform="translate(1 -1.4)">${forma(L)}${forma(R)}</g>`;
       default: return forma(L) + forma(R);
     }
+  }
+
+  // cílios no canto de fora de cada olho (só quando o olho aparece aberto ou fechadinho)
+  function cilios(humor, estilo, c) {
+    const fechado = { happy: 1, laugh: 1, sleep: -0.6, cry: -0.6 };
+    if (['cool', 'love', 'success'].includes(humor) || estilo === 'traco' && !(humor in fechado)) return '';
+    const raio = estilo === 'grande' ? 3.9 : estilo === 'oval' ? 2.4 : estilo === 'pixel' ? 2.5 : humor === 'surprised' ? 3.6 : 2.9;
+    const dy = humor in fechado ? fechado[humor] : (estilo === 'oval' ? -2.6 : -raio * 0.62);
+    const dx = humor in fechado ? 2.8 : raio * 0.8;
+    const um = (x, lado) => {
+      const bx = x + lado * dx, by = Y + dy;
+      return [[1.9, -1.2], [1.3, -2.1], [0.4, -2.4]].map(([ax, ay], i) =>
+        `<path d="M${(bx - lado * i * 0.55).toFixed(2)} ${(by - i * 0.25).toFixed(2)} l${(lado * ax).toFixed(2)} ${ay}" stroke="${c}" stroke-width=".85" stroke-linecap="round"/>`).join('');
+    };
+    return `<g class="lm-cilios">${um(L, -1)}${um(R, 1)}</g>`;
   }
 
   function boca(humor, c) {
@@ -307,6 +324,15 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
       case 'aureola': return '<ellipse class="lm-flutua" cx="24" cy="2" rx="9" ry="2.5" fill="none" stroke="#FFD25A" stroke-width="1.9"/>';
       case 'chifres': return '<path d="M13 13.5 L10.6 4 L18 10.6z" fill="#FF4F4F"/><path d="M35 13.5 L37.4 4 L30 10.6z" fill="#FF4F4F"/>';
       case 'flor': return '<g transform="translate(34 11.5)"><circle r="2.3" cx="0" cy="-2.7" fill="#FF9EC8"/><circle r="2.3" cx="2.6" cy="-.6" fill="#FF9EC8"/><circle r="2.3" cx="1.6" cy="2.4" fill="#FF9EC8"/><circle r="2.3" cx="-1.6" cy="2.4" fill="#FF9EC8"/><circle r="2.3" cx="-2.6" cy="-.6" fill="#FF9EC8"/><circle r="1.6" fill="#FFD25A"/></g>';
+      case 'tiara': return '<path d="M13 13.4 Q24 6.6 35 13.4" stroke="#F2C94C" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M20.6 10.4 L22.2 6.4 L24 9 L25.8 6.4 L27.4 10.4z" fill="#F2C94C" stroke="#C99A1B" stroke-width=".5"/><circle cx="24" cy="9.3" r="1.25" fill="#FF6FA8"/><circle cx="16.4" cy="11.4" r=".75" fill="#B9E5FF"/><circle cx="31.6" cy="11.4" r=".75" fill="#B9E5FF"/>';
+      case 'coroaflores': {
+        const f = (x, y, cor, r = 1.9) => `<g transform="translate(${x} ${y})">${[0, 72, 144, 216, 288].map((a) => `<circle r="${r * 0.62}" cx="${(Math.cos(a * Math.PI / 180) * r * 0.7).toFixed(2)}" cy="${(Math.sin(a * Math.PI / 180) * r * 0.7).toFixed(2)}" fill="${cor}"/>`).join('')}<circle r="${r * 0.42}" fill="#FFD25A"/></g>`;
+        return '<path d="M11.5 15 Q24 6.5 36.5 15" stroke="#5DBB63" stroke-width="1.3" fill="none"/><ellipse cx="15.6" cy="12.6" rx="1.6" ry=".8" transform="rotate(-30 15.6 12.6)" fill="#5DBB63"/><ellipse cx="32.4" cy="12.6" rx="1.6" ry=".8" transform="rotate(30 32.4 12.6)" fill="#5DBB63"/>'
+          + f(13, 14.2, '#FF9EC8') + f(18, 10.6, '#FFFFFF') + f(24, 9.4, '#FF6FA8', 2.2) + f(30, 10.6, '#C9B5FF') + f(35, 14.2, '#FF9EC8');
+      }
+      case 'brincos': return '<circle cx="6.4" cy="32.2" r=".7" fill="#F2C94C"/><path d="M6.4 32.8 q-1.5 2.2 0 3.6 q1.5 -1.4 0 -3.6z" fill="#FF6FA8"/><circle cx="41.6" cy="32.2" r=".7" fill="#F2C94C"/><path d="M41.6 32.8 q-1.5 2.2 0 3.6 q1.5 -1.4 0 -3.6z" fill="#FF6FA8"/>';
+      case 'presilha': return '<g transform="translate(33.5 13) rotate(18)"><path d="M0 2.6 l-3 -3 a1.8 1.8 0 0 1 3 -2.3 a1.8 1.8 0 0 1 3 2.3z" fill="#FF4F86"/><circle cx="-1.2" cy="-1.4" r=".55" fill="#fff" opacity=".7"/></g>';
+      case 'lacao': return '<g transform="translate(24 8.2)"><path d="M0 0 l-8 -5 q-2 3.5 0 9z M0 0 l8 -5 q2 3.5 0 9z" fill="#FF5AA0"/><path d="M0 0 l-8 -5 q-1 2 -.6 3.6z M0 0 l8 -5 q1 2 .6 3.6z" fill="#FF8CC0"/><path d="M-1.4 1 l-2.6 5 M1.4 1 l2.6 5" stroke="#E0457B" stroke-width="1.4" stroke-linecap="round"/><circle r="2" fill="#D93A7E"/></g>';
       case 'cartola': return '<rect x="15" y="-3" width="18" height="15" rx="1.5" fill="#1D1F2A"/><rect x="15" y="7" width="18" height="2.6" fill="#B3264A"/><rect x="11" y="11" width="26" height="2.8" rx="1.4" fill="#1D1F2A"/>';
       default: return '';
     }
@@ -315,7 +341,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   let seq = 0;
   // o = { corpo, corpo2, olho, estiloOlho, acessorio, humor, tamanho, piscar }
   function svg(o = {}) {
-    const k = { corpo: '#F5F8FF', corpo2: '#C7D3F7', olho: '#1B1E2B', estiloOlho: 'redondo', acessorio: 'nenhum', piscar: true, ...o };
+    const k = { corpo: '#F5F8FF', corpo2: '#C7D3F7', olho: '#1B1E2B', estiloOlho: 'redondo', acessorio: 'nenhum', piscar: true, cilios: false, blush: false, batom: false, ...o };
     const tamanho = k.tamanho || 40;
     const humor = HUMORES[k.humor] ? k.humor : 'idle';
     const id = 'lm' + (++seq).toString(36);
@@ -326,7 +352,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     const zz = humor === 'sleep' ? '<text x="38" y="9" font-size="7" font-weight="800" fill="#9BB0FF" class="lm-zz" font-family="system-ui,sans-serif">z</text>' : '';
     const lagrimas = humor === 'cry' ? '<path class="lm-lagrima" d="M15.6 27.4 q-1.1 2.6 0 3.8 q1.1 -1.2 0 -3.8z" fill="#5AB8FF"/><path class="lm-lagrima" d="M32.4 27.4 q-1.1 2.6 0 3.8 q1.1 -1.2 0 -3.8z" fill="#5AB8FF"/>' : '';
     const pensamento = humor === 'think' ? '<circle cx="40" cy="12" r="1.1" fill="#FFD25A" opacity=".8"/><circle cx="43.4" cy="8" r="1.6" fill="#FFD25A" opacity=".6"/>' : '';
-    const bochechas = ['love', 'happy', 'laugh', 'success'].includes(humor) ? '<ellipse cx="12.8" cy="29.6" rx="2.3" ry="1.3" fill="#FF8FB1" opacity=".6"/><ellipse cx="35.2" cy="29.6" rx="2.3" ry="1.3" fill="#FF8FB1" opacity=".6"/>' : '';
+    const bochechas = k.blush || ['love', 'happy', 'laugh', 'success'].includes(humor) ? '<ellipse cx="12.8" cy="29.6" rx="2.3" ry="1.3" fill="#FF8FB1" opacity=".6"/><ellipse cx="35.2" cy="29.6" rx="2.3" ry="1.3" fill="#FF8FB1" opacity=".6"/>' : '';
     const pisca = k.piscar && ['idle', 'listen', 'talk', 'think', 'angry'].includes(humor) ? ' lm-pisca' : '';
     return `<svg class="lumi lm-${humor}" width="${tamanho}" height="${Math.round(tamanho * 0.92)}" viewBox="0 -6 50 46" overflow="visible" aria-hidden="true">
       <defs><radialGradient id="${id}" cx="40%" cy="30%" r="75%"><stop offset="0" stop-color="${k.corpo}"/><stop offset="1" stop-color="${k.corpo2}"/></radialGradient></defs>
@@ -336,8 +362,8 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
         <ellipse cx="24" cy="25.5" rx="17" ry="15" fill="url(#${id})"/>
         <ellipse cx="18" cy="17.6" rx="6.2" ry="3.2" transform="rotate(-18 18 17.6)" fill="#fff" opacity=".45"/>
         ${bochechas}
-        <g data-olhos><g class="lm-olhos${pisca}">${olhos(humor, k.estiloOlho, k.olho)}</g></g>
-        ${boca(humor, k.olho)}${lagrimas}
+        <g data-olhos><g class="lm-olhos${pisca}">${olhos(humor, k.estiloOlho, k.olho)}${k.cilios ? cilios(humor, k.estiloOlho, k.olho) : ''}</g></g>
+        ${boca(humor, k.batom ? '#E0457B' : k.olho)}${lagrimas}
         ${acessorio(k.acessorio, k.corpo2)}
       </g>${ondas}${zz}${pensamento}
     </svg>`;
@@ -551,10 +577,11 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     tradutor: 'https://translate.google.com', 'notícias': 'https://news.google.com/?hl=pt-BR&gl=BR&ceid=BR:pt-419', noticias: 'https://news.google.com/?hl=pt-BR&gl=BR&ceid=BR:pt-419',
   };
   const ACESSORIOS_FALA = [
+    [/coroa de flores|coroinha de flores|guirlanda/, 'coroaflores'], [/tiara/, 'tiara'], [/brincos?/, 'brincos'], [/presilha|cora[cç][aã]o/, 'presilha'], [/la[cç][aã]o|la[cç]o grande/, 'lacao'],
     [/chap[eé]u de festa|festa/, 'festa'], [/coroa/, 'coroa'], [/fones?/, 'fones'], [/la[cç]o|lacinho/, 'laco'], [/gorro de natal|touca de natal|natal/, 'natal'], [/gorro|touca/, 'gorro'],
     [/bon[eé]/, 'bone'], [/[oó]culos/, 'oculos'], [/aur[eé]ola|anjinho/, 'aureola'], [/chifr/, 'chifres'], [/flor/, 'flor'], [/cartola/, 'cartola'],
   ];
-  const CORES_FALA = [[/branc|nuvem/, 0], [/verde[- ]?[aá]gua|[aá]gua|turquesa|menta/, 1], [/coral|laranja|p[eê]ssego/, 2], [/lavanda|roxo|lil[aá]s/, 3], [/lim[aã]o|amarel/, 4], [/azul|c[eé]u/, 5], [/rosa/, 6], [/preto|cinza|escur|noite|grafite/, 7], [/dourad|ouro|mel/, 8], [/verde/, 1]];
+  const CORES_FALA = [[/ros[eé](?![a-z])|rosa clar|rosinha/, 9], [/lil[aá]s/, 10], [/framboesa|pink|rosa forte/, 11], [/branc|nuvem/, 0], [/verde[- ]?[aá]gua|[aá]gua|turquesa|menta/, 1], [/coral|laranja|p[eê]ssego/, 2], [/lavanda|roxo|lil[aá]s/, 3], [/lim[aã]o|amarel/, 4], [/azul|c[eé]u/, 5], [/rosa/, 6], [/preto|cinza|escur|noite|grafite/, 7], [/dourad|ouro|mel/, 8], [/verde/, 1]];
 
   const PIADAS = [
     'Por que o livro de matemática ficou triste? Porque tinha muitos problemas.',
@@ -759,7 +786,9 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     // personalização
     m = /(?:muda|mudar|troca|trocar|fica|deixa)\s+(?:a\s+)?(?:sua\s+)?(?:cor\s+)?(?:para|pra|de|em)?\s*(?:a\s+cor\s+)?([a-zà-ú\s-]+)$/u.exec(s);
     if (m && /cor/.test(s)) { const c = CORES_FALA.find(([re]) => re.test(m[1])); if (c) return { tipo: 'visual', corpo: c[1] }; }
-    if (/(?:tira|tirar|remove)\s+(?:o\s+|a\s+|os\s+|seu\s+|sua\s+)?(?:acess[oó]rio|chap[eé]u|coroa|fones?|la[cç]o|gorro|bon[eé]|[oó]culos|aur[eé]ola|chifr|flor|cartola)/u.test(s)) return { tipo: 'visual', acessorio: 'nenhum' };
+    m = /(?:passa|passar|coloca|colocar|p[oõ]e|usa|bota|tira|tirar|remove|apaga)\s+(?:o\s+|a\s+|os\s+|um\s+|seu\s+|sua\s+|seus\s+)?(batom|c[ií]lios|blush)/u.exec(s);
+    if (m) return { tipo: 'visual', detalhe: /batom/.test(m[1]) ? 'batom' : /blush/.test(m[1]) ? 'blush' : 'cilios', ligar: !/^(?:tira|tirar|remove|apaga)/.test(s) };
+    if (/(?:tira|tirar|remove)\s+(?:o\s+|a\s+|os\s+|seu\s+|sua\s+)?(?:acess[oó]rio|chap[eé]u|coroa|fones?|la[cç]o|gorro|bon[eé]|[oó]culos|aur[eé]ola|chifr|flor|cartola|tiara|brinco|presilha)/u.test(s)) return { tipo: 'visual', acessorio: 'nenhum' };
     m = /(?:coloca|colocar|p[oõ]e|bota|usa|veste|vestir|quero (?:ver )?voc[eê] de)\s+(?:o\s+|a\s+|um\s+|uma\s+|seu\s+|sua\s+)?(.+)$/u.exec(s);
     if (m) { const a = ACESSORIOS_FALA.find(([re]) => re.test(m[1])); if (a) return { tipo: 'visual', acessorio: a[1] }; }
     m = /(?:seu nome (?:agora )?(?:[eé]|vai ser|ser[aá])|vou te chamar de|te chamar de|teu nome [eé])\s+([a-zà-ú]+)/u.exec(s);
@@ -1019,7 +1048,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   const CHAVE = 'lumi:v1';
   const PADRAO = () => ({
     cfg: {
-      nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo',
+      nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo', cilios: true, blush: true, batom: false,
       voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', somenteExecutar: false, sempreOuvindo: false,
       cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', volume: 70, pausas: false,
     },
@@ -1060,7 +1089,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   function visual(extra = {}) {
     const [, c1, c2] = M.CORPOS[S.cfg.corpo] || M.CORPOS[0];
     const [, olho] = M.CORES_OLHO[S.cfg.olho] || M.CORES_OLHO[0];
-    return { corpo: c1, corpo2: c2, olho, estiloOlho: S.cfg.estiloOlho, acessorio: S.cfg.acessorio, ...extra };
+    return { corpo: c1, corpo2: c2, olho, estiloOlho: S.cfg.estiloOlho, acessorio: S.cfg.acessorio, cilios: S.cfg.cilios, blush: S.cfg.blush, batom: S.cfg.batom, ...extra };
   }
   const K = (tamanho, humor, extra) => M.svg(visual({ tamanho, humor: humor || R.humor, ...(extra || {}) }));
 
@@ -1751,6 +1780,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
       case 'abrir': abrirLink(a.url); return { texto: `Abrindo ${a.nome}! 🚀`, html: `Abrindo <b>${esc(a.nome)}</b>! 🚀 Se não abriu, ${linkHtml(a.url, 'toque aqui')}.`, humor: 'cool' };
 
       case 'visual':
+        if (a.detalhe) { S.cfg[a.detalhe] = a.ligar; salvar(); return { texto: a.ligar ? { batom: 'Passei batom! 💄', cilios: 'Cílios no lugar! 👁', blush: 'Blush aplicado! 🌸' }[a.detalhe] : 'Prontinho, tirei.', humor: 'love' }; }
         if (a.corpo !== undefined) S.cfg.corpo = a.corpo;
         if (a.acessorio) S.cfg.acessorio = a.acessorio;
         salvar();
@@ -1966,12 +1996,21 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
       <div class="rolar">${S.notas.length ? S.notas.map((n) => `<div class="linha"><div class="t">${esc(n.t)}<small>${quandoTxt(n.ts)}</small></div><button class="rb" data-acao="copiar-nota" data-id="${n.id}" aria-label="Copiar">📋</button><button class="rb x" data-acao="nota-del" data-id="${n.id}" aria-label="Apagar">✕</button></div>`).join('') : '<div class="sub">Nenhuma nota ainda.</div>'}
       ${S.copiados.length ? `<div class="secao">Copiados pela ${esc(S.cfg.nome)}</div>${S.copiados.map((c) => `<div class="linha"><div class="t"><span style="font-family:var(--f-mono);font-size:12.5px">${esc(c.t.length > 80 ? c.t.slice(0, 80) + '…' : c.t)}</span><small>${esc(c.r)} · ${quandoTxt(c.ts)}</small></div><button class="rb" data-acao="copiar-de-novo" data-id="${c.id}" aria-label="Copiar de novo">📋</button></div>`).join('')}<button class="btn fantasma" data-acao="limpar-copiados">Limpar histórico</button>` : ''}</div>`;
   }
+  // looks prontos: [nome, corpo, cor dos olhos, estilo dos olhos, acessório, cílios, blush, batom]
+  const LOOKS = [
+    ['Princesa', 9, 5, 'grande', 'tiara', true, true, true], ['Primavera', 1, 2, 'redondo', 'coroaflores', true, true, false],
+    ['Romântica', 6, 7, 'oval', 'presilha', true, true, true], ['Anjinha', 0, 1, 'grande', 'aureola', true, true, false],
+    ['Estilosa', 11, 8, 'redondo', 'brincos', true, false, true], ['Docinho', 10, 8, 'grande', 'lacao', true, true, false],
+    ['Sexta-feira', 3, 3, 'oval', 'fones', true, true, true], ['Natalina', 2, 5, 'redondo', 'natal', true, true, true],
+  ];
   function vVisual() {
     const c = S.cfg;
     return `<h4>Visual</h4><div class="sub">Cor, olhos, acessórios e expressões</div><div class="rolar">
       <div class="vitrine">${K(110, R.previa)}<div><b>${esc(c.nome)}</b><div class="sub" style="margin:2px 0 0">${M.HUMORES[R.previa]} · ${M.CORPOS[c.corpo][0]}${c.acessorio !== 'nenhum' ? ' · ' + M.ACESSORIOS[c.acessorio] : ''}</div></div></div>
       <div class="secao">Cor do corpo</div><div class="opcoes">${M.CORPOS.map(([n, a, b], i) => `<button class="cor${i === c.corpo ? ' on' : ''}" data-acao="set" data-k="corpo" data-val="${i}" title="${n}" aria-label="${n}" style="background:radial-gradient(circle at 35% 30%, ${a}, ${b})"></button>`).join('')}</div>
       <div class="secao">Cor dos olhos</div><div class="opcoes">${M.CORES_OLHO.map(([n, cor], i) => `<button class="cor${i === c.olho ? ' on' : ''}" data-acao="set" data-k="olho" data-val="${i}" title="${n}" aria-label="${n}" style="background:${cor}"></button>`).join('')}</div>
+      <div class="secao">Looks prontos</div><div class="ops">${LOOKS.map(([n, co, ol, eo, ac, ci, bl, ba], i) => { const [, c1, c2] = M.CORPOS[co]; return `<button class="op" data-acao="look" data-i="${i}">${M.svg({ tamanho: 46, humor: 'happy', corpo: c1, corpo2: c2, olho: M.CORES_OLHO[ol][1], estiloOlho: eo, acessorio: ac, cilios: ci, blush: bl, batom: ba, piscar: false })}${n}</button>`; }).join('')}</div>
+      <div class="secao">Detalhes</div><div class="chips" style="margin:0">${[['cilios', '👁 Cílios'], ['blush', '🌸 Blush'], ['batom', '💄 Batom']].map(([k, n]) => `<button class="chip${c[k] ? ' on' : ''}" data-acao="tog" data-cfg="${k}">${n}</button>`).join('')}</div>
       <div class="secao">Estilo dos olhos</div><div class="ops">${Object.entries(M.OLHOS).map(([k, n]) => `<button class="op${k === c.estiloOlho ? ' on' : ''}" data-acao="set" data-k="estiloOlho" data-val="${k}">${K(40, 'idle', { estiloOlho: k, piscar: false })}${n}</button>`).join('')}</div>
       <div class="secao">Acessórios</div><div class="ops">${Object.entries(M.ACESSORIOS).map(([k, n]) => `<button class="op${k === c.acessorio ? ' on' : ''}" data-acao="set" data-k="acessorio" data-val="${k}">${K(40, 'happy', { acessorio: k })}${n}</button>`).join('')}</div>
       <div class="secao">Expressões (toque para ver)</div><div class="ops">${Object.entries(M.HUMORES).map(([k, n]) => `<button class="op${k === R.previa ? ' on' : ''}" data-acao="previa" data-val="${k}">${K(40, k)}${n}</button>`).join('')}</div></div>`;
@@ -2103,6 +2142,11 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     'limpar-copiados': () => { S.copiados = []; salvar(); },
     set: (el) => { const k = el.dataset.k; const v = /^\d+$/.test(el.dataset.val) && k !== 'personalidade' ? Number(el.dataset.val) : el.dataset.val; S.cfg[k] = v; salvar(); setHumor(k === 'acessorio' ? 'love' : 'happy', 1500); },
     previa: (el) => { R.previa = el.dataset.val; setHumor(R.previa, 2500); },
+    look: (el) => {
+      const [nome, corpo, olho, estiloOlho, acessorio, cilios, blush, batom] = LOOKS[Number(el.dataset.i)];
+      Object.assign(S.cfg, { corpo, olho, estiloOlho, acessorio, cilios, blush, batom }); salvar();
+      R.previa = 'love'; setHumor('love', 2000); aviso(`✨ Look ${nome} aplicado`);
+    },
     tog: (el) => {
       const k = el.dataset.cfg; S.cfg[k] = !S.cfg[k]; salvar();
       if (k === 'sempreOuvindo') {

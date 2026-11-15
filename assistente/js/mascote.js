@@ -11,15 +11,17 @@
   const ACESSORIOS = {
     nenhum: 'Nenhum', festa: 'Chapéu de festa', coroa: 'Coroa', fones: 'Fones', laco: 'Laço', gorro: 'Gorro',
     natal: 'Gorro de Natal', bone: 'Boné', oculos: 'Óculos', aureola: 'Auréola', chifres: 'Chifrinhos', flor: 'Florzinha', cartola: 'Cartola',
+    tiara: 'Tiara', coroaflores: 'Coroa de flores', brincos: 'Brincos', presilha: 'Presilha de coração', lacao: 'Lação',
   };
   const CORPOS = [
     ['Nuvem', '#F5F8FF', '#C7D3F7'], ['Água', '#E6FFFA', '#8FE8D6'], ['Coral', '#FFF0EA', '#FFB59A'], ['Lavanda', '#F4EEFF', '#C9B5FF'],
     ['Limão', '#FAFFE4', '#D8EA86'], ['Céu', '#EAF6FF', '#93CCFF'], ['Algodão-doce', '#FFEFF7', '#FFB0D3'], ['Noite', '#5E6580', '#30354A'], ['Mel', '#FFF7DB', '#F0C24E'],
+    ['Rosé', '#FFF0F4', '#F4B3C6'], ['Lilás', '#F8F0FF', '#D7B6F4'], ['Framboesa', '#FFE9F1', '#EE7AA6'],
   ];
   const CORES_OLHO = [
-    ['Tinta', '#1B1E2B'], ['Oceano', '#1F5AA6'], ['Floresta', '#1E7A4F'], ['Uva', '#5B3A9E'], ['Cacau', '#6B3F2A'], ['Rubi', '#B3264A'], ['Neon', '#46E3C8'],
+    ['Tinta', '#1B1E2B'], ['Oceano', '#1F5AA6'], ['Floresta', '#1E7A4F'], ['Uva', '#5B3A9E'], ['Cacau', '#6B3F2A'], ['Rubi', '#B3264A'], ['Neon', '#46E3C8'], ['Rosa', '#D63A7F'], ['Violeta', '#7B3FC4'],
   ];
-  const CHAPEUS = ['festa', 'coroa', 'gorro', 'natal', 'bone', 'cartola', 'aureola'];
+  const CHAPEUS = ['festa', 'coroa', 'gorro', 'natal', 'bone', 'cartola', 'aureola', 'lacao'];
 
   const L = 18.5, R = 29.5, Y = 24.5;
 
@@ -47,6 +49,21 @@
       case 'think': return `<g transform="translate(1 -1.4)">${forma(L)}${forma(R)}</g>`;
       default: return forma(L) + forma(R);
     }
+  }
+
+  // cílios no canto de fora de cada olho (só quando o olho aparece aberto ou fechadinho)
+  function cilios(humor, estilo, c) {
+    const fechado = { happy: 1, laugh: 1, sleep: -0.6, cry: -0.6 };
+    if (['cool', 'love', 'success'].includes(humor) || estilo === 'traco' && !(humor in fechado)) return '';
+    const raio = estilo === 'grande' ? 3.9 : estilo === 'oval' ? 2.4 : estilo === 'pixel' ? 2.5 : humor === 'surprised' ? 3.6 : 2.9;
+    const dy = humor in fechado ? fechado[humor] : (estilo === 'oval' ? -2.6 : -raio * 0.62);
+    const dx = humor in fechado ? 2.8 : raio * 0.8;
+    const um = (x, lado) => {
+      const bx = x + lado * dx, by = Y + dy;
+      return [[1.9, -1.2], [1.3, -2.1], [0.4, -2.4]].map(([ax, ay], i) =>
+        `<path d="M${(bx - lado * i * 0.55).toFixed(2)} ${(by - i * 0.25).toFixed(2)} l${(lado * ax).toFixed(2)} ${ay}" stroke="${c}" stroke-width=".85" stroke-linecap="round"/>`).join('');
+    };
+    return `<g class="lm-cilios">${um(L, -1)}${um(R, 1)}</g>`;
   }
 
   function boca(humor, c) {
@@ -78,6 +95,15 @@
       case 'aureola': return '<ellipse class="lm-flutua" cx="24" cy="2" rx="9" ry="2.5" fill="none" stroke="#FFD25A" stroke-width="1.9"/>';
       case 'chifres': return '<path d="M13 13.5 L10.6 4 L18 10.6z" fill="#FF4F4F"/><path d="M35 13.5 L37.4 4 L30 10.6z" fill="#FF4F4F"/>';
       case 'flor': return '<g transform="translate(34 11.5)"><circle r="2.3" cx="0" cy="-2.7" fill="#FF9EC8"/><circle r="2.3" cx="2.6" cy="-.6" fill="#FF9EC8"/><circle r="2.3" cx="1.6" cy="2.4" fill="#FF9EC8"/><circle r="2.3" cx="-1.6" cy="2.4" fill="#FF9EC8"/><circle r="2.3" cx="-2.6" cy="-.6" fill="#FF9EC8"/><circle r="1.6" fill="#FFD25A"/></g>';
+      case 'tiara': return '<path d="M13 13.4 Q24 6.6 35 13.4" stroke="#F2C94C" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M20.6 10.4 L22.2 6.4 L24 9 L25.8 6.4 L27.4 10.4z" fill="#F2C94C" stroke="#C99A1B" stroke-width=".5"/><circle cx="24" cy="9.3" r="1.25" fill="#FF6FA8"/><circle cx="16.4" cy="11.4" r=".75" fill="#B9E5FF"/><circle cx="31.6" cy="11.4" r=".75" fill="#B9E5FF"/>';
+      case 'coroaflores': {
+        const f = (x, y, cor, r = 1.9) => `<g transform="translate(${x} ${y})">${[0, 72, 144, 216, 288].map((a) => `<circle r="${r * 0.62}" cx="${(Math.cos(a * Math.PI / 180) * r * 0.7).toFixed(2)}" cy="${(Math.sin(a * Math.PI / 180) * r * 0.7).toFixed(2)}" fill="${cor}"/>`).join('')}<circle r="${r * 0.42}" fill="#FFD25A"/></g>`;
+        return '<path d="M11.5 15 Q24 6.5 36.5 15" stroke="#5DBB63" stroke-width="1.3" fill="none"/><ellipse cx="15.6" cy="12.6" rx="1.6" ry=".8" transform="rotate(-30 15.6 12.6)" fill="#5DBB63"/><ellipse cx="32.4" cy="12.6" rx="1.6" ry=".8" transform="rotate(30 32.4 12.6)" fill="#5DBB63"/>'
+          + f(13, 14.2, '#FF9EC8') + f(18, 10.6, '#FFFFFF') + f(24, 9.4, '#FF6FA8', 2.2) + f(30, 10.6, '#C9B5FF') + f(35, 14.2, '#FF9EC8');
+      }
+      case 'brincos': return '<circle cx="6.4" cy="32.2" r=".7" fill="#F2C94C"/><path d="M6.4 32.8 q-1.5 2.2 0 3.6 q1.5 -1.4 0 -3.6z" fill="#FF6FA8"/><circle cx="41.6" cy="32.2" r=".7" fill="#F2C94C"/><path d="M41.6 32.8 q-1.5 2.2 0 3.6 q1.5 -1.4 0 -3.6z" fill="#FF6FA8"/>';
+      case 'presilha': return '<g transform="translate(33.5 13) rotate(18)"><path d="M0 2.6 l-3 -3 a1.8 1.8 0 0 1 3 -2.3 a1.8 1.8 0 0 1 3 2.3z" fill="#FF4F86"/><circle cx="-1.2" cy="-1.4" r=".55" fill="#fff" opacity=".7"/></g>';
+      case 'lacao': return '<g transform="translate(24 8.2)"><path d="M0 0 l-8 -5 q-2 3.5 0 9z M0 0 l8 -5 q2 3.5 0 9z" fill="#FF5AA0"/><path d="M0 0 l-8 -5 q-1 2 -.6 3.6z M0 0 l8 -5 q1 2 .6 3.6z" fill="#FF8CC0"/><path d="M-1.4 1 l-2.6 5 M1.4 1 l2.6 5" stroke="#E0457B" stroke-width="1.4" stroke-linecap="round"/><circle r="2" fill="#D93A7E"/></g>';
       case 'cartola': return '<rect x="15" y="-3" width="18" height="15" rx="1.5" fill="#1D1F2A"/><rect x="15" y="7" width="18" height="2.6" fill="#B3264A"/><rect x="11" y="11" width="26" height="2.8" rx="1.4" fill="#1D1F2A"/>';
       default: return '';
     }
@@ -86,7 +112,7 @@
   let seq = 0;
   // o = { corpo, corpo2, olho, estiloOlho, acessorio, humor, tamanho, piscar }
   function svg(o = {}) {
-    const k = { corpo: '#F5F8FF', corpo2: '#C7D3F7', olho: '#1B1E2B', estiloOlho: 'redondo', acessorio: 'nenhum', piscar: true, ...o };
+    const k = { corpo: '#F5F8FF', corpo2: '#C7D3F7', olho: '#1B1E2B', estiloOlho: 'redondo', acessorio: 'nenhum', piscar: true, cilios: false, blush: false, batom: false, ...o };
     const tamanho = k.tamanho || 40;
     const humor = HUMORES[k.humor] ? k.humor : 'idle';
     const id = 'lm' + (++seq).toString(36);
@@ -97,7 +123,7 @@
     const zz = humor === 'sleep' ? '<text x="38" y="9" font-size="7" font-weight="800" fill="#9BB0FF" class="lm-zz" font-family="system-ui,sans-serif">z</text>' : '';
     const lagrimas = humor === 'cry' ? '<path class="lm-lagrima" d="M15.6 27.4 q-1.1 2.6 0 3.8 q1.1 -1.2 0 -3.8z" fill="#5AB8FF"/><path class="lm-lagrima" d="M32.4 27.4 q-1.1 2.6 0 3.8 q1.1 -1.2 0 -3.8z" fill="#5AB8FF"/>' : '';
     const pensamento = humor === 'think' ? '<circle cx="40" cy="12" r="1.1" fill="#FFD25A" opacity=".8"/><circle cx="43.4" cy="8" r="1.6" fill="#FFD25A" opacity=".6"/>' : '';
-    const bochechas = ['love', 'happy', 'laugh', 'success'].includes(humor) ? '<ellipse cx="12.8" cy="29.6" rx="2.3" ry="1.3" fill="#FF8FB1" opacity=".6"/><ellipse cx="35.2" cy="29.6" rx="2.3" ry="1.3" fill="#FF8FB1" opacity=".6"/>' : '';
+    const bochechas = k.blush || ['love', 'happy', 'laugh', 'success'].includes(humor) ? '<ellipse cx="12.8" cy="29.6" rx="2.3" ry="1.3" fill="#FF8FB1" opacity=".6"/><ellipse cx="35.2" cy="29.6" rx="2.3" ry="1.3" fill="#FF8FB1" opacity=".6"/>' : '';
     const pisca = k.piscar && ['idle', 'listen', 'talk', 'think', 'angry'].includes(humor) ? ' lm-pisca' : '';
     return `<svg class="lumi lm-${humor}" width="${tamanho}" height="${Math.round(tamanho * 0.92)}" viewBox="0 -6 50 46" overflow="visible" aria-hidden="true">
       <defs><radialGradient id="${id}" cx="40%" cy="30%" r="75%"><stop offset="0" stop-color="${k.corpo}"/><stop offset="1" stop-color="${k.corpo2}"/></radialGradient></defs>
@@ -107,8 +133,8 @@
         <ellipse cx="24" cy="25.5" rx="17" ry="15" fill="url(#${id})"/>
         <ellipse cx="18" cy="17.6" rx="6.2" ry="3.2" transform="rotate(-18 18 17.6)" fill="#fff" opacity=".45"/>
         ${bochechas}
-        <g data-olhos><g class="lm-olhos${pisca}">${olhos(humor, k.estiloOlho, k.olho)}</g></g>
-        ${boca(humor, k.olho)}${lagrimas}
+        <g data-olhos><g class="lm-olhos${pisca}">${olhos(humor, k.estiloOlho, k.olho)}${k.cilios ? cilios(humor, k.estiloOlho, k.olho) : ''}</g></g>
+        ${boca(humor, k.batom ? '#E0457B' : k.olho)}${lagrimas}
         ${acessorio(k.acessorio, k.corpo2)}
       </g>${ondas}${zz}${pensamento}
     </svg>`;

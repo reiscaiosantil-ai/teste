@@ -19,7 +19,7 @@
   const CHAVE = 'lumi:v1';
   const PADRAO = () => ({
     cfg: {
-      nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo',
+      nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo', cilios: true, blush: true, batom: false,
       voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', somenteExecutar: false, sempreOuvindo: false,
       cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', volume: 70, pausas: false,
     },
@@ -60,7 +60,7 @@
   function visual(extra = {}) {
     const [, c1, c2] = M.CORPOS[S.cfg.corpo] || M.CORPOS[0];
     const [, olho] = M.CORES_OLHO[S.cfg.olho] || M.CORES_OLHO[0];
-    return { corpo: c1, corpo2: c2, olho, estiloOlho: S.cfg.estiloOlho, acessorio: S.cfg.acessorio, ...extra };
+    return { corpo: c1, corpo2: c2, olho, estiloOlho: S.cfg.estiloOlho, acessorio: S.cfg.acessorio, cilios: S.cfg.cilios, blush: S.cfg.blush, batom: S.cfg.batom, ...extra };
   }
   const K = (tamanho, humor, extra) => M.svg(visual({ tamanho, humor: humor || R.humor, ...(extra || {}) }));
 
@@ -751,6 +751,7 @@
       case 'abrir': abrirLink(a.url); return { texto: `Abrindo ${a.nome}! 🚀`, html: `Abrindo <b>${esc(a.nome)}</b>! 🚀 Se não abriu, ${linkHtml(a.url, 'toque aqui')}.`, humor: 'cool' };
 
       case 'visual':
+        if (a.detalhe) { S.cfg[a.detalhe] = a.ligar; salvar(); return { texto: a.ligar ? { batom: 'Passei batom! 💄', cilios: 'Cílios no lugar! 👁', blush: 'Blush aplicado! 🌸' }[a.detalhe] : 'Prontinho, tirei.', humor: 'love' }; }
         if (a.corpo !== undefined) S.cfg.corpo = a.corpo;
         if (a.acessorio) S.cfg.acessorio = a.acessorio;
         salvar();
@@ -966,12 +967,21 @@
       <div class="rolar">${S.notas.length ? S.notas.map((n) => `<div class="linha"><div class="t">${esc(n.t)}<small>${quandoTxt(n.ts)}</small></div><button class="rb" data-acao="copiar-nota" data-id="${n.id}" aria-label="Copiar">📋</button><button class="rb x" data-acao="nota-del" data-id="${n.id}" aria-label="Apagar">✕</button></div>`).join('') : '<div class="sub">Nenhuma nota ainda.</div>'}
       ${S.copiados.length ? `<div class="secao">Copiados pela ${esc(S.cfg.nome)}</div>${S.copiados.map((c) => `<div class="linha"><div class="t"><span style="font-family:var(--f-mono);font-size:12.5px">${esc(c.t.length > 80 ? c.t.slice(0, 80) + '…' : c.t)}</span><small>${esc(c.r)} · ${quandoTxt(c.ts)}</small></div><button class="rb" data-acao="copiar-de-novo" data-id="${c.id}" aria-label="Copiar de novo">📋</button></div>`).join('')}<button class="btn fantasma" data-acao="limpar-copiados">Limpar histórico</button>` : ''}</div>`;
   }
+  // looks prontos: [nome, corpo, cor dos olhos, estilo dos olhos, acessório, cílios, blush, batom]
+  const LOOKS = [
+    ['Princesa', 9, 5, 'grande', 'tiara', true, true, true], ['Primavera', 1, 2, 'redondo', 'coroaflores', true, true, false],
+    ['Romântica', 6, 7, 'oval', 'presilha', true, true, true], ['Anjinha', 0, 1, 'grande', 'aureola', true, true, false],
+    ['Estilosa', 11, 8, 'redondo', 'brincos', true, false, true], ['Docinho', 10, 8, 'grande', 'lacao', true, true, false],
+    ['Sexta-feira', 3, 3, 'oval', 'fones', true, true, true], ['Natalina', 2, 5, 'redondo', 'natal', true, true, true],
+  ];
   function vVisual() {
     const c = S.cfg;
     return `<h4>Visual</h4><div class="sub">Cor, olhos, acessórios e expressões</div><div class="rolar">
       <div class="vitrine">${K(110, R.previa)}<div><b>${esc(c.nome)}</b><div class="sub" style="margin:2px 0 0">${M.HUMORES[R.previa]} · ${M.CORPOS[c.corpo][0]}${c.acessorio !== 'nenhum' ? ' · ' + M.ACESSORIOS[c.acessorio] : ''}</div></div></div>
       <div class="secao">Cor do corpo</div><div class="opcoes">${M.CORPOS.map(([n, a, b], i) => `<button class="cor${i === c.corpo ? ' on' : ''}" data-acao="set" data-k="corpo" data-val="${i}" title="${n}" aria-label="${n}" style="background:radial-gradient(circle at 35% 30%, ${a}, ${b})"></button>`).join('')}</div>
       <div class="secao">Cor dos olhos</div><div class="opcoes">${M.CORES_OLHO.map(([n, cor], i) => `<button class="cor${i === c.olho ? ' on' : ''}" data-acao="set" data-k="olho" data-val="${i}" title="${n}" aria-label="${n}" style="background:${cor}"></button>`).join('')}</div>
+      <div class="secao">Looks prontos</div><div class="ops">${LOOKS.map(([n, co, ol, eo, ac, ci, bl, ba], i) => { const [, c1, c2] = M.CORPOS[co]; return `<button class="op" data-acao="look" data-i="${i}">${M.svg({ tamanho: 46, humor: 'happy', corpo: c1, corpo2: c2, olho: M.CORES_OLHO[ol][1], estiloOlho: eo, acessorio: ac, cilios: ci, blush: bl, batom: ba, piscar: false })}${n}</button>`; }).join('')}</div>
+      <div class="secao">Detalhes</div><div class="chips" style="margin:0">${[['cilios', '👁 Cílios'], ['blush', '🌸 Blush'], ['batom', '💄 Batom']].map(([k, n]) => `<button class="chip${c[k] ? ' on' : ''}" data-acao="tog" data-cfg="${k}">${n}</button>`).join('')}</div>
       <div class="secao">Estilo dos olhos</div><div class="ops">${Object.entries(M.OLHOS).map(([k, n]) => `<button class="op${k === c.estiloOlho ? ' on' : ''}" data-acao="set" data-k="estiloOlho" data-val="${k}">${K(40, 'idle', { estiloOlho: k, piscar: false })}${n}</button>`).join('')}</div>
       <div class="secao">Acessórios</div><div class="ops">${Object.entries(M.ACESSORIOS).map(([k, n]) => `<button class="op${k === c.acessorio ? ' on' : ''}" data-acao="set" data-k="acessorio" data-val="${k}">${K(40, 'happy', { acessorio: k })}${n}</button>`).join('')}</div>
       <div class="secao">Expressões (toque para ver)</div><div class="ops">${Object.entries(M.HUMORES).map(([k, n]) => `<button class="op${k === R.previa ? ' on' : ''}" data-acao="previa" data-val="${k}">${K(40, k)}${n}</button>`).join('')}</div></div>`;
@@ -1103,6 +1113,11 @@
     'limpar-copiados': () => { S.copiados = []; salvar(); },
     set: (el) => { const k = el.dataset.k; const v = /^\d+$/.test(el.dataset.val) && k !== 'personalidade' ? Number(el.dataset.val) : el.dataset.val; S.cfg[k] = v; salvar(); setHumor(k === 'acessorio' ? 'love' : 'happy', 1500); },
     previa: (el) => { R.previa = el.dataset.val; setHumor(R.previa, 2500); },
+    look: (el) => {
+      const [nome, corpo, olho, estiloOlho, acessorio, cilios, blush, batom] = LOOKS[Number(el.dataset.i)];
+      Object.assign(S.cfg, { corpo, olho, estiloOlho, acessorio, cilios, blush, batom }); salvar();
+      R.previa = 'love'; setHumor('love', 2000); aviso(`✨ Look ${nome} aplicado`);
+    },
     tog: (el) => {
       const k = el.dataset.cfg; S.cfg[k] = !S.cfg[k]; salvar();
       if (k === 'sempreOuvindo') {
