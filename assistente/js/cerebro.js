@@ -196,7 +196,8 @@
     const nome = normalizar(ctx.nome || 'lumi');
     let s = normalizar(texto);
     // tira o chamado ("ei, lumi", "lumi,")
-    s = s.replace(new RegExp('^(?:(?:ei|oi|ô|o|hey|e aí)[,\\s]+)?' + nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[,!\\s]*', 'u'), '').trim();
+    const nomeRe = nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/[-\s]+/g, '[-\\s]+'); // "sexta-feira" = "sexta feira"
+    s = s.replace(new RegExp('^(?:(?:ei|oi|ô|o|e|hey|e aí)[,\\s]+)?' + nomeRe + '[,!\\s]*', 'u'), '').trim();
     if (!s) return /^(?:oi|ol[aá]|e a[ií]|bom dia|boa tarde|boa noite)/u.test(normalizar(texto)) ? { tipo: 'saudacao', s: normalizar(texto) } : { tipo: 'chamado' };
     const n = numeros(s), nt = numeros(s, true);
     const temHora = /(?:^|\s)[àa]s?\s+(?:\d|[a-zà-ú]+\s*(?:h|horas?|da|e meia|$))|meio[- ]dia|meia[- ]noite|(?:^|\s)\d{1,2}:\d{2}/u.test(nt);
@@ -236,11 +237,13 @@
       return { tipo: 'alarme', quando: h.quando, texto: 'Alarme' };
     }
 
+    // só uma duração ("cinco minutos", "meia hora"): vira timer — o reconhecedor de voz offline não conhece "timer"
+    { const d0 = duracao(nt); if (d0.segundos && /^(?:(?:um|1)\s+)?(?:de\s+|por\s+)?$/u.test(tirar(nt, d0.trechos).replace(/^(?:coloca|marca|conta)(?:\s+|$)/u, ''))) return { tipo: 'timer', segundos: d0.segundos, nome: 'Timer' }; }
     // timer
-    if (/(?:^|\s)(?:timer|temporizador|timers)(?:\s|$)|cronometra|^me avisa (?:em|daqui)|^avisa (?:em|daqui)/u.test(s)) {
+    if (/(?:^|\s)(?:timer|taimer|temporizador|timers)(?:\s|$)|cronometra|^me avisa (?:em|daqui)|^avisa (?:em|daqui)/u.test(s)) {
       const d = duracao(nt);
       if (!d.segundos) return { tipo: 'pergunta', texto: 'De quanto tempo? Diga, por exemplo, "timer de 10 minutos".' };
-      let resto = tirar(nt, d.trechos).replace(/(?:^|\s)(?:coloca|cria|inicia|liga|bota|põe|poe|faz|faça|um|uma|o|timer|temporizador|cronometra|me avisa|avisa)(?=\s|$)/gu, ' ');
+      let resto = tirar(nt, d.trechos).replace(/(?:^|\s)(?:coloca|cria|inicia|liga|bota|põe|poe|faz|faça|um|uma|o|timer|taimer|temporizador|cronometra|me avisa|avisa)(?=\s|$)/gu, ' ');
       resto = limparTudo(resto.replace(/\s+/g, ' ').trim()).replace(/^(?:o|a|os|as)\s+/, '');
       return { tipo: 'timer', segundos: d.segundos, nome: cap(resto) || 'Timer' };
     }

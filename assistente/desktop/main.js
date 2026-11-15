@@ -1,12 +1,17 @@
 /* Lumi — app de computador (Electron): uma janela transparente, sempre no topo,
    presa no alto da tela. Fora do entalho, os cliques passam para o que está atrás. */
-const { app, BrowserWindow, screen, ipcMain, globalShortcut, shell, session } = require('electron');
+const { app, BrowserWindow, screen, ipcMain, globalShortcut, shell, session, protocol } = require('electron');
+const fs = require('fs');
 const path = require('path');
 const spotify = require('./spotify');
 const claudeCode = require('./claude-code');
 
 const LARGURA = 900, ALTURA = 580;
 let janela = null, olhoSpotify = null;
+
+// modelo de voz offline (Vosk, português): vai junto do instalador e é servido à página por lumivoz://
+const MODELO_VOZ = app.isPackaged ? path.join(process.resourcesPath, 'voz', 'modelo-pt.tar.gz') : path.join(__dirname, '..', 'voz', 'modelo-pt.tar.gz');
+protocol.registerSchemesAsPrivileged([{ scheme: 'lumivoz', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }]);
 
 function posicionar() {
   if (!janela) return;
@@ -35,6 +40,12 @@ function criar() {
 }
 
 app.whenReady().then(() => {
+  protocol.handle('lumivoz', async () => {
+    try {
+      const dados = await fs.promises.readFile(MODELO_VOZ);
+      return new Response(dados, { headers: { 'content-type': 'application/gzip', 'access-control-allow-origin': '*' } });
+    } catch (_) { return new Response('modelo de voz não encontrado', { status: 404, headers: { 'access-control-allow-origin': '*' } }); }
+  });
   // microfone, notificações e localização (clima) para a página local do app
   session.defaultSession.setPermissionRequestHandler((wc, permissao, ok) => ok(['media', 'notifications', 'geolocation', 'clipboard-sanitized-write'].includes(permissao)));
   criar();
@@ -46,6 +57,7 @@ app.whenReady().then(() => {
 });
 
 // cérebro pelo Claude Code instalado no PC (usa a assinatura do Claude)
+ipcMain.handle('lumi:voz-info', () => ({ disponivel: fs.existsSync(MODELO_VOZ), url: 'lumivoz://modelo/pt.tar.gz' }));
 ipcMain.handle('lumi:cc-status', () => claudeCode.status());
 ipcMain.handle('lumi:cc-pensar', (_e, p) => claudeCode.pensar({
   pedido: String((p && p.pedido) || ''), nome: String((p && p.nome) || 'Lumi').slice(0, 30),

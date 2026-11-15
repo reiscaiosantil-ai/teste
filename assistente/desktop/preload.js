@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('lumiDesktop', {
   mouse: (dentro) => ipcRenderer.send('lumi:mouse', !!dentro),
   aberto: (aberto) => ipcRenderer.send('lumi:aberto', !!aberto),
   aoAtalho: (fn) => ipcRenderer.on('lumi:atalho', (_e, qual) => fn(qual)),
+  vozInfo: () => ipcRenderer.invoke('lumi:voz-info'),
   claudeCode: {
     status: () => ipcRenderer.invoke('lumi:cc-status'),
     pensar: (dados) => ipcRenderer.invoke('lumi:cc-pensar', dados),

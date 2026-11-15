@@ -48,6 +48,7 @@
     ouvindo: false, parcial: '', falando: false, alarme: null, crono: { rodando: false, inicio: 0, acum: 0 },
     musica: { lista: [], i: 0, tocando: false }, rascunhos: {}, previa: 'happy', ultimaAtividade: Date.now(), ultimaPausa: Date.now(),
     lugar: null, pendente: null,
+    vozOff: null, vozCarregada: false, // voz offline do app instalado
     cc: null, // estado do Claude Code no computador (só no app instalado)
     spotify: null, spotifyUltima: null, // Spotify do computador (só no app instalado)
   };
@@ -383,6 +384,7 @@
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const voz = { rec: null, modo: null, parar: false, depois: null };
   function ouvir() {
+    if (usarOffline()) { ouvirOffline(); return; }
     if (!SR) { aviso('Este navegador não reconhece voz. Use o Chrome ou o Edge — ou escreva.'); return; }
     if (R.ouvindo) { if (voz.rec) voz.rec.stop(); return; }
     calar();
@@ -410,20 +412,34 @@
     };
     try { rec.start(); } catch (_) { R.ouvindo = false; voz.rec = null; voz.modo = null; setHumor('idle'); render(); }
   }
-  function regexChamado() {
-    const nome = C.normalizar(S.cfg.nome).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return new RegExp('(?:^|\\s)(?:ei|oi|hey|ô|olá|ola)?[,\\s]*' + nome + '(?=$|[\\s,!.?])', 'u');
+  // acha o chamado ("ei, sexta-feira") na frase e devolve o resto; null se não chamaram
+  const basePalavra = (t) => C.normalizar(t).normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  function distancia(a, b) {
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[a.length][b.length];
+  }
+  function tirarChamado(frase) {
+    const nome = basePalavra(S.cfg.nome).split(' ').filter(Boolean);
+    const orig = String(frase).trim().split(/\s+/), base = basePalavra(frase).split(' ');
+    const ps = base.length === orig.length ? orig : base;
+    const parecido = (a, b) => a === b || (b.length >= 4 && distancia(a, b) <= 1);
+    for (let i = 0; i + nome.length <= base.length; i++) {
+      if (nome.every((w, k) => parecido(base[i + k], w))) return ps.slice(i + nome.length).join(' ').replace(/^[,\s]+/, '');
+    }
+    return null;
   }
   function iniciarEscuta() {
+    if (usarOffline()) { iniciarEscutaOffline(); return; }
     if (!SR || !S.cfg.sempreOuvindo || voz.modo || R.falando) return;
     const rec = new SR(); rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = false;
     voz.rec = rec; voz.modo = 'chamado'; voz.parar = false;
     rec.onresult = (e) => {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (!e.results[i].isFinal) continue;
-        const frase = C.normalizar(e.results[i][0].transcript); const m = regexChamado().exec(frase);
-        if (!m) continue;
-        const resto = frase.slice(m.index + m[0].length).replace(/^[,\s]+/, '');
+        const resto = tirarChamado(e.results[i][0].transcript);
+        if (resto === null) continue;
         if (resto.length > 1) processar(resto, { voz: true });
         else { voz.depois = 'ouvir'; voz.parar = true; try { rec.abort(); } catch (_) { /* ignora */ } }
       }
@@ -440,8 +456,66 @@
     };
     try { rec.start(); } catch (_) { voz.rec = null; voz.modo = null; }
   }
-  function pararEscuta() { if (voz.modo === 'chamado' && voz.rec) { voz.parar = true; try { voz.rec.abort(); } catch (_) { /* ignora */ } } }
-  function retomarEscuta() { if (S.cfg.sempreOuvindo && !R.falando && !voz.modo) setTimeout(iniciarEscuta, 300); }
+  function pararEscuta() { if (usarOffline()) { if (window.VOZ_OFFLINE) window.VOZ_OFFLINE.pausar(true); return; } if (voz.modo === 'chamado' && voz.rec) { voz.parar = true; try { voz.rec.abort(); } catch (_) { /* ignora */ } } }
+  function retomarEscuta() { if (usarOffline()) { if (window.VOZ_OFFLINE) window.VOZ_OFFLINE.pausar(false); return; } if (S.cfg.sempreOuvindo && !R.falando && !voz.modo) setTimeout(iniciarEscuta, 300); }
+
+  /* ================= voz offline (app instalado: Vosk) ================= */
+  const usarOffline = () => !!(window.lumiDesktop && R.vozOff && R.vozOff.disponivel && window.VOZ_OFFLINE);
+  const temVoz = () => usarOffline() || (!!SR && !window.lumiDesktop);
+  let modoVoz = null, tComando = null; // modoVoz: 'chamado' (esperando o nome) ou 'comando' (ouvindo um pedido)
+  async function ligarMicOffline() {
+    if (!window.VOZ_OFFLINE.ativo() && !R.vozCarregada) aviso('🎙 Carregando a voz offline…');
+    await window.VOZ_OFFLINE.ligar(R.vozOff.url, { resultado: aoResultadoOffline, parcial: aoParcialOffline });
+    R.vozCarregada = true;
+    window.VOZ_OFFLINE.pausar(R.falando);
+  }
+  function esperarComando(ms) {
+    modoVoz = 'comando'; R.ouvindo = true; R.parcial = ''; setHumor('listen'); render();
+    clearTimeout(tComando);
+    tComando = setTimeout(() => { if (modoVoz === 'comando') { encerrarComando(); aviso('Não ouvi nada. Tenta de novo?'); } }, ms || 8000);
+  }
+  function encerrarComando() {
+    clearTimeout(tComando);
+    modoVoz = S.cfg.sempreOuvindo ? 'chamado' : null;
+    R.ouvindo = false; R.parcial = '';
+    if (!S.cfg.sempreOuvindo && window.VOZ_OFFLINE) window.VOZ_OFFLINE.desligar();
+    if (R.humor === 'listen') setHumor('idle');
+    render();
+  }
+  async function ouvirOffline() {
+    if (R.ouvindo) { encerrarComando(); return; }
+    calar(); melodia(SOM_OUVIR);
+    esperarComando(10000);
+    try { await ligarMicOffline(); } catch (e) { encerrarComando(); aviso('Não consegui usar o microfone: ' + (e && e.message ? e.message : e)); }
+  }
+  async function iniciarEscutaOffline() {
+    if (!S.cfg.sempreOuvindo) return;
+    if (!modoVoz) modoVoz = 'chamado';
+    try { await ligarMicOffline(); } catch (e) {
+      S.cfg.sempreOuvindo = false; modoVoz = null; salvar(); render();
+      aviso('Sem acesso ao microfone: desliguei o "sempre ouvindo". ' + (e && e.message ? e.message : ''));
+    }
+  }
+  function aoParcialOffline(t) {
+    if (modoVoz !== 'comando' || !t) return;
+    R.parcial = t; renderPilula();
+    clearTimeout(tComando); tComando = setTimeout(() => { if (modoVoz === 'comando') encerrarComando(); }, 6000); // ainda falando
+  }
+  function aoResultadoOffline(t) {
+    R.ouvidos = [{ t, modo: modoVoz, quando: Date.now() }, ...(R.ouvidos || [])].slice(0, 8); // para Ajustes e diagnóstico
+    if (R.view === 'ajustes' && R.aberto) { const el = $('#ultimoOuvido'); if (el) el.textContent = t; }
+    if (R.falando) return;
+    if (modoVoz === 'comando') {
+      const resto = tirarChamado(t); // "ei sexta-feira" repetido no começo não atrapalha
+      if (resto === '') { esperarComando(8000); return; } // falou só o nome de novo: continua esperando o pedido
+      encerrarComando(); processar(resto !== null ? resto : t, { voz: true }); return;
+    }
+    if (modoVoz !== 'chamado') return;
+    const resto = tirarChamado(t);
+    if (resto === null) return;
+    if (resto.length > 1) processar(resto, { voz: true });
+    else { abrir(); melodia(SOM_OUVIR); esperarComando(8000); }
+  }
 
   /* ================= conversa ================= */
   function addChat(quem, texto, html) { S.chat.push(html ? { q: quem, t: texto, h: html } : { q: quem, t: texto }); S.chat = S.chat.slice(-60); salvar(); }
@@ -816,7 +890,7 @@
       : `<div class="vazio">${K(64, 'happy')}<br>Oi! Eu sou o ${esc(S.cfg.nome)} 👋<br>Toque numa sugestão, escreva ou fale comigo.</div>`;
     return `<h4>${per}${S.cfg.usuario ? ', ' + esc(S.cfg.usuario) : ''}!</h4><div class="sub">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} · diga "ajuda" para ver tudo que eu faço</div>
       <form class="perguntar" id="formPergunta" autocomplete="off"><input id="campo" placeholder="${R.ouvindo ? 'Ouvindo…' : `Escreva ou fale com o ${esc(S.cfg.nome)}…`}" aria-label="Mensagem para o assistente" enterkeyhint="send">
-        <button type="button" class="mic${R.ouvindo ? ' on' : ''}" data-acao="ouvir" aria-label="Falar" ${SR ? '' : 'disabled title="Use o Chrome ou o Edge para falar"'}>${MIC}</button><button type="submit" class="enviar" aria-label="Enviar">➤</button></form>
+        <button type="button" class="mic${R.ouvindo ? ' on' : ''}" data-acao="ouvir" aria-label="Falar" ${temVoz() ? '' : `disabled title="${window.lumiDesktop ? 'A voz offline não foi encontrada neste app' : 'Use o Chrome ou o Edge para falar'}"`}>${MIC}</button><button type="submit" class="enviar" aria-label="Enviar">➤</button></form>
       <div class="chips">${SUGESTOES.map((s) => `<button class="chip" data-diz="${esc(s)}">${esc(s)}</button>`).join('')}</div>
       <div class="meio"><div class="conversa" id="conversa">${conversa}</div>${mini()}</div>`;
   }
@@ -908,7 +982,8 @@
       <div class="secao">Voz</div>
       ${tog('voz', 'Responder em voz alta', 'Uma voz de robozinho lê as respostas')}
       ${tog('somenteExecutar', 'Modo só executar', 'Faz o que você pediu e fica quieto')}
-      ${tog('sempreOuvindo', `Sempre ouvindo "Ei, ${esc(c.nome)}"`, SR ? 'O microfone fica ligado enquanto esta janela estiver aberta. O reconhecimento é feito pelo navegador.' : 'Precisa do Chrome ou do Edge', !SR)}
+      ${usarOffline() ? `<div class="chave"><div>Última coisa que eu ouvi<small id="ultimoOuvido">${esc((R.ouvidos && R.ouvidos[0] && R.ouvidos[0].t) || '—')}</small></div></div>` : ''}
+      ${tog('sempreOuvindo', `Sempre ouvindo "Ei, ${esc(c.nome)}"`, usarOffline() ? 'Reconhecimento offline, feito no seu computador: nada do que você fala sai do PC. Funciona melhor com nomes que são palavras em português.' : temVoz() ? 'O microfone fica ligado enquanto esta janela estiver aberta. O reconhecimento é feito pelo navegador.' : window.lumiDesktop ? 'A voz offline não foi encontrada neste app' : 'Precisa do Chrome ou do Edge', !temVoz())}
       <div class="grade2"><div class="campo"><label for="cMotor">Tipo de voz</label><select id="cMotor" data-cfg="vozMotor"><option value="navegador"${c.vozMotor !== 'google' ? ' selected' : ''}>Voz do computador (grátis, offline)</option><option value="google"${c.vozMotor === 'google' ? ' selected' : ''}>Google AI Studio (Gemini)</option></select></div>
       <div class="campo"><span>&nbsp;</span><button class="btn fantasma" data-acao="testar-voz">🔊 Testar voz</button></div></div>
       ${c.vozMotor === 'google' ? `<div class="nota-aviso">Vozes femininas do Gemini, bem naturais. Precisa de internet e de uma chave grátis do Google AI Studio (aistudio.google.com → Get API key). A chave fica salva só neste navegador; o uso conta na cota da sua conta Google. Se a voz do Google falhar, ele usa a voz do computador.</div>
@@ -1025,7 +1100,11 @@
     previa: (el) => { R.previa = el.dataset.val; setHumor(R.previa, 2500); },
     tog: (el) => {
       const k = el.dataset.cfg; S.cfg[k] = !S.cfg[k]; salvar();
-      if (k === 'sempreOuvindo') { if (S.cfg.sempreOuvindo) { iniciarEscuta(); aviso(`🎙 Diga "Ei, ${S.cfg.nome}" para me chamar`); } else pararEscuta(); }
+      if (k === 'sempreOuvindo') {
+        if (S.cfg.sempreOuvindo) { iniciarEscuta(); aviso(`🎙 Diga "Ei, ${S.cfg.nome}" para me chamar`); }
+        else if (usarOffline()) { modoVoz = null; R.ouvindo = false; window.VOZ_OFFLINE.desligar(); }
+        else pararEscuta();
+      }
       if (k === 'pausas' && S.cfg.pausas) R.ultimaPausa = Date.now();
       if (k === 'voz' && !S.cfg.voz) calar();
     },
@@ -1104,6 +1183,9 @@
   function relogio() { const d = new Date(); $('#wHora').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`; $('#wData').textContent = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' }); }
 
   /* app de computador (Electron) */
+  if (window.lumiDesktop && window.lumiDesktop.vozInfo) {
+    window.lumiDesktop.vozInfo().then((i) => { R.vozOff = i; render(); if (S.cfg.sempreOuvindo) iniciarEscuta(); }).catch(() => { R.vozOff = { disponivel: false }; });
+  }
   if (CC) CC.status().then((st) => { R.cc = st; render(); }).catch(() => { R.cc = { instalado: false }; });
   if (SPOT) { SPOT.aoMudar(receberSpotify); SPOT.estado().then(receberSpotify).catch(() => {}); }
   if (window.lumiDesktop) {
@@ -1125,8 +1207,8 @@
   else if (navigator.permissions && navigator.permissions.query) {
     navigator.permissions.query({ name: 'geolocation' }).then((p) => { if (p.state === 'granted') return previsao().then((r) => r && atualizarWidgetClima(r)); }).catch(() => { /* sem permissão */ });
   }
-  if (S.cfg.sempreOuvindo) iniciarEscuta();
+  if (S.cfg.sempreOuvindo && !window.lumiDesktop) iniciarEscuta();
 
   // para testes e depuração no console
-  window.LUMI = { processar, estado: S, sessao: R, abrir, fechar, interpretar: (t) => C.interpretar(t, { agora: Date.now(), nome: S.cfg.nome }) };
+  window.LUMI = { processar, estado: S, sessao: R, abrir, fechar, ouvir, iniciarEscuta, interpretar: (t) => C.interpretar(t, { agora: Date.now(), nome: S.cfg.nome }) };
 })();

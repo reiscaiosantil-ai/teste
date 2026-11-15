@@ -24,7 +24,9 @@ jobs:
       - name: Instalar dependências
         run: npm ci
       - name: Testes
-        run: node --test tests/cerebro.test.js
+        run: node --test tests/cerebro.test.js tests/spotify.test.js tests/voz-google.test.js tests/claude-code.test.js
+      - name: Baixar o modelo de voz offline (Vosk, português)
+        run: node scripts/baixar-voz.js
       - name: Gerar instalador e versão portátil
         run: npx electron-builder --win nsis portable --x64 --publish never
       - name: Publicar em Releases

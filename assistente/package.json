@@ -9,7 +9,8 @@
     "test": "node --test tests/*.test.js",
     "dist:win": "electron-builder --win nsis portable",
     "dist:mac": "electron-builder --mac dmg",
-    "unico": "node scripts/arquivo-unico.js"
+    "unico": "node scripts/arquivo-unico.js",
+    "voz": "node scripts/baixar-voz.js"
   },
   "devDependencies": {
     "electron": "^44.0.0",
@@ -23,7 +24,9 @@
       "icone.svg",
       "css/**",
       "js/**",
-      "desktop/**"
+      "desktop/**",
+      "node_modules/vosk-browser/dist/vosk.js",
+      "node_modules/vosk-browser/package.json"
     ],
     "win": {
       "target": [
@@ -45,7 +48,16 @@
     },
     "portable": {
       "artifactName": "Lumi-Portatil.${ext}"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "voz/modelo-pt.tar.gz",
+        "to": "voz/modelo-pt.tar.gz"
+      }
+    ]
   },
-  "author": "Lumi"
+  "author": "Lumi",
+  "dependencies": {
+    "vosk-browser": "^0.0.8"
+  }
 }

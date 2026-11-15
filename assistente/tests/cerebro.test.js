@@ -132,3 +132,12 @@ test('mascote: todos os humores, olhos e acessórios geram SVG', () => {
   assert.equal(Object.keys(M.HUMORES).length, 13);
   assert.equal(Object.keys(M.ACESSORIOS).length - 1, 12);
 });
+
+test('chamado com nome composto, com ou sem hífen (como o reconhecimento de voz escreve)', () => {
+  const d = (t) => C.interpretar(t, { agora: AGORA, nome: 'Sexta-feira' });
+  assert.equal(d('sexta feira').tipo, 'chamado');
+  assert.equal(d('e sexta feira que horas são').tipo, 'hora');
+  assert.equal(d('Ei, Sexta-feira, conta uma piada').tipo, 'piada');
+  assert.deepEqual(diz('cinco minutos'), { tipo: 'timer', segundos: 300, nome: 'Timer' });
+  assert.equal(diz('coloca dez minutos').segundos, 600);
+});
