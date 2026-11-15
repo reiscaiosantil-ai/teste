@@ -153,3 +153,12 @@ test('personalização feminina pela voz', () => {
   assert.deepEqual(diz('muda sua cor para rosé'), { tipo: 'visual', corpo: 9 });
   assert.deepEqual(diz('muda sua cor para rosa'), { tipo: 'visual', corpo: 6 });
 });
+
+test('cabelo pela voz', () => {
+  assert.deepEqual(diz('faz um coque'), { tipo: 'visual', cabelo: 'coque' });
+  assert.deepEqual(diz('deixa o cabelo ruivo'), { tipo: 'visual', corCabelo: 3 });
+  assert.deepEqual(diz('quero cabelo loiro com rabo de cavalo'), { tipo: 'visual', cabelo: 'rabo', corCabelo: 2 });
+  assert.deepEqual(diz('solta o cabelo'), { tipo: 'visual', cabelo: 'longo' });
+  assert.deepEqual(diz('tira o cabelo'), { tipo: 'visual', cabelo: 'nenhum' });
+  for (const k of Object.keys(M.CABELOS)) assert.doesNotMatch(M.svg({ cabelo: k, corCabelo: '#7A4A2E' }), /undefined|NaN/);
+});

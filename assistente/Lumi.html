@@ -250,6 +250,14 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   const CORES_OLHO = [
     ['Tinta', '#1B1E2B'], ['Oceano', '#1F5AA6'], ['Floresta', '#1E7A4F'], ['Uva', '#5B3A9E'], ['Cacau', '#6B3F2A'], ['Rubi', '#B3264A'], ['Neon', '#46E3C8'], ['Rosa', '#D63A7F'], ['Violeta', '#7B3FC4'],
   ];
+  const CABELOS = {
+    nenhum: 'Sem cabelo', franja: 'Franjinha', lateral: 'Franja de lado', longo: 'Longo', chanel: 'Chanel',
+    rabo: 'Rabo de cavalo', chiquinhas: 'Maria-chiquinha', coque: 'Coque', cacheado: 'Cacheado',
+  };
+  const CORES_CABELO = [
+    ['Castanho', '#7A4A2E'], ['Preto', '#2B2633'], ['Loiro', '#E9C46A'], ['Ruivo', '#D9693A'],
+    ['Rosa', '#F28DB9'], ['Lilás', '#B79AF0'], ['Azul', '#6FA8F5'], ['Branco', '#ECECF2'],
+  ];
   const CHAPEUS = ['festa', 'coroa', 'gorro', 'natal', 'bone', 'cartola', 'aureola', 'lacao'];
 
   const L = 18.5, R = 29.5, Y = 24.5;
@@ -338,10 +346,58 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     }
   }
 
+  // escurece uma cor (#rrggbb) para mechas e contornos
+  function escurecer(hex, f = 0.72) {
+    const n = parseInt(String(hex).slice(1), 16);
+    const c = (v) => Math.max(0, Math.min(255, Math.round(v * f))).toString(16).padStart(2, '0');
+    return '#' + c(n >> 16) + c((n >> 8) & 255) + c(n & 255);
+  }
+  /** Cabelo em duas camadas: "tras" (atrás da cabeça) e "frente" (por cima da testa, abaixo dos olhos). */
+  function cabelo(estilo, cor) {
+    if (!estilo || estilo === 'nenhum' || !CABELOS[estilo]) return { tras: '', frente: '' };
+    const esc = escurecer(cor), laco = '#FF5AA0';
+    const brilho = '<path d="M14.5 12.2 q4.6 -2.8 9.4 -2.6" stroke="#fff" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".35"/>';
+    const capa = {
+      ondas: `<path d="M7.2 22 C6.6 14 13 8.6 24 8.6 C35 8.6 41.4 14 40.8 22 C39.6 18.6 37.6 16.6 35 16.4 C33 18.2 30 18.2 28.6 16 C27 18.4 21 18.4 19.4 16 C18 18.2 15 18.2 13 16.4 C10.4 16.6 8.4 18.6 7.2 22z" fill="${cor}"/>`,
+      reta: `<path d="M7.2 22 C6.6 14 13 8.6 24 8.6 C35 8.6 41.4 14 40.8 22 C40 19.5 38.8 18 37 17.6 L11 17.6 C9.2 18 8 19.5 7.2 22z" fill="${cor}"/><path d="M16 17.4 v-2.2 M21 17.4 v-2.6 M27 17.4 v-2.6 M32 17.4 v-2.2" stroke="${esc}" stroke-width=".7" stroke-linecap="round"/>`,
+      lado: `<path d="M7.2 22 C6.6 14 13 8.6 24 8.6 C35 8.6 41.4 14 40.8 22 C40.2 17.5 38 15 34.5 14.6 C27 14.4 17 17 10.5 21 C9 21.6 8 21.8 7.2 22z" fill="${cor}"/><path d="M33 13.4 C26 13.6 19 15.6 13.6 18.6" stroke="${esc}" stroke-width=".7" fill="none" stroke-linecap="round"/>`,
+    };
+    const lacinho = (x, y) => `<circle cx="${x}" cy="${y}" r="1.6" fill="${laco}"/>`;
+    let tras = '', frente = '';
+    switch (estilo) {
+      case 'franja': frente = capa.reta; break;
+      case 'lateral': frente = capa.lado; break;
+      case 'longo':
+        tras = `<path d="M9.5 14 C3 19 2.5 31 4.5 38 C5.6 41.5 9.6 42 12.4 40 C10 35.5 9.4 29 10.6 22z M38.5 14 C45 19 45.5 31 43.5 38 C42.4 41.5 38.4 42 35.6 40 C38 35.5 38.6 29 37.4 22z" fill="${cor}"/><path d="M6.6 24 C5.6 30 6 35 7.6 38.6 M41.4 24 C42.4 30 42 35 40.4 38.6" stroke="${esc}" stroke-width=".7" fill="none" stroke-linecap="round"/>`;
+        frente = capa.ondas; break;
+      case 'chanel':
+        tras = `<path d="M9 14 C4 18 3.6 27 5.4 32.6 C6.6 35.4 9.8 35.6 11.6 33.6 C10.6 29 10.6 24 11.4 20z M39 14 C44 18 44.4 27 42.6 32.6 C41.4 35.4 38.2 35.6 36.4 33.6 C37.4 29 37.4 24 36.6 20z" fill="${cor}"/>`;
+        frente = capa.reta; break;
+      case 'rabo':
+        tras = `<path d="M35 10.5 C44 8 49 13 47.6 22 C46.8 28 44 31.5 41 33 C43 27.5 43.2 21 39.6 15.6z" fill="${cor}"/><path d="M42 13 C45.6 16 45.8 23 43.4 29" stroke="${esc}" stroke-width=".7" fill="none" stroke-linecap="round"/>${lacinho(37, 11.6)}`;
+        frente = capa.lado; break;
+      case 'chiquinhas':
+        tras = `<path d="M10.5 13 C3.6 11 -0.8 16 0.4 23 C1.2 28 3.6 31 6.2 32 C5 27.5 5.6 21.5 9.4 17.6z M37.5 13 C44.4 11 48.8 16 47.6 23 C46.8 28 44.4 31 41.8 32 C43 27.5 42.4 21.5 38.6 17.6z" fill="${cor}"/>${lacinho(9.4, 14.4)}${lacinho(38.6, 14.4)}`;
+        frente = capa.ondas; break;
+      case 'coque':
+        tras = `<circle cx="24" cy="5.4" r="5.2" fill="${cor}"/><path d="M20.8 4.6 q3.2 -3 6.4 0 M21.6 7 q2.4 1.6 4.8 0" stroke="${esc}" stroke-width=".7" fill="none" stroke-linecap="round"/><ellipse cx="24" cy="9.6" rx="3.4" ry="1.1" fill="${laco}"/>`;
+        frente = capa.ondas; break;
+      case 'cacheado': {
+        const bolas = (pts, r) => pts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${cor}"/><path d="M${x - r * 0.45} ${y} a${r * 0.45} ${r * 0.45} 0 0 1 ${r * 0.9} 0" stroke="${esc}" stroke-width=".6" fill="none"/>`).join('');
+        tras = bolas([[5.8, 21], [4.6, 27], [5.6, 33], [42.2, 21], [43.4, 27], [42.4, 33]], 3.3);
+        const arco = []; for (let i = 0; i <= 8; i++) { const x = 8.4 + i * 3.9, dx = (x - 24) / 18.4; arco.push([+x.toFixed(1), +(25 - 16.4 * Math.sqrt(Math.max(0, 1 - dx * dx))).toFixed(1)]); }
+        frente = bolas(arco, 3.2); break;
+      }
+      default: break;
+    }
+    return { tras, frente: frente + (estilo === 'cacheado' ? '' : brilho) };
+  }
+
   let seq = 0;
   // o = { corpo, corpo2, olho, estiloOlho, acessorio, humor, tamanho, piscar }
   function svg(o = {}) {
-    const k = { corpo: '#F5F8FF', corpo2: '#C7D3F7', olho: '#1B1E2B', estiloOlho: 'redondo', acessorio: 'nenhum', piscar: true, cilios: false, blush: false, batom: false, ...o };
+    const k = { corpo: '#F5F8FF', corpo2: '#C7D3F7', olho: '#1B1E2B', estiloOlho: 'redondo', acessorio: 'nenhum', piscar: true, cilios: false, blush: false, batom: false, cabelo: 'nenhum', corCabelo: '#7A4A2E', ...o };
+    const cab = cabelo(k.cabelo, k.corCabelo);
     const tamanho = k.tamanho || 40;
     const humor = HUMORES[k.humor] ? k.humor : 'idle';
     const id = 'lm' + (++seq).toString(36);
@@ -356,11 +412,11 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     const pisca = k.piscar && ['idle', 'listen', 'talk', 'think', 'angry'].includes(humor) ? ' lm-pisca' : '';
     return `<svg class="lumi lm-${humor}" width="${tamanho}" height="${Math.round(tamanho * 0.92)}" viewBox="0 -6 50 46" overflow="visible" aria-hidden="true">
       <defs><radialGradient id="${id}" cx="40%" cy="30%" r="75%"><stop offset="0" stop-color="${k.corpo}"/><stop offset="1" stop-color="${k.corpo2}"/></radialGradient></defs>
-      <g class="lm-corpo">${topete}
+      <g class="lm-corpo">${topete}${cab.tras}
         <ellipse cx="7.6" cy="27" rx="3.2" ry="5" transform="rotate(-22 7.6 27)" fill="${k.corpo2}"/>
         <ellipse cx="40.4" cy="27" rx="3.2" ry="5" transform="rotate(22 40.4 27)" fill="${k.corpo2}"/>
         <ellipse cx="24" cy="25.5" rx="17" ry="15" fill="url(#${id})"/>
-        <ellipse cx="18" cy="17.6" rx="6.2" ry="3.2" transform="rotate(-18 18 17.6)" fill="#fff" opacity=".45"/>
+        <ellipse cx="18" cy="17.6" rx="6.2" ry="3.2" transform="rotate(-18 18 17.6)" fill="#fff" opacity=".45"/>${cab.frente}
         ${bochechas}
         <g data-olhos><g class="lm-olhos${pisca}">${olhos(humor, k.estiloOlho, k.olho)}${k.cilios ? cilios(humor, k.estiloOlho, k.olho) : ''}</g></g>
         ${boca(humor, k.batom ? '#E0457B' : k.olho)}${lagrimas}
@@ -403,7 +459,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     });
   }
 
-  const api = { svg, olhar, instalarCss, HUMORES, OLHOS, ACESSORIOS, CORPOS, CORES_OLHO };
+  const api = { svg, olhar, instalarCss, HUMORES, OLHOS, ACESSORIOS, CORPOS, CORES_OLHO, CABELOS, CORES_CABELO };
   if (typeof document !== 'undefined') instalarCss(document);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   raiz.MASCOTE = api;
@@ -786,6 +842,14 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     // personalização
     m = /(?:muda|mudar|troca|trocar|fica|deixa)\s+(?:a\s+)?(?:sua\s+)?(?:cor\s+)?(?:para|pra|de|em)?\s*(?:a\s+cor\s+)?([a-zà-ú\s-]+)$/u.exec(s);
     if (m && /cor/.test(s)) { const c = CORES_FALA.find(([re]) => re.test(m[1])); if (c) return { tipo: 'visual', corpo: c[1] }; }
+    // cabelo: penteado e cor ("faz um coque", "cabelo ruivo", "solta o cabelo", "tira o cabelo")
+    if (/cabel|franj|rabo de cavalo|rabinho|maria[- ]chiquinha|chiquinhas|coque|chanel|cachead|cachos|careca|penteado/u.test(s) && !/tarefa|lembr|timer|alarme/u.test(s)) {
+      const PENTEADOS = [[/rabo de cavalo|rabinho/, 'rabo'], [/maria[- ]chiquinha|chiquinhas/, 'chiquinhas'], [/coque/, 'coque'], [/chanel|curto/, 'chanel'],
+        [/cachead|cachos|crespo/, 'cacheado'], [/franj\w* de lado|de lado/, 'lateral'], [/franj/, 'franja'], [/solt|long|comprid/, 'longo'], [/careca|sem cabelo|tira o cabelo|tirar o cabelo/, 'nenhum']];
+      const CORES_CAB = [[/castanh|marrom/, 0], [/pret/, 1], [/loir|dourad|amarel/, 2], [/ruiv|ruiva|laranja|vermelh/, 3], [/rosa|pink/, 4], [/lil[aá]s|roxo/, 5], [/azul/, 6], [/branc|grisalh|prateado/, 7]];
+      const pe = PENTEADOS.find(([re]) => re.test(s)), co = CORES_CAB.find(([re]) => re.test(s));
+      if (pe || co) { const r = { tipo: 'visual' }; if (pe) r.cabelo = pe[1]; if (co) r.corCabelo = co[1]; return r; }
+    }
     m = /(?:passa|passar|coloca|colocar|p[oõ]e|usa|bota|tira|tirar|remove|apaga)\s+(?:o\s+|a\s+|os\s+|um\s+|seu\s+|sua\s+|seus\s+)?(batom|c[ií]lios|blush)/u.exec(s);
     if (m) return { tipo: 'visual', detalhe: /batom/.test(m[1]) ? 'batom' : /blush/.test(m[1]) ? 'blush' : 'cilios', ligar: !/^(?:tira|tirar|remove|apaga)/.test(s) };
     if (/(?:tira|tirar|remove)\s+(?:o\s+|a\s+|os\s+|seu\s+|sua\s+)?(?:acess[oó]rio|chap[eé]u|coroa|fones?|la[cç]o|gorro|bon[eé]|[oó]culos|aur[eé]ola|chifr|flor|cartola|tiara|brinco|presilha)/u.test(s)) return { tipo: 'visual', acessorio: 'nenhum' };
@@ -1048,7 +1112,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   const CHAVE = 'lumi:v1';
   const PADRAO = () => ({
     cfg: {
-      nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo', cilios: true, blush: true, batom: false,
+      nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo', cilios: true, blush: true, batom: false, cabelo: 'nenhum', corCabelo: 0,
       voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', somenteExecutar: false, sempreOuvindo: false,
       cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', volume: 70, pausas: false,
     },
@@ -1089,7 +1153,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   function visual(extra = {}) {
     const [, c1, c2] = M.CORPOS[S.cfg.corpo] || M.CORPOS[0];
     const [, olho] = M.CORES_OLHO[S.cfg.olho] || M.CORES_OLHO[0];
-    return { corpo: c1, corpo2: c2, olho, estiloOlho: S.cfg.estiloOlho, acessorio: S.cfg.acessorio, cilios: S.cfg.cilios, blush: S.cfg.blush, batom: S.cfg.batom, ...extra };
+    return { corpo: c1, corpo2: c2, olho, estiloOlho: S.cfg.estiloOlho, acessorio: S.cfg.acessorio, cilios: S.cfg.cilios, blush: S.cfg.blush, batom: S.cfg.batom, cabelo: S.cfg.cabelo, corCabelo: (M.CORES_CABELO[S.cfg.corCabelo] || M.CORES_CABELO[0])[1], ...extra };
   }
   const K = (tamanho, humor, extra) => M.svg(visual({ tamanho, humor: humor || R.humor, ...(extra || {}) }));
 
@@ -1780,6 +1844,12 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
       case 'abrir': abrirLink(a.url); return { texto: `Abrindo ${a.nome}! 🚀`, html: `Abrindo <b>${esc(a.nome)}</b>! 🚀 Se não abriu, ${linkHtml(a.url, 'toque aqui')}.`, humor: 'cool' };
 
       case 'visual':
+        if (a.cabelo || a.corCabelo !== undefined) {
+          if (a.cabelo) S.cfg.cabelo = a.cabelo;
+          if (a.corCabelo !== undefined) { S.cfg.corCabelo = a.corCabelo; if ((S.cfg.cabelo || 'nenhum') === 'nenhum') S.cfg.cabelo = 'longo'; }
+          salvar();
+          return { texto: S.cfg.cabelo === 'nenhum' ? 'Prontinho, sem cabelo.' : `Gostou? ${M.CABELOS[S.cfg.cabelo]}${a.corCabelo !== undefined ? ', ' + M.CORES_CABELO[S.cfg.corCabelo][0].toLowerCase() : ''}! 💇‍♀️`, humor: 'love' };
+        }
         if (a.detalhe) { S.cfg[a.detalhe] = a.ligar; salvar(); return { texto: a.ligar ? { batom: 'Passei batom! 💄', cilios: 'Cílios no lugar! 👁', blush: 'Blush aplicado! 🌸' }[a.detalhe] : 'Prontinho, tirei.', humor: 'love' }; }
         if (a.corpo !== undefined) S.cfg.corpo = a.corpo;
         if (a.acessorio) S.cfg.acessorio = a.acessorio;
@@ -1996,12 +2066,12 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
       <div class="rolar">${S.notas.length ? S.notas.map((n) => `<div class="linha"><div class="t">${esc(n.t)}<small>${quandoTxt(n.ts)}</small></div><button class="rb" data-acao="copiar-nota" data-id="${n.id}" aria-label="Copiar">📋</button><button class="rb x" data-acao="nota-del" data-id="${n.id}" aria-label="Apagar">✕</button></div>`).join('') : '<div class="sub">Nenhuma nota ainda.</div>'}
       ${S.copiados.length ? `<div class="secao">Copiados pela ${esc(S.cfg.nome)}</div>${S.copiados.map((c) => `<div class="linha"><div class="t"><span style="font-family:var(--f-mono);font-size:12.5px">${esc(c.t.length > 80 ? c.t.slice(0, 80) + '…' : c.t)}</span><small>${esc(c.r)} · ${quandoTxt(c.ts)}</small></div><button class="rb" data-acao="copiar-de-novo" data-id="${c.id}" aria-label="Copiar de novo">📋</button></div>`).join('')}<button class="btn fantasma" data-acao="limpar-copiados">Limpar histórico</button>` : ''}</div>`;
   }
-  // looks prontos: [nome, corpo, cor dos olhos, estilo dos olhos, acessório, cílios, blush, batom]
+  // looks prontos: [nome, corpo, cor dos olhos, estilo dos olhos, acessório, cílios, blush, batom, cabelo, cor do cabelo]
   const LOOKS = [
-    ['Princesa', 9, 5, 'grande', 'tiara', true, true, true], ['Primavera', 1, 2, 'redondo', 'coroaflores', true, true, false],
-    ['Romântica', 6, 7, 'oval', 'presilha', true, true, true], ['Anjinha', 0, 1, 'grande', 'aureola', true, true, false],
-    ['Estilosa', 11, 8, 'redondo', 'brincos', true, false, true], ['Docinho', 10, 8, 'grande', 'lacao', true, true, false],
-    ['Sexta-feira', 3, 3, 'oval', 'fones', true, true, true], ['Natalina', 2, 5, 'redondo', 'natal', true, true, true],
+    ['Princesa', 9, 5, 'grande', 'tiara', true, true, true, 'longo', 2], ['Primavera', 1, 2, 'redondo', 'coroaflores', true, true, false, 'chiquinhas', 0],
+    ['Romântica', 6, 7, 'oval', 'presilha', true, true, true, 'rabo', 3], ['Anjinha', 0, 1, 'grande', 'aureola', true, true, false, 'cacheado', 2],
+    ['Estilosa', 11, 8, 'redondo', 'brincos', true, false, true, 'chanel', 1], ['Docinho', 10, 8, 'grande', 'nenhum', true, true, false, 'coque', 4],
+    ['Sexta-feira', 3, 3, 'oval', 'fones', true, true, true, 'lateral', 5], ['Natalina', 2, 5, 'redondo', 'natal', true, true, true, 'franja', 3],
   ];
   function vVisual() {
     const c = S.cfg;
@@ -2009,7 +2079,9 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
       <div class="vitrine">${K(110, R.previa)}<div><b>${esc(c.nome)}</b><div class="sub" style="margin:2px 0 0">${M.HUMORES[R.previa]} · ${M.CORPOS[c.corpo][0]}${c.acessorio !== 'nenhum' ? ' · ' + M.ACESSORIOS[c.acessorio] : ''}</div></div></div>
       <div class="secao">Cor do corpo</div><div class="opcoes">${M.CORPOS.map(([n, a, b], i) => `<button class="cor${i === c.corpo ? ' on' : ''}" data-acao="set" data-k="corpo" data-val="${i}" title="${n}" aria-label="${n}" style="background:radial-gradient(circle at 35% 30%, ${a}, ${b})"></button>`).join('')}</div>
       <div class="secao">Cor dos olhos</div><div class="opcoes">${M.CORES_OLHO.map(([n, cor], i) => `<button class="cor${i === c.olho ? ' on' : ''}" data-acao="set" data-k="olho" data-val="${i}" title="${n}" aria-label="${n}" style="background:${cor}"></button>`).join('')}</div>
-      <div class="secao">Looks prontos</div><div class="ops">${LOOKS.map(([n, co, ol, eo, ac, ci, bl, ba], i) => { const [, c1, c2] = M.CORPOS[co]; return `<button class="op" data-acao="look" data-i="${i}">${M.svg({ tamanho: 46, humor: 'happy', corpo: c1, corpo2: c2, olho: M.CORES_OLHO[ol][1], estiloOlho: eo, acessorio: ac, cilios: ci, blush: bl, batom: ba, piscar: false })}${n}</button>`; }).join('')}</div>
+      <div class="secao">Looks prontos</div><div class="ops">${LOOKS.map(([n, co, ol, eo, ac, ci, bl, ba, cb, cc], i) => { const [, c1, c2] = M.CORPOS[co]; return `<button class="op" data-acao="look" data-i="${i}">${M.svg({ tamanho: 46, humor: 'happy', corpo: c1, corpo2: c2, olho: M.CORES_OLHO[ol][1], estiloOlho: eo, acessorio: ac, cilios: ci, blush: bl, batom: ba, cabelo: cb, corCabelo: M.CORES_CABELO[cc][1], piscar: false })}${n}</button>`; }).join('')}</div>
+      <div class="secao">Cabelo</div><div class="ops">${Object.entries(M.CABELOS).map(([k, n]) => `<button class="op${k === (c.cabelo || 'nenhum') ? ' on' : ''}" data-acao="set" data-k="cabelo" data-val="${k}">${K(40, 'happy', { cabelo: k })}${n}</button>`).join('')}</div>
+      <div class="secao">Cor do cabelo</div><div class="opcoes">${M.CORES_CABELO.map(([n, cor], i) => `<button class="cor${i === c.corCabelo ? ' on' : ''}" data-acao="set" data-k="corCabelo" data-val="${i}" title="${n}" aria-label="Cabelo ${n}" style="background:radial-gradient(circle at 35% 30%, #fff8, ${cor} 60%)"></button>`).join('')}</div>
       <div class="secao">Detalhes</div><div class="chips" style="margin:0">${[['cilios', '👁 Cílios'], ['blush', '🌸 Blush'], ['batom', '💄 Batom']].map(([k, n]) => `<button class="chip${c[k] ? ' on' : ''}" data-acao="tog" data-cfg="${k}">${n}</button>`).join('')}</div>
       <div class="secao">Estilo dos olhos</div><div class="ops">${Object.entries(M.OLHOS).map(([k, n]) => `<button class="op${k === c.estiloOlho ? ' on' : ''}" data-acao="set" data-k="estiloOlho" data-val="${k}">${K(40, 'idle', { estiloOlho: k, piscar: false })}${n}</button>`).join('')}</div>
       <div class="secao">Acessórios</div><div class="ops">${Object.entries(M.ACESSORIOS).map(([k, n]) => `<button class="op${k === c.acessorio ? ' on' : ''}" data-acao="set" data-k="acessorio" data-val="${k}">${K(40, 'happy', { acessorio: k })}${n}</button>`).join('')}</div>
@@ -2143,8 +2215,8 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     set: (el) => { const k = el.dataset.k; const v = /^\d+$/.test(el.dataset.val) && k !== 'personalidade' ? Number(el.dataset.val) : el.dataset.val; S.cfg[k] = v; salvar(); setHumor(k === 'acessorio' ? 'love' : 'happy', 1500); },
     previa: (el) => { R.previa = el.dataset.val; setHumor(R.previa, 2500); },
     look: (el) => {
-      const [nome, corpo, olho, estiloOlho, acessorio, cilios, blush, batom] = LOOKS[Number(el.dataset.i)];
-      Object.assign(S.cfg, { corpo, olho, estiloOlho, acessorio, cilios, blush, batom }); salvar();
+      const [nome, corpo, olho, estiloOlho, acessorio, cilios, blush, batom, cabelo, corCabelo] = LOOKS[Number(el.dataset.i)];
+      Object.assign(S.cfg, { corpo, olho, estiloOlho, acessorio, cilios, blush, batom, cabelo, corCabelo }); salvar();
       R.previa = 'love'; setHumor('love', 2000); aviso(`✨ Look ${nome} aplicado`);
     },
     tog: (el) => {

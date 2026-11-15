@@ -43,7 +43,7 @@ Atalhos: `Alt+K` abre/fecha · `Alt+L` fala com ela · `Esc` fecha, cala ou para
 | Navegação | "pesquisa receita de bolo", "abre o youtube", "notícias de hoje" |
 | Visual | "coloca a coroa", "muda sua cor para rosa", "tira o chapéu" |
 
-Personalização feminina: cílios, blush e batom (liga e desliga), 12 cores de corpo (incluindo Rosé, Lilás e Framboesa), 9 cores de olho, acessórios como tiara, coroa de flores, brincos, presilha de coração e lação, e 8 looks prontos (Princesa, Primavera, Romântica, Anjinha, Estilosa, Docinho, Sexta-feira, Natalina). Pela voz: "coloca a tiara", "passa batom", "muda sua cor para rosé".
+Personalização feminina: cílios, blush e batom (liga e desliga), 12 cores de corpo (incluindo Rosé, Lilás e Framboesa), 9 cores de olho, acessórios como tiara, coroa de flores, brincos, presilha de coração e lação, cabelo (franjinha, franja de lado, longo, chanel, rabo de cavalo, maria-chiquinha, coque e cacheado, em 8 cores) e 8 looks prontos (Princesa, Primavera, Romântica, Anjinha, Estilosa, Docinho, Sexta-feira, Natalina). Pela voz: "coloca a tiara", "passa batom", "muda sua cor para rosé", "faz um coque", "cabelo ruivo", "solta o cabelo".
 
 Também tem: 13 expressões do mascote (dorme quando você some, acorda quando volta, olhos seguem o mouse), 9 cores de corpo, 7 de olhos, 5 estilos de olho, 12 acessórios, 5 personalidades, XP e níveis, voz de robozinho ajustável, "modo só executar" e "sempre ouvindo — Ei, Lumi".
 

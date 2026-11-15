@@ -21,6 +21,14 @@
   const CORES_OLHO = [
     ['Tinta', '#1B1E2B'], ['Oceano', '#1F5AA6'], ['Floresta', '#1E7A4F'], ['Uva', '#5B3A9E'], ['Cacau', '#6B3F2A'], ['Rubi', '#B3264A'], ['Neon', '#46E3C8'], ['Rosa', '#D63A7F'], ['Violeta', '#7B3FC4'],
   ];
+  const CABELOS = {
+    nenhum: 'Sem cabelo', franja: 'Franjinha', lateral: 'Franja de lado', longo: 'Longo', chanel: 'Chanel',
+    rabo: 'Rabo de cavalo', chiquinhas: 'Maria-chiquinha', coque: 'Coque', cacheado: 'Cacheado',
+  };
+  const CORES_CABELO = [
+    ['Castanho', '#7A4A2E'], ['Preto', '#2B2633'], ['Loiro', '#E9C46A'], ['Ruivo', '#D9693A'],
+    ['Rosa', '#F28DB9'], ['Lilás', '#B79AF0'], ['Azul', '#6FA8F5'], ['Branco', '#ECECF2'],
+  ];
   const CHAPEUS = ['festa', 'coroa', 'gorro', 'natal', 'bone', 'cartola', 'aureola', 'lacao'];
 
   const L = 18.5, R = 29.5, Y = 24.5;
@@ -109,10 +117,58 @@
     }
   }
 
+  // escurece uma cor (#rrggbb) para mechas e contornos
+  function escurecer(hex, f = 0.72) {
+    const n = parseInt(String(hex).slice(1), 16);
+    const c = (v) => Math.max(0, Math.min(255, Math.round(v * f))).toString(16).padStart(2, '0');
+    return '#' + c(n >> 16) + c((n >> 8) & 255) + c(n & 255);
+  }
+  /** Cabelo em duas camadas: "tras" (atrás da cabeça) e "frente" (por cima da testa, abaixo dos olhos). */
+  function cabelo(estilo, cor) {
+    if (!estilo || estilo === 'nenhum' || !CABELOS[estilo]) return { tras: '', frente: '' };
+    const esc = escurecer(cor), laco = '#FF5AA0';
+    const brilho = '<path d="M14.5 12.2 q4.6 -2.8 9.4 -2.6" stroke="#fff" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".35"/>';
+    const capa = {
+      ondas: `<path d="M7.2 22 C6.6 14 13 8.6 24 8.6 C35 8.6 41.4 14 40.8 22 C39.6 18.6 37.6 16.6 35 16.4 C33 18.2 30 18.2 28.6 16 C27 18.4 21 18.4 19.4 16 C18 18.2 15 18.2 13 16.4 C10.4 16.6 8.4 18.6 7.2 22z" fill="${cor}"/>`,
+      reta: `<path d="M7.2 22 C6.6 14 13 8.6 24 8.6 C35 8.6 41.4 14 40.8 22 C40 19.5 38.8 18 37 17.6 L11 17.6 C9.2 18 8 19.5 7.2 22z" fill="${cor}"/><path d="M16 17.4 v-2.2 M21 17.4 v-2.6 M27 17.4 v-2.6 M32 17.4 v-2.2" stroke="${esc}" stroke-width=".7" stroke-linecap="round"/>`,
+      lado: `<path d="M7.2 22 C6.6 14 13 8.6 24 8.6 C35 8.6 41.4 14 40.8 22 C40.2 17.5 38 15 34.5 14.6 C27 14.4 17 17 10.5 21 C9 21.6 8 21.8 7.2 22z" fill="${cor}"/><path d="M33 13.4 C26 13.6 19 15.6 13.6 18.6" stroke="${esc}" stroke-width=".7" fill="none" stroke-linecap="round"/>`,
+    };
+    const lacinho = (x, y) => `<circle cx="${x}" cy="${y}" r="1.6" fill="${laco}"/>`;
+    let tras = '', frente = '';
+    switch (estilo) {
+      case 'franja': frente = capa.reta; break;
+      case 'lateral': frente = capa.lado; break;
+      case 'longo':
+        tras = `<path d="M9.5 14 C3 19 2.5 31 4.5 38 C5.6 41.5 9.6 42 12.4 40 C10 35.5 9.4 29 10.6 22z M38.5 14 C45 19 45.5 31 43.5 38 C42.4 41.5 38.4 42 35.6 40 C38 35.5 38.6 29 37.4 22z" fill="${cor}"/><path d="M6.6 24 C5.6 30 6 35 7.6 38.6 M41.4 24 C42.4 30 42 35 40.4 38.6" stroke="${esc}" stroke-width=".7" fill="none" stroke-linecap="round"/>`;
+        frente = capa.ondas; break;
+      case 'chanel':
+        tras = `<path d="M9 14 C4 18 3.6 27 5.4 32.6 C6.6 35.4 9.8 35.6 11.6 33.6 C10.6 29 10.6 24 11.4 20z M39 14 C44 18 44.4 27 42.6 32.6 C41.4 35.4 38.2 35.6 36.4 33.6 C37.4 29 37.4 24 36.6 20z" fill="${cor}"/>`;
+        frente = capa.reta; break;
+      case 'rabo':
+        tras = `<path d="M35 10.5 C44 8 49 13 47.6 22 C46.8 28 44 31.5 41 33 C43 27.5 43.2 21 39.6 15.6z" fill="${cor}"/><path d="M42 13 C45.6 16 45.8 23 43.4 29" stroke="${esc}" stroke-width=".7" fill="none" stroke-linecap="round"/>${lacinho(37, 11.6)}`;
+        frente = capa.lado; break;
+      case 'chiquinhas':
+        tras = `<path d="M10.5 13 C3.6 11 -0.8 16 0.4 23 C1.2 28 3.6 31 6.2 32 C5 27.5 5.6 21.5 9.4 17.6z M37.5 13 C44.4 11 48.8 16 47.6 23 C46.8 28 44.4 31 41.8 32 C43 27.5 42.4 21.5 38.6 17.6z" fill="${cor}"/>${lacinho(9.4, 14.4)}${lacinho(38.6, 14.4)}`;
+        frente = capa.ondas; break;
+      case 'coque':
+        tras = `<circle cx="24" cy="5.4" r="5.2" fill="${cor}"/><path d="M20.8 4.6 q3.2 -3 6.4 0 M21.6 7 q2.4 1.6 4.8 0" stroke="${esc}" stroke-width=".7" fill="none" stroke-linecap="round"/><ellipse cx="24" cy="9.6" rx="3.4" ry="1.1" fill="${laco}"/>`;
+        frente = capa.ondas; break;
+      case 'cacheado': {
+        const bolas = (pts, r) => pts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${cor}"/><path d="M${x - r * 0.45} ${y} a${r * 0.45} ${r * 0.45} 0 0 1 ${r * 0.9} 0" stroke="${esc}" stroke-width=".6" fill="none"/>`).join('');
+        tras = bolas([[5.8, 21], [4.6, 27], [5.6, 33], [42.2, 21], [43.4, 27], [42.4, 33]], 3.3);
+        const arco = []; for (let i = 0; i <= 8; i++) { const x = 8.4 + i * 3.9, dx = (x - 24) / 18.4; arco.push([+x.toFixed(1), +(25 - 16.4 * Math.sqrt(Math.max(0, 1 - dx * dx))).toFixed(1)]); }
+        frente = bolas(arco, 3.2); break;
+      }
+      default: break;
+    }
+    return { tras, frente: frente + (estilo === 'cacheado' ? '' : brilho) };
+  }
+
   let seq = 0;
   // o = { corpo, corpo2, olho, estiloOlho, acessorio, humor, tamanho, piscar }
   function svg(o = {}) {
-    const k = { corpo: '#F5F8FF', corpo2: '#C7D3F7', olho: '#1B1E2B', estiloOlho: 'redondo', acessorio: 'nenhum', piscar: true, cilios: false, blush: false, batom: false, ...o };
+    const k = { corpo: '#F5F8FF', corpo2: '#C7D3F7', olho: '#1B1E2B', estiloOlho: 'redondo', acessorio: 'nenhum', piscar: true, cilios: false, blush: false, batom: false, cabelo: 'nenhum', corCabelo: '#7A4A2E', ...o };
+    const cab = cabelo(k.cabelo, k.corCabelo);
     const tamanho = k.tamanho || 40;
     const humor = HUMORES[k.humor] ? k.humor : 'idle';
     const id = 'lm' + (++seq).toString(36);
@@ -127,11 +183,11 @@
     const pisca = k.piscar && ['idle', 'listen', 'talk', 'think', 'angry'].includes(humor) ? ' lm-pisca' : '';
     return `<svg class="lumi lm-${humor}" width="${tamanho}" height="${Math.round(tamanho * 0.92)}" viewBox="0 -6 50 46" overflow="visible" aria-hidden="true">
       <defs><radialGradient id="${id}" cx="40%" cy="30%" r="75%"><stop offset="0" stop-color="${k.corpo}"/><stop offset="1" stop-color="${k.corpo2}"/></radialGradient></defs>
-      <g class="lm-corpo">${topete}
+      <g class="lm-corpo">${topete}${cab.tras}
         <ellipse cx="7.6" cy="27" rx="3.2" ry="5" transform="rotate(-22 7.6 27)" fill="${k.corpo2}"/>
         <ellipse cx="40.4" cy="27" rx="3.2" ry="5" transform="rotate(22 40.4 27)" fill="${k.corpo2}"/>
         <ellipse cx="24" cy="25.5" rx="17" ry="15" fill="url(#${id})"/>
-        <ellipse cx="18" cy="17.6" rx="6.2" ry="3.2" transform="rotate(-18 18 17.6)" fill="#fff" opacity=".45"/>
+        <ellipse cx="18" cy="17.6" rx="6.2" ry="3.2" transform="rotate(-18 18 17.6)" fill="#fff" opacity=".45"/>${cab.frente}
         ${bochechas}
         <g data-olhos><g class="lm-olhos${pisca}">${olhos(humor, k.estiloOlho, k.olho)}${k.cilios ? cilios(humor, k.estiloOlho, k.olho) : ''}</g></g>
         ${boca(humor, k.batom ? '#E0457B' : k.olho)}${lagrimas}
@@ -174,7 +230,7 @@
     });
   }
 
-  const api = { svg, olhar, instalarCss, HUMORES, OLHOS, ACESSORIOS, CORPOS, CORES_OLHO };
+  const api = { svg, olhar, instalarCss, HUMORES, OLHOS, ACESSORIOS, CORPOS, CORES_OLHO, CABELOS, CORES_CABELO };
   if (typeof document !== 'undefined') instalarCss(document);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   raiz.MASCOTE = api;

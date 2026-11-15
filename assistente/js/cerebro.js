@@ -374,6 +374,14 @@
     // personalização
     m = /(?:muda|mudar|troca|trocar|fica|deixa)\s+(?:a\s+)?(?:sua\s+)?(?:cor\s+)?(?:para|pra|de|em)?\s*(?:a\s+cor\s+)?([a-zà-ú\s-]+)$/u.exec(s);
     if (m && /cor/.test(s)) { const c = CORES_FALA.find(([re]) => re.test(m[1])); if (c) return { tipo: 'visual', corpo: c[1] }; }
+    // cabelo: penteado e cor ("faz um coque", "cabelo ruivo", "solta o cabelo", "tira o cabelo")
+    if (/cabel|franj|rabo de cavalo|rabinho|maria[- ]chiquinha|chiquinhas|coque|chanel|cachead|cachos|careca|penteado/u.test(s) && !/tarefa|lembr|timer|alarme/u.test(s)) {
+      const PENTEADOS = [[/rabo de cavalo|rabinho/, 'rabo'], [/maria[- ]chiquinha|chiquinhas/, 'chiquinhas'], [/coque/, 'coque'], [/chanel|curto/, 'chanel'],
+        [/cachead|cachos|crespo/, 'cacheado'], [/franj\w* de lado|de lado/, 'lateral'], [/franj/, 'franja'], [/solt|long|comprid/, 'longo'], [/careca|sem cabelo|tira o cabelo|tirar o cabelo/, 'nenhum']];
+      const CORES_CAB = [[/castanh|marrom/, 0], [/pret/, 1], [/loir|dourad|amarel/, 2], [/ruiv|ruiva|laranja|vermelh/, 3], [/rosa|pink/, 4], [/lil[aá]s|roxo/, 5], [/azul/, 6], [/branc|grisalh|prateado/, 7]];
+      const pe = PENTEADOS.find(([re]) => re.test(s)), co = CORES_CAB.find(([re]) => re.test(s));
+      if (pe || co) { const r = { tipo: 'visual' }; if (pe) r.cabelo = pe[1]; if (co) r.corCabelo = co[1]; return r; }
+    }
     m = /(?:passa|passar|coloca|colocar|p[oõ]e|usa|bota|tira|tirar|remove|apaga)\s+(?:o\s+|a\s+|os\s+|um\s+|seu\s+|sua\s+|seus\s+)?(batom|c[ií]lios|blush)/u.exec(s);
     if (m) return { tipo: 'visual', detalhe: /batom/.test(m[1]) ? 'batom' : /blush/.test(m[1]) ? 'blush' : 'cilios', ligar: !/^(?:tira|tirar|remove|apaga)/.test(s) };
     if (/(?:tira|tirar|remove)\s+(?:o\s+|a\s+|os\s+|seu\s+|sua\s+)?(?:acess[oó]rio|chap[eé]u|coroa|fones?|la[cç]o|gorro|bon[eé]|[oó]culos|aur[eé]ola|chifr|flor|cartola|tiara|brinco|presilha)/u.test(s)) return { tipo: 'visual', acessorio: 'nenhum' };
