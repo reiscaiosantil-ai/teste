@@ -51,9 +51,13 @@ Também tem: 13 expressões do mascote (dorme quando você some, acorda quando v
 - **Ele falar:** por padrão usa as vozes do computador (funciona offline; velocidade e tom ficam em Ajustes). Em **Ajustes → Tipo de voz → Google AI Studio (Gemini)** dá para usar uma das vozes femininas do Gemini (Leda, Kore, Aoede, Zephyr, Despina, Sulafat…), bem mais naturais. Precisa de internet e de uma chave grátis criada em aistudio.google.com ("Get API key"); a chave fica só no navegador e o uso conta na cota da sua conta Google. O jeito de falar acompanha a personalidade escolhida. Se a voz do Google falhar (chave errada, limite de uso, sem internet), ele avisa e usa a voz do computador.
 - No app Electron, a resposta em voz funciona, mas o **reconhecimento de voz do Chromium não funciona dentro do Electron**; lá use texto ou o Lumi no Chrome/Edge. Reconhecimento offline (ex.: Vosk) é um próximo passo possível.
 
-## IA para conversar (opcional)
+## Cérebro para conversar (opcional)
 
-Sem IA, ele entende os comandos acima localmente. Com uma chave da API do Claude em **Ajustes**, pedidos que ele não entende vão para o modelo escolhido (padrão `claude-opus-5-5`, com fallback automático do servidor se o modelo recusar). A chave fica só no `localStorage` do navegador e a página fala direto com a API da Anthropic; o uso é cobrado na conta da chave. Use apenas no seu próprio computador.
+Os comandos acima funcionam sempre, sem cérebro. Para o resto (perguntas, pesquisas, textos, procurar arquivos), escolha em **Ajustes → Cérebro**:
+
+- **Claude Code (sua assinatura)** — só no app instalado. Usa o Claude Code do computador, logado com a sua conta do Claude, sem pagar API (conta nos limites do seu plano). Mesmo esquema do Jarvis: `claude -p` com resposta em JSON e `--resume` para continuar a conversa; o pedido vai pela entrada padrão, nunca pela linha de comando. Ferramentas liberadas: ler arquivos (Área de Trabalho, Documentos, Downloads), pesquisar na web e escrever notas em `Documentos/Lumi/cerebro/Notas`. Ele não apaga, move nem altera seus arquivos. Cada resposta leva alguns segundos (cerca de 8 s no teste). Modelo padrão: Sonnet.
+- **API do Claude (chave)** — funciona também no navegador; cobrada à parte na conta do Console (padrão `claude-opus-5-5`, com fallback automático do servidor se o modelo recusar). A chave fica só no armazenamento local.
+- **Automático** (padrão) — usa o Claude Code se estiver instalado; senão a API, se houver chave; senão só os comandos.
 
 ## Serviços externos (gratuitos, sem chave)
 

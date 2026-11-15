@@ -21,7 +21,7 @@
     cfg: {
       nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo',
       voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', somenteExecutar: false, sempreOuvindo: false,
-      cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', volume: 70, pausas: false,
+      cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', volume: 70, pausas: false,
     },
     xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [],
     habitos: { dia: hojeStr(), agua: 0, meta: 8, leitura: 0, exercicio: 0 },
@@ -48,6 +48,7 @@
     ouvindo: false, parcial: '', falando: false, alarme: null, crono: { rodando: false, inicio: 0, acum: 0 },
     musica: { lista: [], i: 0, tocando: false }, rascunhos: {}, previa: 'happy', ultimaAtividade: Date.now(), ultimaPausa: Date.now(),
     lugar: null, pendente: null,
+    cc: null, // estado do Claude Code no computador (só no app instalado)
     spotify: null, spotifyUltima: null, // Spotify do computador (só no app instalado)
   };
 
@@ -232,6 +233,28 @@
     if (ev === 'ended') { if (R.musica.lista.length > 1) tocarFaixa(R.musica.i + 1); else R.musica.tocando = false; }
     render();
   }));
+
+  /* ================= cérebro: Claude Code (assinatura) ou API (chave) ================= */
+  const CC = window.lumiDesktop && window.lumiDesktop.claudeCode ? window.lumiDesktop.claudeCode : null;
+  function motorCerebro() {
+    const c = S.cfg.cerebro || 'auto';
+    if (c === 'local') return null;
+    if (CC && (c === 'claudecode' || (c === 'auto' && R.cc && R.cc.instalado))) return 'cc';
+    if ((c === 'api' || c === 'auto') && S.cfg.iaChave && window.IA) return 'api';
+    return null;
+  }
+  function perguntarClaudeCode(pedido) {
+    return trabalhar('💭', 'Pensando', async () => {
+      const lento = setTimeout(() => { if (R.trabalho) falar('Só um instante, estou pensando.'); }, 9000); // o Claude Code leva alguns segundos
+      try {
+        const r = await CC.pensar({ pedido, nome: S.cfg.nome, usuario: S.cfg.usuario, personalidade: S.cfg.personalidade, modelo: S.cfg.ccModelo });
+        if (r && r.erro === 'ausente' && R.cc) R.cc = { ...R.cc, instalado: false };
+        return { texto: (r && r.texto) || 'Sem resposta do Claude Code.', humor: r && r.erro ? 'cry' : 'happy', erro: !!(r && r.erro) };
+      } catch (e) {
+        return { texto: 'Não consegui falar com o Claude Code: ' + (e && e.message ? e.message : e), humor: 'cry', erro: true };
+      } finally { clearTimeout(lento); }
+    });
+  }
 
   /* ================= Spotify do computador (app instalado) ================= */
   const SPOT = window.lumiDesktop && window.lumiDesktop.spotify ? window.lumiDesktop.spotify : null;
@@ -451,7 +474,7 @@
         html: `Eu sei fazer um monte de coisa! Experimente:<br>⏱ <b>timer de 10 minutos para a pizza</b><br>⏰ <b>me lembra de ligar pro cliente em 30 minutos</b> · <b>alarme às 7h</b><br>✅ <b>cria uma tarefa comprar pão</b> · <b>minhas tarefas</b><br>🎵 <b>toca uma música</b> · <b>próxima</b> · <b>volume 50</b><br>🌤️ <b>vai chover hoje?</b> · 💵 <b>quanto está o dólar?</b><br>🧮 <b>quanto é 15% de 230</b> · 🌍 <b>traduz para inglês bom dia</b><br>📝 <b>anota que preciso comprar café</b> · 💧 <b>bebi um copo de água</b><br>🔐 <b>gera uma senha de 20</b> · 📋 <b>copia meu pix</b> · 🪙 <b>cara ou coroa</b><br>🎄 <b>quantos dias faltam pro Natal?</b> · 😂 <b>conta uma piada</b><br>🎨 <b>coloca a coroa</b> · <b>muda sua cor para rosa</b>`,
         fala: 'Eu marco timers, lembretes, alarmes e tarefas, toco música, vejo o clima e o dólar, faço contas, traduzo, anoto coisas e conto piadas. Os exemplos estão na tela.',
       };
-      case 'desktop': return { texto: 'Isso mexe direto nos arquivos e programas do seu PC, e por segurança eu ainda não faço. Posso criar uma tarefa ou um lembrete pra você não esquecer?', humor: 'think' };
+      case 'desktop': if (motorCerebro() === 'cc') return perguntarClaudeCode(original); return { texto: 'Isso mexe direto nos arquivos e programas do seu PC, e por segurança eu ainda não faço. Posso criar uma tarefa ou um lembrete pra você não esquecer?', humor: 'think' };
       case 'pergunta': if (a.pendente) R.pendente = a.pendente; return { texto: a.texto, humor: 'think' };
 
       case 'timer': {
@@ -632,7 +655,8 @@
 
       case 'desconhecido':
       default:
-        if (S.cfg.iaChave && window.IA) {
+        if (motorCerebro() === 'cc') return perguntarClaudeCode(original);
+        if (motorCerebro() === 'api') {
           return trabalhar('💭', 'Pensando', async () => {
             const hist = []; for (const m of S.chat.slice(-12)) { const role = m.q === 'u' ? 'user' : 'assistant'; if (hist.length && hist[hist.length - 1].role === role) hist[hist.length - 1].content += '\n' + m.t; else hist.push({ role, content: m.t }); }
             while (hist.length && hist[0].role !== 'user') hist.shift();
@@ -857,10 +881,18 @@
       <div class="campo"><label for="cPix">Sua chave PIX</label><input id="cPix" data-cfg="pix" value="${esc(c.pix)}" placeholder="e-mail, telefone, CPF ou aleatória"><small>Para "copia meu pix"</small></div></div>
       <div class="secao">Avisos</div>
       <div class="chave"><div>Notificações do sistema<small>${perm === 'granted' ? 'Ativadas ✅' : perm === 'denied' ? 'Bloqueadas no navegador. Libere nas configurações do site.' : 'Para avisar timers e lembretes mesmo com a janela em segundo plano'}</small></div>${perm === 'default' ? '<button class="btn fantasma" data-acao="notificacoes">Ativar</button>' : ''}</div>
-      <div class="secao">IA para conversar (opcional)</div>
-      <div class="nota-aviso">Sem IA, o ${esc(c.nome)} entende os comandos do dia a dia. Com uma chave da API do Claude, ele também conversa sobre qualquer assunto. A chave fica salva só neste navegador e o uso é cobrado pela Anthropic na sua conta.</div>
+      <div class="secao">Cérebro (para conversar e pesquisar)</div>
+      <div class="nota-aviso">Os comandos do dia a dia funcionam sempre, sem cérebro. O cérebro responde o resto: perguntas, pesquisas na internet, textos e procurar arquivos no seu PC.</div>
+      <div class="grade2"><div class="campo"><label for="cCerebro">Cérebro</label><select id="cCerebro" data-cfg="cerebro">${[['auto', 'Automático'], ['claudecode', 'Claude Code (sua assinatura)'], ['api', 'API do Claude (chave paga à parte)'], ['local', 'Só os comandos da ' + esc(c.nome)]].map(([v, n]) => `<option value="${v}"${v === (c.cerebro || 'auto') ? ' selected' : ''}>${n}</option>`).join('')}</select>
+        <small>${(() => { const m = motorCerebro(); return m === 'cc' ? '✅ Usando o Claude Code' : m === 'api' ? '✅ Usando a API do Claude' : 'Sem cérebro: só os comandos'; })()}</small></div>
+      <div class="campo"><span>&nbsp;</span><button class="btn fantasma" data-acao="cc-nova">🧹 Nova conversa</button></div></div>
+      ${(c.cerebro || 'auto') !== 'api' && (c.cerebro || 'auto') !== 'local' ? (CC
+        ? `<div class="chave"><div>Claude Code neste computador<small>${R.cc === null ? 'Procurando…' : R.cc.instalado ? `Encontrado${R.cc.versao ? ' (versão ' + esc(R.cc.versao) + ')' : ''}. Usa a sua assinatura do Claude, sem pagar API. Cada resposta leva alguns segundos. Notas ficam em Documentos/Lumi/cerebro.` : 'Não encontrado. Instale o Claude Code, abra o terminal, digite claude e faça o login; depois reabra o app.'}</small></div><button class="btn fantasma" data-acao="cc-status">Verificar</button></div>
+        <div class="campo"><label for="cCcModelo">Modelo do Claude Code</label><select id="cCcModelo" data-cfg="ccModelo">${[['sonnet', 'Sonnet (rápido, recomendado para voz)'], ['opus', 'Opus (mais capaz, mais lento)'], ['haiku', 'Haiku (o mais rápido)']].map(([v, n]) => `<option value="${v}"${v === c.ccModelo ? ' selected' : ''}>${n}</option>`).join('')}</select></div>`
+        : '<div class="nota-aviso">O Claude Code como cérebro só funciona no app instalado (Lumi-Instalador.exe).</div>') : ''}
+      ${(c.cerebro || 'auto') === 'api' || ((c.cerebro || 'auto') === 'auto' && !(CC && R.cc && R.cc.instalado)) ? `<div class="nota-aviso">API do Claude: cobrada à parte pela Anthropic na sua conta do Console. A chave fica salva só neste computador.</div>
       <div class="grade2"><div class="campo"><label for="cIa">Chave da API (Claude)</label><input id="cIa" type="password" data-cfg="iaChave" value="${esc(c.iaChave)}" placeholder="sk-ant-…" autocomplete="off"><small>Crie em console.anthropic.com</small></div>
-      <div class="campo"><label for="cModelo">Modelo</label><select id="cModelo" data-cfg="iaModelo">${[['claude-opus-5-5', 'Claude Opus 5.5 (mais capaz)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (equilibrado)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (mais rápido e barato)']].map(([v, n]) => `<option value="${v}"${v === c.iaModelo ? ' selected' : ''}>${n}</option>`).join('')}</select></div></div>
+      <div class="campo"><label for="cModelo">Modelo</label><select id="cModelo" data-cfg="iaModelo">${[['claude-opus-5-5', 'Claude Opus 5.5 (mais capaz)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (equilibrado)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (mais rápido e barato)']].map(([v, n]) => `<option value="${v}"${v === c.iaModelo ? ' selected' : ''}>${n}</option>`).join('')}</select></div></div>` : ''}
       <div class="secao">Dados</div>
       <div class="form"><button class="btn fantasma" data-acao="limpar-conversa">Limpar conversa</button><button class="btn perigo" data-acao="apagar-tudo">Apagar tudo</button></div></div>`;
   }
@@ -957,6 +989,8 @@
     },
     'testar-voz': () => { avisouGoogle = false; falar(`Oi${S.cfg.usuario ? ' ' + S.cfg.usuario : ''}! Eu sou o ${S.cfg.nome}. É assim que eu falo.`, true); },
     notificacoes: () => pedirNotificacoes(),
+    'cc-nova': async () => { if (CC) await CC.nova(); aviso('🧹 Comecei uma conversa nova'); },
+    'cc-status': async () => { if (!CC) return; R.cc = null; renderPrincipal(); R.cc = await CC.status().catch(() => ({ instalado: false })); },
     'limpar-conversa': () => { S.chat = []; salvar(); aviso('Conversa apagada'); },
     'apagar-tudo': () => { if (!confirm(`Apagar tarefas, notas, hábitos, conversa e ajustes do ${S.cfg.nome}?`)) return; try { localStorage.removeItem(CHAVE); } catch (_) { /* ignora */ } location.reload(); },
     'buscar-pos': (el, e) => { if (!audio.duration) return; const r = el.getBoundingClientRect(); audio.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * audio.duration; },
@@ -999,7 +1033,7 @@
     S.cfg[k] = v; salvar();
     if (k === 'cidade') { R.lugar = null; atualizarWidgetClima(); }
     if (/^(vozMotor|gemini)/.test(k)) { avisouGoogle = false; cacheFala.clear(); }
-    if (k === 'vozMotor') renderPrincipal();
+    if (k === 'vozMotor' || k === 'cerebro') renderPrincipal();
     if (k === 'nome' || k === 'usuario') renderLado();
   });
   $('#arquivosMusica').addEventListener('change', (e) => { adicionarMusicas(e.target.files); e.target.value = ''; });
@@ -1028,6 +1062,7 @@
   function relogio() { const d = new Date(); $('#wHora').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`; $('#wData').textContent = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' }); }
 
   /* app de computador (Electron) */
+  if (CC) CC.status().then((st) => { R.cc = st; render(); }).catch(() => { R.cc = { instalado: false }; });
   if (SPOT) { SPOT.aoMudar(receberSpotify); SPOT.estado().then(receberSpotify).catch(() => {}); }
   if (window.lumiDesktop) {
     window.lumiDesktop.aoAtalho((qual) => { if (qual === 'ouvir') { abrir(); ouvir(); } else if (R.aberto) fechar(); else abrir(true); });

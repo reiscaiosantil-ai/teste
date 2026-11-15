@@ -4,6 +4,11 @@ contextBridge.exposeInMainWorld('lumiDesktop', {
   mouse: (dentro) => ipcRenderer.send('lumi:mouse', !!dentro),
   aberto: (aberto) => ipcRenderer.send('lumi:aberto', !!aberto),
   aoAtalho: (fn) => ipcRenderer.on('lumi:atalho', (_e, qual) => fn(qual)),
+  claudeCode: {
+    status: () => ipcRenderer.invoke('lumi:cc-status'),
+    pensar: (dados) => ipcRenderer.invoke('lumi:cc-pensar', dados),
+    nova: () => ipcRenderer.invoke('lumi:cc-nova'),
+  },
   spotify: {
     estado: () => ipcRenderer.invoke('lumi:spotify-estado'),
     comando: (acao) => ipcRenderer.invoke('lumi:spotify-comando', acao),

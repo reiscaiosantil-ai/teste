@@ -3,6 +3,7 @@
 const { app, BrowserWindow, screen, ipcMain, globalShortcut, shell, session } = require('electron');
 const path = require('path');
 const spotify = require('./spotify');
+const claudeCode = require('./claude-code');
 
 const LARGURA = 900, ALTURA = 580;
 let janela = null, olhoSpotify = null;
@@ -43,6 +44,14 @@ app.whenReady().then(() => {
   // Spotify do computador: avisa a página quando a música muda
   olhoSpotify = spotify.iniciar((estado) => { if (janela && !janela.isDestroyed()) janela.webContents.send('lumi:spotify', estado); });
 });
+
+// cérebro pelo Claude Code instalado no PC (usa a assinatura do Claude)
+ipcMain.handle('lumi:cc-status', () => claudeCode.status());
+ipcMain.handle('lumi:cc-pensar', (_e, p) => claudeCode.pensar({
+  pedido: String((p && p.pedido) || ''), nome: String((p && p.nome) || 'Lumi').slice(0, 30),
+  usuario: String((p && p.usuario) || '').slice(0, 40), personalidade: String((p && p.personalidade) || 'fofo'), modelo: String((p && p.modelo) || 'sonnet'),
+}));
+ipcMain.handle('lumi:cc-nova', () => { claudeCode.novaConversa(); return true; });
 
 ipcMain.handle('lumi:spotify-estado', () => (olhoSpotify ? olhoSpotify.estado() : null));
 ipcMain.handle('lumi:spotify-comando', (_e, acao) => (olhoSpotify ? olhoSpotify.comando(String(acao)) : false));
