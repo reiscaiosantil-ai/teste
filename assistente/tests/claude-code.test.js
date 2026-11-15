@@ -18,5 +18,5 @@ test('só libera ferramentas seguras', () => {
 });
 test('CLAUDE.md leva nome, usuário e personalidade', () => {
   const md = cc.claudeMd({ nome: 'Sexta-feira', usuario: 'Caio', personalidade: 'zen' });
-  assert.match(md, /Você é Sexta-feira/); assert.match(md, /de Caio/); assert.match(md, /calmo/);
+  assert.match(md, /Você é Sexta-feira/); assert.match(md, /de Caio/); assert.match(md, /calma/); assert.match(md, /feminino/);
 });

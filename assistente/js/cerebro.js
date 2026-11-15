@@ -382,14 +382,14 @@
     if (m) return { tipo: 'usuario', nome: m[1].split(' ').map(cap).join(' ') };
 
     // humor e papo
-    if (/^(?:vai )?dorm(?:e|ir)|vai descansar|boa noite,? (?:lumi|fofo)?$|^tira um cochilo/u.test(s)) return { tipo: 'dormir' };
+    if (/^(?:vai )?dorm(?:e|ir)|vai descansar|boa noite,? (?:lumi|fof[oa])?$|^tira um cochilo/u.test(s)) return { tipo: 'dormir' };
     if (/^(?:acorda|acordar)$/u.test(s)) return { tipo: 'acordar' };
     if (/^(?:oi+|ol[aá]|e a[ií]|eai|opa|hey|bom dia|boa tarde|boa noite|salve|fala a[ií])\b/u.test(s)) return { tipo: 'saudacao', s };
     if (/tudo (?:bem|bom|certo|joia|tranquilo)|como (?:voc[eê] |vc )?(?:est[aá]|t[aá]|vai)/u.test(s)) return { tipo: 'como_vai' };
     if (/obrigad|valeu|brigad|agrade[cç]o|muito bom|mandou bem|show de bola/u.test(s)) return { tipo: 'obrigado' };
     if (/quem [eé] voc[eê]|qual (?:[eé] )?(?:o )?seu nome|como voc[eê] se chama|voc[eê] [eé] (?:um )?rob[oô]/u.test(s)) return { tipo: 'quem' };
-    if (/te amo|gosto (?:muito )?de voc[eê]|voc[eê] [eé] (?:fofo|lindo|demais|incr[ií]vel|o melhor)/u.test(s)) return { tipo: 'carinho' };
-    if (/voc[eê] [eé] (?:chato|burro|feio|in[uú]til|ruim)|te odeio/u.test(s)) return { tipo: 'ofensa' };
+    if (/te amo|gosto (?:muito )?de voc[eê]|voc[eê] [eé] (?:fof[oa]|lind[oa]|demais|incr[ií]vel|[oa] melhor)/u.test(s)) return { tipo: 'carinho' };
+    if (/voc[eê] [eé] (?:chat[oa]|burr[oa]|fei[oa]|in[uú]til|ruim)|te odeio/u.test(s)) return { tipo: 'ofensa' };
 
     return { tipo: 'desconhecido', texto: s };
   }

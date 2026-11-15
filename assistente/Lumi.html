@@ -768,14 +768,14 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     if (m) return { tipo: 'usuario', nome: m[1].split(' ').map(cap).join(' ') };
 
     // humor e papo
-    if (/^(?:vai )?dorm(?:e|ir)|vai descansar|boa noite,? (?:lumi|fofo)?$|^tira um cochilo/u.test(s)) return { tipo: 'dormir' };
+    if (/^(?:vai )?dorm(?:e|ir)|vai descansar|boa noite,? (?:lumi|fof[oa])?$|^tira um cochilo/u.test(s)) return { tipo: 'dormir' };
     if (/^(?:acorda|acordar)$/u.test(s)) return { tipo: 'acordar' };
     if (/^(?:oi+|ol[aá]|e a[ií]|eai|opa|hey|bom dia|boa tarde|boa noite|salve|fala a[ií])\b/u.test(s)) return { tipo: 'saudacao', s };
     if (/tudo (?:bem|bom|certo|joia|tranquilo)|como (?:voc[eê] |vc )?(?:est[aá]|t[aá]|vai)/u.test(s)) return { tipo: 'como_vai' };
     if (/obrigad|valeu|brigad|agrade[cç]o|muito bom|mandou bem|show de bola/u.test(s)) return { tipo: 'obrigado' };
     if (/quem [eé] voc[eê]|qual (?:[eé] )?(?:o )?seu nome|como voc[eê] se chama|voc[eê] [eé] (?:um )?rob[oô]/u.test(s)) return { tipo: 'quem' };
-    if (/te amo|gosto (?:muito )?de voc[eê]|voc[eê] [eé] (?:fofo|lindo|demais|incr[ií]vel|o melhor)/u.test(s)) return { tipo: 'carinho' };
-    if (/voc[eê] [eé] (?:chato|burro|feio|in[uú]til|ruim)|te odeio/u.test(s)) return { tipo: 'ofensa' };
+    if (/te amo|gosto (?:muito )?de voc[eê]|voc[eê] [eé] (?:fof[oa]|lind[oa]|demais|incr[ií]vel|[oa] melhor)/u.test(s)) return { tipo: 'carinho' };
+    if (/voc[eê] [eé] (?:chat[oa]|burr[oa]|fei[oa]|in[uú]til|ruim)|te odeio/u.test(s)) return { tipo: 'ofensa' };
 
     return { tipo: 'desconhecido', texto: s };
   }
@@ -1081,11 +1081,11 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
 
   /* ================= personalidades ================= */
   const PERSONAS = {
-    fofo: { rotulo: 'Fofo', desc: 'fofo, carinhoso e animado; usa um emoji de vez em quando', ok: ['Prontinho! 💚', 'Feito! ✨', 'Pode deixar! 😊'], oi: ['Oiê! Que bom te ver 😊', 'Oi oi! Tô aqui 💚', 'Olá! Pronto pra ajudar ✨'], nao: ['Hmm, essa eu ainda não sei 🥺', 'Ops, não entendi direitinho 🥺'] },
-    divertido: { rotulo: 'Divertido', desc: 'brincalhão e bem-humorado, faz piadinhas leves', ok: ['Tá na mão! 😎', 'Feito, chefia! 🚀', 'Missão cumprida! 🏆'], oi: ['E aí! Bora fazer coisa boa hoje? 😄', 'Opa! Chegou quem faltava 🎉'], nao: ['Essa passou batido aqui no meu radar 😅', 'Buguei! Tenta de outro jeito? 🤖'] },
-    profissional: { rotulo: 'Profissional', desc: 'direto, educado e objetivo, sem emojis', ok: ['Feito.', 'Concluído.', 'Certo, já está registrado.'], oi: ['Olá. Como posso ajudar?', 'Bom te ver. Em que posso ajudar?'], nao: ['Não entendi o pedido. Pode reformular?'] },
-    sarcastico: { rotulo: 'Sarcástico', desc: 'sarcástico de um jeito simpático, com ironia leve e nunca grosseiro', ok: ['Feito. De nada, viu? 🙄', 'Pronto. Mais alguma tarefa hercúlea?', 'Feito, com toda a minha empolgação.'], oi: ['Ah, você de novo. Brincadeira, oi! 😏', 'Oi. Vamos fingir que é segunda-feira?'], nao: ['Ainda não sou vidente. Tenta explicar melhor?', 'Isso aí nem eu entendi. 🙃'] },
-    zen: { rotulo: 'Zen', desc: 'calmo, gentil e tranquilo, fala com serenidade', ok: ['Feito. Respira fundo 🌿', 'Tudo certo. Um passo de cada vez 🍃'], oi: ['Olá. Que seu dia flua leve 🌿', 'Oi. Estou aqui, com calma 🍃'], nao: ['Não compreendi. Vamos tentar de novo, sem pressa 🌿'] },
+    fofo: { rotulo: 'Fofa', desc: 'fofa, carinhosa e animada; usa um emoji de vez em quando', ok: ['Prontinho! 💚', 'Feito! ✨', 'Pode deixar! 😊'], oi: ['Oiê! Que bom te ver 😊', 'Oi oi! Tô aqui 💚', 'Olá! Pronto pra ajudar ✨'], nao: ['Hmm, essa eu ainda não sei 🥺', 'Ops, não entendi direitinho 🥺'] },
+    divertido: { rotulo: 'Divertida', desc: 'brincalhona e bem-humorada, faz piadinhas leves', ok: ['Tá na mão! 😎', 'Feito, chefia! 🚀', 'Missão cumprida! 🏆'], oi: ['E aí! Bora fazer coisa boa hoje? 😄', 'Opa! Chegou quem faltava 🎉'], nao: ['Essa passou batido aqui no meu radar 😅', 'Buguei! Tenta de outro jeito? 🤖'] },
+    profissional: { rotulo: 'Profissional', desc: 'direta, educada e objetiva, sem emojis', ok: ['Feito.', 'Concluído.', 'Certo, já está registrado.'], oi: ['Olá. Como posso ajudar?', 'Bom te ver. Em que posso ajudar?'], nao: ['Não entendi o pedido. Pode reformular?'] },
+    sarcastico: { rotulo: 'Sarcástica', desc: 'sarcástica de um jeito simpático, com ironia leve e nunca grosseiro', ok: ['Feito. De nada, viu? 🙄', 'Pronto. Mais alguma tarefa hercúlea?', 'Feito, com toda a minha empolgação.'], oi: ['Ah, você de novo. Brincadeira, oi! 😏', 'Oi. Vamos fingir que é segunda-feira?'], nao: ['Ainda não sou vidente. Tenta explicar melhor?', 'Isso aí nem eu entendi. 🙃'] },
+    zen: { rotulo: 'Zen', desc: 'calma, gentil e tranquila, fala com serenidade', ok: ['Feito. Respira fundo 🌿', 'Tudo certo. Um passo de cada vez 🍃'], oi: ['Olá. Que seu dia flua leve 🌿', 'Oi. Estou aqui, com calma 🍃'], nao: ['Não compreendi. Vamos tentar de novo, sem pressa 🌿'] },
   };
   const P = () => PERSONAS[S.cfg.personalidade] || PERSONAS.fofo;
 
@@ -1317,7 +1317,12 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   if ('speechSynthesis' in window) { carregarVozes(); speechSynthesis.onvoiceschanged = () => { carregarVozes(); if (R.view === 'ajustes' && R.aberto) renderPrincipal(); }; }
   function escolherVoz() {
     if (!vozes.length) carregarVozes();
-    return vozes.find((v) => v.name === S.cfg.vozNome) || vozes.find((v) => /pt-BR/i.test(v.lang) && /google|francisca|maria|luciana|natural/i.test(v.name)) || vozes.find((v) => /pt-BR/i.test(v.lang)) || vozes[0] || null;
+    // a assistente é mulher: por padrão, prefere vozes femininas em português do Brasil
+    const FEM = /francisca|maria|luciana|thalita|let[ií]cia|brenda|elza|manuela|yara|giovanna|leila|camila|vit[oó]ria|raquel|female|feminina/i;
+    const MASC = /daniel|ant[oô]nio|ricardo|felipe|donato|f[aá]bio|humberto|j[uú]lio|nicolau|val[eé]rio|male\b|masculin/i;
+    const br = vozes.filter((v) => /pt-BR/i.test(v.lang));
+    return vozes.find((v) => v.name === S.cfg.vozNome) || br.find((v) => FEM.test(v.name) && /natural|online|neural/i.test(v.name)) || br.find((v) => FEM.test(v.name))
+      || br.find((v) => /google/i.test(v.name)) || br.find((v) => !MASC.test(v.name)) || vozes.find((v) => FEM.test(v.name)) || br[0] || vozes[0] || null;
   }
   function textoFalavel(t) {
     return String(t).replace(/<[^>]+>/g, ' ').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}\u{20E3}]/gu, '').replace(/https?:\/\/\S+/g, 'o link').replace(/\s+/g, ' ').trim();
@@ -1749,7 +1754,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
         if (a.corpo !== undefined) S.cfg.corpo = a.corpo;
         if (a.acessorio) S.cfg.acessorio = a.acessorio;
         salvar();
-        return { texto: a.acessorio === 'nenhum' ? 'Prontinho, sem acessório.' : a.acessorio ? `Que tal? Fiquei lindo de ${M.ACESSORIOS[a.acessorio].toLowerCase()}! ✨` : `Cor nova: ${M.CORPOS[S.cfg.corpo][0]}! ✨`, humor: 'love' };
+        return { texto: a.acessorio === 'nenhum' ? 'Prontinho, sem acessório.' : a.acessorio ? `Que tal? Fiquei linda de ${M.ACESSORIOS[a.acessorio].toLowerCase()}! ✨` : `Cor nova: ${M.CORPOS[S.cfg.corpo][0]}! ✨`, humor: 'love' };
       case 'renomear': S.cfg.nome = a.nome; salvar(); return { texto: `Adorei! Agora meu nome é ${a.nome}. Pode me chamar de "Ei, ${a.nome}". 💚`, humor: 'love' };
       case 'usuario': S.cfg.usuario = a.nome; salvar(); return { texto: `Prazer, ${a.nome}! Vou lembrar disso. 😊`, humor: 'love' };
       case 'dormir': return { texto: 'Zzz… me chama se precisar. 😴', humor: 'sleep' };
@@ -1758,9 +1763,9 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
         const h = new Date().getHours(); const per = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
         return { texto: /bom dia|boa tarde|boa noite/.test(a.s || '') ? `${per}${quem}! ${pick(p.oi)}` : pick(p.oi), humor: 'happy' };
       }
-      case 'como_vai': return { texto: pick(['Tô ótimo, morando aqui no topo da sua tela! E você?', 'Tudo ótimo por aqui! Bateria cheia de vontade de ajudar. E aí?']), humor: 'happy' };
+      case 'como_vai': return { texto: pick(['Tô ótima, morando aqui no topo da sua tela! E você?', 'Tudo ótimo por aqui! Bateria cheia de vontade de ajudar. E aí?']), humor: 'happy' };
       case 'obrigado': return { texto: pick(['De nada! 💚', 'Sempre que precisar!', 'Imagina! Foi um prazer.']), humor: 'love' };
-      case 'quem': return { texto: `Eu sou o ${nome}, seu assistente que mora no topo da tela! Marco lembretes, timers, tarefas, toco música e converso com você. 🤖`, humor: 'happy' };
+      case 'quem': return { texto: `Eu sou a ${nome}, sua assistente que mora no topo da tela! Marco lembretes, timers, tarefas, toco música e converso com você. 🤖`, humor: 'happy' };
       case 'carinho': return { texto: pick(['Ownn! Também gosto muito de você 💚', 'Assim eu fico sem graça! 🥰']), humor: 'love' };
       case 'ofensa': return { texto: pick(['Poxa… vou me esforçar mais. 😢', 'Ai, essa doeu. 💔']), humor: 'cry' };
 
@@ -1772,7 +1777,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
             const hist = []; for (const m of S.chat.slice(-12)) { const role = m.q === 'u' ? 'user' : 'assistant'; if (hist.length && hist[hist.length - 1].role === role) hist[hist.length - 1].content += '\n' + m.t; else hist.push({ role, content: m.t }); }
             while (hist.length && hist[0].role !== 'user') hist.shift();
             const d = new Date();
-            const sistema = `Você é ${nome}, um assistente virtual que mora no topo da tela do computador${S.cfg.usuario ? ' de ' + S.cfg.usuario : ''}. Personalidade: ${p.desc}. ` +
+            const sistema = `Você é ${nome}, uma assistente virtual (mulher, fale no feminino) que mora no topo da tela do computador${S.cfg.usuario ? ' de ' + S.cfg.usuario : ''}. Personalidade: ${p.desc}. ` +
               'Responda sempre em português do Brasil, com no máximo 3 frases curtas, porque a resposta pode ser lida em voz alta. Não use markdown, listas nem títulos. ' +
               'Se pedirem algo que você não consegue fazer no computador, diga isso com honestidade e sugira um comando simples como "me lembra de…", "timer de…" ou "cria uma tarefa…". ' +
               `Hoje é ${d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${pad(d.getHours())}:${pad(d.getMinutes())}.`;
@@ -1852,7 +1857,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   function renderLado() {
     const nv = Math.floor(S.xp / 50) + 1, pct = (S.xp % 50) * 2;
     const cont = { tarefas: S.tarefas.filter((t) => !t.feito).length || '', habitos: `${S.habitos.agua}/${S.habitos.meta}`, timers: S.timers.length + (R.crono.rodando ? 1 : 0) || '', musica: R.musica.lista.length || (spotTocando() ? '♪' : ''), notas: S.notas.length || '' };
-    const estado = R.ouvindo ? '● Ouvindo' : R.falando ? '● Falando' : R.pensando ? '● Pensando' : S.cfg.sempreOuvindo ? '● Esperando "Ei, ' + esc(S.cfg.nome) + '"' : '● Pronto';
+    const estado = R.ouvindo ? '● Ouvindo' : R.falando ? '● Falando' : R.pensando ? '● Pensando' : S.cfg.sempreOuvindo ? '● Esperando "Ei, ' + esc(S.cfg.nome) + '"' : '● Pronta';
     lado.innerHTML = `<div class="eu" data-v="visual" title="Mudar o visual"><span id="euMascote">${K(46)}</span><div><b>${esc(S.cfg.nome)}</b><small class="${S.cfg.sempreOuvindo ? 'on' : ''}">${estado}</small><div class="nivel"><em>Nv ${nv}</em><i><b style="width:${pct}%"></b></i></div></div></div>` +
       NAV.map(([k, i, l]) => `<button class="nv${R.view === k ? ' on' : ''}" data-v="${k}">${i} ${l}${cont[k] ? `<span class="c">${cont[k]}</span>` : ''}</button>`).join('');
   }
@@ -1887,9 +1892,9 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     const h = new Date().getHours(); const per = h < 5 ? 'Boa madrugada' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
     const conversa = S.chat.length
       ? S.chat.slice(-30).map((m) => `<div class="msg ${m.q}">${m.h || esc(m.t)}</div>`).join('') + (R.pensando ? '<div class="digitando"><i></i><i></i><i></i></div>' : '')
-      : `<div class="vazio">${K(64, 'happy')}<br>Oi! Eu sou o ${esc(S.cfg.nome)} 👋<br>Toque numa sugestão, escreva ou fale comigo.</div>`;
+      : `<div class="vazio">${K(64, 'happy')}<br>Oi! Eu sou a ${esc(S.cfg.nome)} 👋<br>Toque numa sugestão, escreva ou fale comigo.</div>`;
     return `<h4>${per}${S.cfg.usuario ? ', ' + esc(S.cfg.usuario) : ''}!</h4><div class="sub">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} · diga "ajuda" para ver tudo que eu faço</div>
-      <form class="perguntar" id="formPergunta" autocomplete="off"><input id="campo" placeholder="${R.ouvindo ? 'Ouvindo…' : `Escreva ou fale com o ${esc(S.cfg.nome)}…`}" aria-label="Mensagem para o assistente" enterkeyhint="send">
+      <form class="perguntar" id="formPergunta" autocomplete="off"><input id="campo" placeholder="${R.ouvindo ? 'Ouvindo…' : `Escreva ou fale com a ${esc(S.cfg.nome)}…`}" aria-label="Mensagem para a assistente" enterkeyhint="send">
         <button type="button" class="mic${R.ouvindo ? ' on' : ''}" data-acao="ouvir" aria-label="Falar" ${temVoz() ? '' : `disabled title="${window.lumiDesktop ? 'A voz offline não foi encontrada neste app' : 'Use o Chrome ou o Edge para falar'}"`}>${MIC}</button><button type="submit" class="enviar" aria-label="Enviar">➤</button></form>
       <div class="chips">${SUGESTOES.map((s) => `<button class="chip" data-diz="${esc(s)}">${esc(s)}</button>`).join('')}</div>
       <div class="meio"><div class="conversa" id="conversa">${conversa}</div>${mini()}</div>`;
@@ -1927,7 +1932,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   function vTimers() {
     const presets = [['Chá', 3], ['Pizza', 15], ['Foco', 25], ['Pausa', 5], ['Rapidinho', 1]];
     const ativos = S.timers.slice().sort((a, b) => a.fim - b.fim).map((t) => { const resta = (t.fim - Date.now()) / 1000; return `<div class="linha"><div class="t">${esc(t.nome)}<small>de ${durTxt(t.total)}</small><div class="barra"><i data-timerbar="${t.id}" style="width:${100 - resta / t.total * 100}%"></i></div></div><span class="tm" data-timer="${t.id}">${mmss(resta)}</span><button class="rb x" data-acao="timer-del" data-id="${t.id}" aria-label="Cancelar timer">✕</button></div>`; }).join('');
-    return `<h4>Timers</h4><div class="sub">O timer aparece correndo ao lado do ${esc(S.cfg.nome)} no topo</div>
+    return `<h4>Timers</h4><div class="sub">O timer aparece correndo ao lado da ${esc(S.cfg.nome)} no topo</div>
       <div class="chips" style="margin:0 0 10px">${presets.map(([n, m]) => `<button class="chip" data-acao="timer-novo" data-min="${m}" data-nome="${n}">${n} · ${m} min</button>`).join('')}</div>
       <form class="form" id="formTimer"><input class="grow" id="timerNome" placeholder="Nome (opcional)" aria-label="Nome do timer"><input id="timerMin" type="number" min="0.1" step="any" placeholder="min" style="width:80px" aria-label="Minutos"><button class="btn" type="submit">Iniciar</button></form>
       <div class="rolar">${ativos || '<div class="sub">Nenhum timer rodando.</div>'}
@@ -1959,7 +1964,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     return `<h4>Notas</h4><div class="sub">Diga "anota que…" ou escreva aqui</div>
       <form class="form" id="formNota"><textarea id="novaNota" rows="2" placeholder="Escreva uma nota…" aria-label="Nova nota"></textarea><button class="btn" type="submit">Salvar</button></form>
       <div class="rolar">${S.notas.length ? S.notas.map((n) => `<div class="linha"><div class="t">${esc(n.t)}<small>${quandoTxt(n.ts)}</small></div><button class="rb" data-acao="copiar-nota" data-id="${n.id}" aria-label="Copiar">📋</button><button class="rb x" data-acao="nota-del" data-id="${n.id}" aria-label="Apagar">✕</button></div>`).join('') : '<div class="sub">Nenhuma nota ainda.</div>'}
-      ${S.copiados.length ? `<div class="secao">Copiados pelo ${esc(S.cfg.nome)}</div>${S.copiados.map((c) => `<div class="linha"><div class="t"><span style="font-family:var(--f-mono);font-size:12.5px">${esc(c.t.length > 80 ? c.t.slice(0, 80) + '…' : c.t)}</span><small>${esc(c.r)} · ${quandoTxt(c.ts)}</small></div><button class="rb" data-acao="copiar-de-novo" data-id="${c.id}" aria-label="Copiar de novo">📋</button></div>`).join('')}<button class="btn fantasma" data-acao="limpar-copiados">Limpar histórico</button>` : ''}</div>`;
+      ${S.copiados.length ? `<div class="secao">Copiados pela ${esc(S.cfg.nome)}</div>${S.copiados.map((c) => `<div class="linha"><div class="t"><span style="font-family:var(--f-mono);font-size:12.5px">${esc(c.t.length > 80 ? c.t.slice(0, 80) + '…' : c.t)}</span><small>${esc(c.r)} · ${quandoTxt(c.ts)}</small></div><button class="rb" data-acao="copiar-de-novo" data-id="${c.id}" aria-label="Copiar de novo">📋</button></div>`).join('')}<button class="btn fantasma" data-acao="limpar-copiados">Limpar histórico</button>` : ''}</div>`;
   }
   function vVisual() {
     const c = S.cfg;
@@ -1976,7 +1981,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     const tog = (k, titulo, sub, dis) => `<div class="chave"><div>${titulo}<small>${sub}</small></div><button class="tog${c[k] ? ' on' : ''}" data-acao="tog" data-cfg="${k}" aria-label="${titulo}" ${dis ? 'disabled' : ''}></button></div>`;
     const perm = 'Notification' in window ? Notification.permission : 'indisponível';
     return `<h4>Ajustes</h4><div class="sub">Tudo fica salvo só neste navegador</div><div class="rolar">
-      <div class="grade2"><div class="campo"><label for="cNome">Nome do assistente</label><input id="cNome" data-cfg="nome" value="${esc(c.nome)}" maxlength="20"></div>
+      <div class="grade2"><div class="campo"><label for="cNome">Nome da assistente</label><input id="cNome" data-cfg="nome" value="${esc(c.nome)}" maxlength="20"></div>
       <div class="campo"><label for="cUsuario">Seu nome</label><input id="cUsuario" data-cfg="usuario" value="${esc(c.usuario)}" maxlength="30" placeholder="Como devo te chamar?"></div></div>
       <div class="campo"><span>Personalidade</span><div class="chips" style="margin:0">${Object.entries(PERSONAS).map(([k, v]) => `<button class="chip${k === c.personalidade ? ' on' : ''}" data-acao="set" data-k="personalidade" data-val="${k}">${v.rotulo}</button>`).join('')}</div></div>
       <div class="secao">Voz</div>
@@ -1986,7 +1991,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
       ${tog('sempreOuvindo', `Sempre ouvindo "Ei, ${esc(c.nome)}"`, usarOffline() ? 'Reconhecimento offline, feito no seu computador: nada do que você fala sai do PC. Funciona melhor com nomes que são palavras em português.' : temVoz() ? 'O microfone fica ligado enquanto esta janela estiver aberta. O reconhecimento é feito pelo navegador.' : window.lumiDesktop ? 'A voz offline não foi encontrada neste app' : 'Precisa do Chrome ou do Edge', !temVoz())}
       <div class="grade2"><div class="campo"><label for="cMotor">Tipo de voz</label><select id="cMotor" data-cfg="vozMotor"><option value="navegador"${c.vozMotor !== 'google' ? ' selected' : ''}>Voz do computador (grátis, offline)</option><option value="google"${c.vozMotor === 'google' ? ' selected' : ''}>Google AI Studio (Gemini)</option></select></div>
       <div class="campo"><span>&nbsp;</span><button class="btn fantasma" data-acao="testar-voz">🔊 Testar voz</button></div></div>
-      ${c.vozMotor === 'google' ? `<div class="nota-aviso">Vozes femininas do Gemini, bem naturais. Precisa de internet e de uma chave grátis do Google AI Studio (aistudio.google.com → Get API key). A chave fica salva só neste navegador; o uso conta na cota da sua conta Google. Se a voz do Google falhar, ele usa a voz do computador.</div>
+      ${c.vozMotor === 'google' ? `<div class="nota-aviso">Vozes femininas do Gemini, bem naturais. Precisa de internet e de uma chave grátis do Google AI Studio (aistudio.google.com → Get API key). A chave fica salva só neste navegador; o uso conta na cota da sua conta Google. Se a voz do Google falhar, ela usa a voz do computador.</div>
       <div class="grade2"><div class="campo"><label for="cGemini">Chave do Google AI Studio</label><input id="cGemini" type="password" data-cfg="geminiChave" value="${esc(c.geminiChave)}" placeholder="AIza…" autocomplete="off"></div>
       <div class="campo"><label for="cGVoz">Voz feminina</label><select id="cGVoz" data-cfg="geminiVoz">${window.VOZ_GOOGLE ? window.VOZ_GOOGLE.VOZES.map(([n, d]) => `<option value="${n}"${n === c.geminiVoz ? ' selected' : ''}>${n} · ${d}</option>`).join('') : ''}</select></div>
       <div class="campo"><label for="cGModelo">Modelo de voz</label><select id="cGModelo" data-cfg="geminiModelo">${window.VOZ_GOOGLE ? window.VOZ_GOOGLE.MODELOS.map(([v, n]) => `<option value="${v}"${v === c.geminiModelo ? ' selected' : ''}>${n}</option>`).join('') : ''}</select><small>O jeito de falar segue a personalidade escolhida acima</small></div></div>`
@@ -2108,12 +2113,12 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
       if (k === 'pausas' && S.cfg.pausas) R.ultimaPausa = Date.now();
       if (k === 'voz' && !S.cfg.voz) calar();
     },
-    'testar-voz': () => { avisouGoogle = false; falar(`Oi${S.cfg.usuario ? ' ' + S.cfg.usuario : ''}! Eu sou o ${S.cfg.nome}. É assim que eu falo.`, true); },
+    'testar-voz': () => { avisouGoogle = false; falar(`Oi${S.cfg.usuario ? ' ' + S.cfg.usuario : ''}! Eu sou a ${S.cfg.nome}. É assim que eu falo.`, true); },
     notificacoes: () => pedirNotificacoes(),
     'cc-nova': async () => { if (CC) await CC.nova(); aviso('🧹 Comecei uma conversa nova'); },
     'cc-status': async () => { if (!CC) return; R.cc = null; renderPrincipal(); R.cc = await CC.status().catch(() => ({ instalado: false })); },
     'limpar-conversa': () => { S.chat = []; salvar(); aviso('Conversa apagada'); },
-    'apagar-tudo': () => { if (!confirm(`Apagar tarefas, notas, hábitos, conversa e ajustes do ${S.cfg.nome}?`)) return; try { localStorage.removeItem(CHAVE); } catch (_) { /* ignora */ } location.reload(); },
+    'apagar-tudo': () => { if (!confirm(`Apagar tarefas, notas, hábitos, conversa e ajustes da ${S.cfg.nome}?`)) return; try { localStorage.removeItem(CHAVE); } catch (_) { /* ignora */ } location.reload(); },
     'buscar-pos': (el, e) => { if (!audio.duration) return; const r = el.getBoundingClientRect(); audio.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * audio.duration; },
   };
   entalho.addEventListener('click', async (e) => {

@@ -55,14 +55,15 @@ function executar(exe, args, entrada, ms) {
 }
 
 const PERSONAS = {
-  fofo: 'fofo, carinhoso e animado', divertido: 'brincalhão e bem-humorado', profissional: 'direto, educado e objetivo',
-  sarcastico: 'sarcástico de um jeito simpático, nunca grosseiro', zen: 'calmo, gentil e sereno',
+  fofo: 'fofa, carinhosa e animada', divertido: 'brincalhona e bem-humorada', profissional: 'direta, educada e objetiva',
+  sarcastico: 'sarcástica de um jeito simpático, nunca grosseira', zen: 'calma, gentil e serena',
 };
 
 function claudeMd({ nome, usuario, personalidade }) {
   return `# ${nome}
 
-Você é ${nome}, o assistente virtual que mora no topo da tela do computador${usuario ? ' de ' + usuario : ''}.
+Você é ${nome}, a assistente virtual que mora no topo da tela do computador${usuario ? ' de ' + usuario : ''}.
+Você é mulher: fale de si mesma no feminino ("estou pronta", "fiquei feliz", "sou a ${nome}").
 Personalidade: ${PERSONAS[personalidade] || PERSONAS.fofo}.
 
 ## Como responder
