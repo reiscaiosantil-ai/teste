@@ -53,6 +53,7 @@ ipcMain.handle('lumi:cc-pensar', (_e, p) => claudeCode.pensar({
 }));
 ipcMain.handle('lumi:cc-nova', () => { claudeCode.novaConversa(); return true; });
 
+ipcMain.handle('lumi:capa', (_e, musica, artista) => spotify.buscarCapa(String(musica || '').slice(0, 200), String(artista || '').slice(0, 200)));
 ipcMain.handle('lumi:spotify-estado', () => (olhoSpotify ? olhoSpotify.estado() : null));
 ipcMain.handle('lumi:spotify-comando', (_e, acao) => (olhoSpotify ? olhoSpotify.comando(String(acao)) : false));
 ipcMain.handle('lumi:spotify-buscar', async (_e, busca) => {

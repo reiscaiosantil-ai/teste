@@ -197,6 +197,13 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
 .spot-rot { display: flex; align-items: center; gap: 6px; font: 700 11px var(--f-mono); color: #1ED760; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
 .spot-rot svg { width: 14px; height: 14px; }
 .vivo.spot { color: #1ED760; } .vivo.spot .eq b { background: #1ED760; }
+
+/* capas de álbum */
+.capa { position: relative; overflow: hidden; }
+.capa img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.capa .eq.sobre { position: absolute; right: 5px; bottom: 5px; height: 14px; padding: 3px 4px; background: rgba(0, 0, 0, .62); border-radius: 6px; z-index: 1; }
+.capa .eq.sobre b { width: 3px; }
+.vivo .capinha { width: 22px; height: 22px; border-radius: 5px; object-fit: cover; flex: none; }
 </style>
 </head>
 <body>
@@ -1140,16 +1147,53 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     render();
   }
   function setVolume(v) { S.cfg.volume = Math.max(0, Math.min(100, Math.round(v))); audio.volume = S.cfg.volume / 100; salvar(); }
+  // capa gravada dentro do MP3 (etiqueta ID3v2, quadro APIC)
+  async function capaId3(arquivo) {
+    try {
+      const cab = new Uint8Array(await arquivo.slice(0, 10).arrayBuffer());
+      if (cab[0] !== 0x49 || cab[1] !== 0x44 || cab[2] !== 0x33) return null; // "ID3"
+      const versao = cab[3]; if (versao < 3 || (cab[5] & 0x80)) return null; // só v2.3/v2.4, sem dessincronização
+      const tam = ((cab[6] & 127) << 21) | ((cab[7] & 127) << 14) | ((cab[8] & 127) << 7) | (cab[9] & 127);
+      const b = new Uint8Array(await arquivo.slice(10, 10 + Math.min(tam, 8e6)).arrayBuffer());
+      let i = 0;
+      while (i + 10 <= b.length) {
+        const id = String.fromCharCode(b[i], b[i + 1], b[i + 2], b[i + 3]); if (!/^[A-Z0-9]{4}$/.test(id)) break;
+        const n = versao === 4 ? ((b[i + 4] & 127) << 21) | ((b[i + 5] & 127) << 14) | ((b[i + 6] & 127) << 7) | (b[i + 7] & 127)
+          : ((b[i + 4] << 24) >>> 0) + (b[i + 5] << 16) + (b[i + 6] << 8) + b[i + 7];
+        if (id === 'APIC' && n > 0 && i + 10 + n <= b.length) {
+          const q = b.subarray(i + 10, i + 10 + n); const enc = q[0]; let j = 1;
+          let mime = ''; while (j < q.length && q[j]) mime += String.fromCharCode(q[j++]); j++; // tipo da imagem
+          j++; // tipo da foto (capa, contracapa…)
+          if (enc === 1 || enc === 2) { while (j + 1 < q.length && (q[j] || q[j + 1])) j += 2; j += 2; } else { while (j < q.length && q[j]) j++; j++; }
+          if (!/^image\//.test(mime)) mime = /png/i.test(mime) ? 'image/png' : 'image/jpeg';
+          return URL.createObjectURL(new Blob([q.subarray(j)], { type: mime }));
+        }
+        i += 10 + n;
+      }
+    } catch (_) { /* arquivo sem capa ou etiqueta diferente */ }
+    return null;
+  }
+  async function acharCapas(faixas) {
+    for (const f of faixas) {
+      f.capa = await capaId3(f.arquivo);
+      if (!f.capa && window.lumiDesktop && window.lumiDesktop.capa) {
+        try { f.capa = await window.lumiDesktop.capa(f.nome, f.artista === 'Arquivo do computador' ? '' : f.artista); } catch (_) { f.capa = null; }
+      }
+      delete f.arquivo;
+      if (f.capa) render();
+    }
+  }
   function adicionarMusicas(arquivos) {
     const novas = [...arquivos].filter((f) => f.type.startsWith('audio/') || /\.(mp3|m4a|ogg|wav|flac|aac|opus|webm)$/i.test(f.name)).map((f) => {
       const base = f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ');
       const [a, t] = base.includes(' - ') ? base.split(' - ', 2) : ['', base];
-      return { nome: (t || base).trim(), artista: a.trim() || 'Arquivo do computador', url: URL.createObjectURL(f) };
+      return { nome: (t || base).trim(), artista: a.trim() || 'Arquivo do computador', url: URL.createObjectURL(f), arquivo: f };
     });
     if (!novas.length) { aviso('Não achei arquivos de áudio aí.'); return; }
     const vazia = !R.musica.lista.length; R.musica.lista.push(...novas);
     aviso(`🎵 ${novas.length} música${novas.length > 1 ? 's adicionadas' : ' adicionada'}`);
     if (vazia) tocarFaixa(0); render();
+    acharCapas(novas);
   }
   function abrirLink(url) {
     let w = null;
@@ -1194,7 +1238,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   function receberSpotify(e) {
     if (!e) return;
     R.spotify = e;
-    if (e.tocando && e.musica) R.spotifyUltima = { musica: e.musica, artista: e.artista };
+    if (e.tocando && e.musica) R.spotifyUltima = { musica: e.musica, artista: e.artista, capa: e.capa || (R.spotifyUltima && R.spotifyUltima.musica === e.musica ? R.spotifyUltima.capa : '') };
     render();
   }
   async function spotifyComando(acao) {
@@ -1658,8 +1702,8 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     else if (R.trabalho) vivo = `<span class="vivo trabalho"><span class="ic">${R.trabalho.icone}</span><span class="nm">${esc(R.trabalho.rotulo)}…</span><span>${Math.floor((Date.now() - R.trabalho.inicio) / 1000)}s</span></span>`;
     else if (tm) vivo = `<span class="vivo">⏱ <span class="nm">${esc(tm.nome)}</span><span>${mmss((tm.fim - Date.now()) / 1000)}</span>${S.timers.length > 1 ? `<span class="nm">+${S.timers.length - 1}</span>` : ''}</span>`;
     else if (R.crono.rodando) vivo = `<span class="vivo">⏱ <span class="nm">Cronômetro</span><span>${mmss(cronoSeg())}</span></span>`;
-    else if (R.musica.tocando && faixaAtual()) vivo = `<span class="vivo"><span class="eq"><b></b><b></b><b></b></span><span class="nm">${esc(faixaAtual().nome)}</span></span>`;
-    else if (spotTocando() && R.spotify.musica) vivo = `<span class="vivo spot"><span class="eq"><b></b><b></b><b></b></span><span class="nm">${esc(spotNome())}</span></span>`;
+    else if (R.musica.tocando && faixaAtual()) vivo = `<span class="vivo">${faixaAtual().capa ? `<img class="capinha" src="${esc(faixaAtual().capa)}" alt="" onerror="this.remove()">` : ''}<span class="eq"><b></b><b></b><b></b></span><span class="nm">${esc(faixaAtual().nome)}</span></span>`;
+    else if (spotTocando() && R.spotify.musica) vivo = `<span class="vivo spot">${R.spotify.capa ? `<img class="capinha" src="${esc(R.spotify.capa)}" alt="" onerror="this.remove()">` : ''}<span class="eq"><b></b><b></b><b></b></span><span class="nm">${esc(spotNome())}</span></span>`;
     pilula.innerHTML = `${K(30)}${ponto}${vivo}`;
     if (!R.aberto) entalho.style.setProperty('--w', vivo ? (R.ouvindo || R.alarme || /vivo spot/.test(vivo) ? '380px' : '300px') : '160px');
     M.olhar(document, mx, my);
@@ -1680,19 +1724,24 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   const SUGESTOES = ['toca uma música', 'timer de 1 minuto para o chá', 'me lembra de beber água em 30 minutos', 'vai chover hoje?', 'quanto está o dólar?', 'quanto é 15% de 230', 'traduz para inglês bom dia', 'conta uma piada', 'bebi um copo de água', 'gera uma senha de 16', 'quantos dias faltam pro Natal?', 'coloca a coroa'];
   const MIC = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 
+  // capa do álbum (quando houver) com o equalizador por cima enquanto toca
+  const capaHtml = (url, tocando, padrao) => url
+    ? `<img src="${esc(url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">${tocando ? '<span class="eq sobre"><b></b><b></b><b></b></span>' : ''}`
+    : padrao;
   const LOGO_SPOT = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#1ED760"/><path d="M6.5 9.3c3.6-1.1 8-.8 11 .9M7 12.4c3-.9 6.6-.6 9.2.9M7.6 15.3c2.4-.6 5.1-.4 7.2.7" stroke="#0b0b0b" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>';
   function cartaoSpotify(grande) {
     const e = R.spotify || {}; const ult = R.spotifyUltima;
     const titulo = e.tocando && e.musica ? e.musica : ult ? ult.musica : 'Spotify';
+    const capa = e.tocando && e.musica ? e.capa : ult && ult.capa;
     const sub = e.tocando ? (e.artista || 'tocando agora') : e.aberto ? (ult ? `pausado · ${ult.artista || ''}` : 'aberto · pausado') : 'fechado';
     const ctl = `<div class="ctl"><button data-spot="anterior" aria-label="Anterior no Spotify">⏮</button><button class="pp" data-spot="alternar" aria-label="Tocar ou pausar o Spotify">${e.tocando ? '❚❚' : '▶'}</button><button data-spot="proxima" aria-label="Próxima no Spotify">⏭</button></div>`;
-    if (grande) return `<div class="player spotify"><div class="capa">${e.tocando ? '<span class="eq"><b></b><b></b><b></b></span>' : '🎵'}</div><div style="min-width:0;flex:1"><div class="spot-rot">${LOGO_SPOT} Spotify do seu computador</div><b>${esc(titulo)}</b><span class="art">${esc(sub)}</span>${e.aberto ? ctl : ''}</div></div>`;
-    return `<div class="mini spotify"><div class="topo"><div class="capa">${LOGO_SPOT}</div><div style="min-width:0"><b>${esc(titulo)}</b><small>${esc(sub)}</small></div></div>${ctl}</div>`;
+    if (grande) return `<div class="player spotify"><div class="capa">${capaHtml(capa, e.tocando, e.tocando ? '<span class="eq"><b></b><b></b><b></b></span>' : '🎵')}</div><div style="min-width:0;flex:1"><div class="spot-rot">${LOGO_SPOT} Spotify do seu computador</div><b>${esc(titulo)}</b><span class="art">${esc(sub)}</span>${e.aberto ? ctl : ''}</div></div>`;
+    return `<div class="mini spotify"><div class="topo"><div class="capa">${capaHtml(capa, e.tocando, LOGO_SPOT)}</div><div style="min-width:0"><b>${esc(titulo)}</b><small>${esc(sub)}</small></div></div>${ctl}</div>`;
   }
   function mini() {
     const f = faixaAtual();
     if (!f) return SPOT && spotAberto() ? cartaoSpotify(false) : '';
-    return `<div class="mini"><div class="topo"><div class="capa">🎵</div><div style="min-width:0"><b>${esc(f.nome)}</b><small>${esc(f.artista)}</small></div></div>
+    return `<div class="mini"><div class="topo"><div class="capa">${capaHtml(f.capa, R.musica.tocando, '🎵')}</div><div style="min-width:0"><b>${esc(f.nome)}</b><small>${esc(f.artista)}</small></div></div>
       <div class="pbar" data-acao="buscar-pos"><i data-pbar></i></div>
       <div class="ctl"><button data-acao="vol" data-d="-10" aria-label="Diminuir volume">🔉</button><button data-mus="anterior" aria-label="Anterior">⏮</button><button class="pp" data-mus="alternar" aria-label="Tocar ou pausar">${R.musica.tocando ? '❚❚' : '▶'}</button><button data-mus="proxima" aria-label="Próxima">⏭</button><button data-acao="vol" data-d="10" aria-label="Aumentar volume">🔊</button></div>
       <div class="vrow"><span>${S.cfg.volume ? '🔈' : '🔇'}</span><input type="range" min="0" max="100" value="${S.cfg.volume}" data-volume aria-label="Volume" style="--p:${S.cfg.volume}%"><em data-volp>${S.cfg.volume}%</em></div></div>`;
@@ -1762,7 +1811,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
       <div class="secao">Arquivos de música</div>
       <div class="vazio" style="margin:12px auto">${K(70, 'cool', { acessorio: 'fones' })}<br>Nenhuma música ainda.<br><br><button class="btn" data-acao="add-musica">🎵 Adicionar músicas do computador</button></div>${busca}`;
     return `<h4>Música</h4><div class="sub">${R.musica.lista.length} música${R.musica.lista.length > 1 ? 's' : ''} nesta sessão</div>
-      <div class="player"><div class="capa">🎵</div><div style="min-width:0;flex:1"><b>${esc(f.nome)}</b><span class="art">${esc(f.artista)}</span>
+      <div class="player"><div class="capa">${capaHtml(f.capa, R.musica.tocando, '🎵')}</div><div style="min-width:0;flex:1"><b>${esc(f.nome)}</b><span class="art">${esc(f.artista)}</span>
         <div class="pbar" data-acao="buscar-pos" style="margin:10px 0 4px"><i data-pbar></i></div>
         <div class="ctl"><button data-mus="anterior" aria-label="Anterior">⏮</button><button class="pp" data-mus="alternar" aria-label="Tocar ou pausar">${R.musica.tocando ? '❚❚' : '▶'}</button><button data-mus="proxima" aria-label="Próxima">⏭</button>
         <div class="vrow" style="flex:1;margin-left:8px"><span>${S.cfg.volume ? '🔈' : '🔇'}</span><input type="range" min="0" max="100" value="${S.cfg.volume}" data-volume aria-label="Volume" style="--p:${S.cfg.volume}%"><em data-volp>${S.cfg.volume}%</em></div></div></div></div>

@@ -17,3 +17,13 @@ test('macOS: resposta do AppleScript', () => {
   assert.equal(mac('paused|Evidências|Chitãozinho & Xororó').tocando, false);
   assert.equal(mac('fechado').aberto, false);
 });
+
+test('capa: só aceita resultado do artista e da música certos', () => {
+  const { pontuar } = require('../desktop/spotify.js');
+  assert.equal(pontuar({ artista: 'Henrique & Juliano', musica: 'Liberdade Provisória (Live - Ibirapuera)' }, 'Liberdade Provisória', 'Henrique & Juliano'), 4);
+  assert.ok(pontuar({ artista: 'Luanzinho Moraes', musica: 'Liberdade Provisoria' }, 'Liberdade Provisória', 'Henrique & Juliano') < 3);
+});
+test('macOS: a capa vem junto do AppleScript', () => {
+  assert.equal(mac('playing|Evidências|Chitãozinho & Xororó|https://i.scdn.co/image/abc').capa, 'https://i.scdn.co/image/abc');
+  assert.equal(mac('playing|Evidências|Chitãozinho & Xororó|').capa, undefined);
+});

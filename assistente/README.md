@@ -33,7 +33,7 @@ Atalhos: `Alt+K` abre/fecha · `Alt+L` fala com ele · `Esc` fecha, cala ou para
 | Lembretes e alarmes | "me lembra de ligar pro cliente em 30 minutos", "me lembra de pagar a conta amanhã às 9", "alarme às 7h" |
 | Tarefas | "cria uma tarefa comprar pão amanhã às 10h", "minhas tarefas", "terminei a tarefa comprar pão" |
 | Hábitos | "bebi um copo de água", "fiz exercício", lembrete de pausa a cada 50 min |
-| Música | **no app instalado, vê a música que está tocando no aplicativo do Spotify** e controla (tocar/pausar, próxima, anterior); "o que está tocando?"; também toca arquivos de áudio do PC; "toca …" abre a busca no Spotify |
+| Música | **no app instalado, vê a música que está tocando no aplicativo do Spotify, com a capa do álbum,** e controla (tocar/pausar, próxima, anterior); "o que está tocando?"; também toca arquivos de áudio do PC; "toca …" abre a busca no Spotify |
 | Clima | "vai chover hoje?", "previsão para amanhã", "clima em Curitiba" |
 | Dinheiro | "quanto está o dólar?", "cotação do euro", "e o bitcoin?" |
 | Contas | "quanto é 15% de 230", "quanto é a raiz de 81", "calcula (2 + 3) vezes 4" |
@@ -67,7 +67,7 @@ Open-Meteo (clima), Google AI Studio (voz Gemini, opcional, com sua chave), Awes
 
 - Pedidos que mexem no sistema ("organiza minha área de trabalho", "desliga o PC", "procura o arquivo …", "cria uma pasta") são recusados com explicação: exigiriam permissões de sistema que esta versão não tem.
 - Timers, lembretes e alarmes só tocam com a janela/aba aberta (o app Electron fica sempre aberto). Notificações do sistema precisam de permissão.
-- Spotify do computador (só no app instalado): no Windows o Lumi lê o título da janela do Spotify e usa as teclas de mídia; no Mac usa o AppleScript. Não precisa de login. Limites: com o Spotify minimizado na bandeja do sistema o título some e o Lumi o vê como fechado; as teclas de mídia vão para o último app que tocou mídia; "toca …" abre a busca no Spotify, mas não escolhe a música sozinho. No navegador o Lumi não enxerga o Spotify.
+- Spotify do computador (só no app instalado): no Windows o Lumi lê o título da janela do Spotify e usa as teclas de mídia; no Mac usa o AppleScript. Não precisa de login. A capa do álbum vem do próprio Spotify no Mac; no Windows é buscada pelo nome da música e do artista no Deezer e, se não achar, na Apple (iTunes) — grátis e sem chave; sem resultado confiável, fica o ícone. Arquivos MP3 adicionados mostram a capa gravada no arquivo. Limites: com o Spotify minimizado na bandeja do sistema o título some e o Lumi o vê como fechado; as teclas de mídia vão para o último app que tocou mídia; "toca …" abre a busca no Spotify, mas não escolhe a música sozinho. No navegador o Lumi não enxerga o Spotify.
 - Arquivos de música adicionados no Lumi valem só para a sessão (não ficam salvos).
 - O app Electron (`desktop/`) foi escrito para Windows e macOS, mas não foi testado num desktop real neste ambiente. No Linux, a janela transparente pode não repassar cliques fora do entalho.
 

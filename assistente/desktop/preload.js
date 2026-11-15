@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('lumiDesktop', {
     pensar: (dados) => ipcRenderer.invoke('lumi:cc-pensar', dados),
     nova: () => ipcRenderer.invoke('lumi:cc-nova'),
   },
+  capa: (musica, artista) => ipcRenderer.invoke('lumi:capa', musica, artista),
   spotify: {
     estado: () => ipcRenderer.invoke('lumi:spotify-estado'),
     comando: (acao) => ipcRenderer.invoke('lumi:spotify-comando', acao),
