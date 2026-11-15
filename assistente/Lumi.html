@@ -1,0 +1,1782 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1020">
+<title>Lumi</title>
+<meta name="description" content="Lumi: assistente virtual que mora no topo da tela. Conversa, marca lembretes, timers, tarefas, hábitos, toca músicas e responde por voz.">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMwQjEwMjAiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg3IDExKSI+CiAgICAgIDxkZWZzPjxyYWRpYWxHcmFkaWVudCBpZD0ibG0xIiBjeD0iNDAlIiBjeT0iMzAlIiByPSI3NSUiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI0Y1RjhGRiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI0M3RDNGNyIvPjwvcmFkaWFsR3JhZGllbnQ+PC9kZWZzPgogICAgICA8ZyA+PHBhdGggZD0iTTI0IDEyIEMyMS42IDguNiAyMi40IDUgMjUuOCAzLjIgQzI2LjYgNi40IDI2LjIgOS40IDI0IDEyeiIgZmlsbD0iIzQ2RTNDOCIgLz48Y2lyY2xlIGN4PSIyNS42IiBjeT0iNC4yIiByPSIzLjQiIGZpbGw9IiM0NkUzQzgiIG9wYWNpdHk9Ii4yMiIvPgogICAgICAgIDxlbGxpcHNlIGN4PSI3LjYiIGN5PSIyNyIgcng9IjMuMiIgcnk9IjUiIHRyYW5zZm9ybT0icm90YXRlKC0yMiA3LjYgMjcpIiBmaWxsPSIjQzdEM0Y3Ii8+CiAgICAgICAgPGVsbGlwc2UgY3g9IjQwLjQiIGN5PSIyNyIgcng9IjMuMiIgcnk9IjUiIHRyYW5zZm9ybT0icm90YXRlKDIyIDQwLjQgMjcpIiBmaWxsPSIjQzdEM0Y3Ii8+CiAgICAgICAgPGVsbGlwc2UgY3g9IjI0IiBjeT0iMjUuNSIgcng9IjE3IiByeT0iMTUiIGZpbGw9InVybCgjbG0xKSIvPgogICAgICAgIDxlbGxpcHNlIGN4PSIxOCIgY3k9IjE3LjYiIHJ4PSI2LjIiIHJ5PSIzLjIiIHRyYW5zZm9ybT0icm90YXRlKC0xOCAxOCAxNy42KSIgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iLjQ1Ii8+CiAgICAgICAgPGVsbGlwc2UgY3g9IjEyLjgiIGN5PSIyOS42IiByeD0iMi4zIiByeT0iMS4zIiBmaWxsPSIjRkY4RkIxIiBvcGFjaXR5PSIuNiIvPjxlbGxpcHNlIGN4PSIzNS4yIiBjeT0iMjkuNiIgcng9IjIuMyIgcnk9IjEuMyIgZmlsbD0iI0ZGOEZCMSIgb3BhY2l0eT0iLjYiLz4KICAgICAgICA8ZyBkYXRhLW9saG9zPjxnID48cGF0aCBkPSJNMTUuNyAyNS41IFExOC41IDIxLjcgMjEuMyAyNS41IiBzdHJva2U9IiMxQjFFMkIiIHN0cm9rZS13aWR0aD0iMS44IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNMjYuNyAyNS41IFEyOS41IDIxLjcgMzIuMyAyNS41IiBzdHJva2U9IiMxQjFFMkIiIHN0cm9rZS13aWR0aD0iMS44IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L2c+PC9nPgogICAgICAgIDxwYXRoIGQ9Ik0yMSAzMC40IFEyNCAzMy42IDI3IDMwLjQiIHN0cm9rZT0iIzFCMUUyQiIgc3Ryb2tlLXdpZHRoPSIxLjQiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIAogICAgICA8L2c+CiAgICA8L2c+PC9zdmc+Cg==" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Lumi — mesa de trabalho à noite, com o entalho no topo. */
+:root {
+  --noite: #0B1020; --fundo: #121831; --fundo2: #1A2242; --fundo3: #232C52; --linha: rgba(180, 200, 255, .12);
+  --tinta: #EEF2FF; --nevoa: #9AA5C8; --brilho: #46E3C8; --brilho-escuro: #0A2A26; --lilas: #B9C4FF; --ceu: #5AB8FF; --rosa: #FF7AB8; --alerta: #FFB340; --ouro: #FFD25A; --perigo: #FF5A6E;
+  --caixa: #0E1326; --caixa2: #161D38;
+  --f-titulo: "Sora", "Segoe UI", system-ui, sans-serif;
+  --f-texto: "Nunito Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--noite); color: var(--tinta); font: 400 15px/1.5 var(--f-texto); -webkit-font-smoothing: antialiased; overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+input, select, textarea { font: inherit; color: var(--tinta); }
+:focus-visible { outline: 2px solid var(--brilho); outline-offset: 2px; border-radius: 8px; }
+kbd { font: 500 11px var(--f-mono); background: rgba(255, 255, 255, .1); border: 1px solid var(--linha); border-radius: 5px; padding: 1px 5px; }
+
+/* ===== mesa (modo navegador) ===== */
+.mesa { position: fixed; inset: 0; overflow: hidden;
+  background: radial-gradient(70% 55% at 75% 105%, #183c5a 0%, transparent 62%), radial-gradient(55% 50% at 12% 100%, #1a3f4a 0%, transparent 60%), linear-gradient(180deg, #0d1330 0%, #17204a 52%, #1f2a5a 100%); }
+.mesa::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 34%; pointer-events: none;
+  background: linear-gradient(172deg, transparent 0 36%, rgba(14, 30, 58, .9) 37%), linear-gradient(192deg, transparent 0 42%, rgba(10, 20, 44, .95) 43%); }
+.widget { position: absolute; z-index: 1; border-radius: 18px; background: rgba(14, 19, 38, .78); border: 1px solid var(--linha); padding: 12px 16px; text-align: left; backdrop-filter: blur(8px); }
+button.widget:hover { border-color: rgba(70, 227, 200, .45); }
+.widget .ico { font-size: 24px; }
+.widget span { display: block; font-size: 12px; color: var(--nevoa); }
+.w-relogio { right: 3%; bottom: 7%; } .w-relogio b { display: block; font: 800 40px/1.05 var(--f-titulo); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.w-agua { left: 3%; bottom: 7%; display: flex; gap: 10px; align-items: center; } .w-agua b, .w-clima b { font: 800 22px var(--f-titulo); }
+.w-clima { left: 3%; bottom: calc(7% + 78px); display: flex; gap: 10px; align-items: center; max-width: 260px; }
+.dica { position: absolute; top: 44%; left: 50%; transform: translate(-50%, -50%); z-index: 1; font: 500 13px/1.9 var(--f-mono); color: rgba(238, 242, 255, .55); text-align: center; pointer-events: none; transition: opacity .3s; }
+.mesa.usada .dica { opacity: 0; }
+.so-toque { display: none; }
+@media (hover: none), (pointer: coarse) { .so-mouse { display: none; } .so-toque { display: inline; } }
+
+/* ===== entalho ===== */
+.entalho { position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 5; background: #000; border-radius: 0 0 20px 20px;
+  width: var(--w, 180px); height: 42px; overflow: hidden;
+  transition: width .5s cubic-bezier(.3, 1.25, .4, 1), height .5s cubic-bezier(.3, 1.15, .4, 1), border-radius .4s;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .45), 0 0 20px rgba(70, 227, 200, .16); }
+.entalho.aberto { width: min(880px, 96vw); height: min(560px, 92vh); border-radius: 0 0 30px 30px; }
+.entalho.alerta { box-shadow: 0 8px 28px rgba(0, 0, 0, .45), 0 0 26px rgba(255, 179, 64, .55); animation: alertaPulsa 1s infinite; }
+@keyframes alertaPulsa { 50% { box-shadow: 0 8px 28px rgba(0, 0, 0, .45), 0 0 6px rgba(255, 179, 64, .2); } }
+.pilula { position: absolute; inset: 0 0 auto; height: 42px; display: flex; align-items: center; justify-content: center; gap: 9px; padding: 0 16px; cursor: pointer; transition: opacity .2s; }
+.entalho.aberto .pilula { opacity: 0; pointer-events: none; }
+.ponto { width: 7px; height: 7px; border-radius: 50%; background: var(--brilho); box-shadow: 0 0 10px var(--brilho); flex: none; }
+.ponto.ouvindo { background: var(--perigo); box-shadow: 0 0 10px var(--perigo); animation: lmPulsa .9s infinite; }
+.vivo { font: 700 13.5px var(--f-texto); color: var(--brilho); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 7px; font-variant-numeric: tabular-nums; min-width: 0; }
+.vivo .nm { color: var(--nevoa); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.vivo.trabalho { color: var(--ouro); } .vivo.trabalho .ic { display: inline-block; animation: balanca .9s ease-in-out infinite; } @keyframes balanca { 50% { transform: translateY(-2px) rotate(-12deg); } }
+.vivo.ouvindo { color: var(--perigo); } .vivo.alarme { color: var(--alerta); }
+.eq { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; } .eq b { width: 3px; background: var(--brilho); border-radius: 2px; animation: eq .9s ease-in-out infinite; }
+.eq b:nth-child(2) { animation-delay: -.3s; } .eq b:nth-child(3) { animation-delay: -.6s; } @keyframes eq { 0%, 100% { height: 3px; } 50% { height: 12px; } }
+
+.painel { position: absolute; inset: 0; display: grid; grid-template-columns: 180px 1fr; gap: 16px; padding: 18px 20px 18px 14px; opacity: 0; pointer-events: none; transition: opacity .25s .12s; }
+.entalho.aberto .painel { opacity: 1; pointer-events: auto; }
+.lado { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-y: auto; scrollbar-width: none; }
+.lado::-webkit-scrollbar { display: none; }
+.eu { display: flex; align-items: center; gap: 10px; margin: 0 4px 10px; cursor: pointer; } .eu b { display: block; font: 700 16px var(--f-titulo); }
+.eu small { font: 500 11px var(--f-mono); color: var(--nevoa); } .eu small.on { color: var(--brilho); }
+.nivel { display: flex; align-items: center; gap: 6px; margin-top: 3px; } .nivel em { font: 800 10px var(--f-texto); font-style: normal; color: var(--ouro); }
+.nivel i { width: 56px; height: 5px; border-radius: 4px; background: rgba(255, 255, 255, .12); overflow: hidden; display: block; } .nivel i b { display: block; height: 100%; background: linear-gradient(90deg, var(--ouro), #FF9F0A); transition: width .4s; }
+.nv { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 11px; font-size: 13.5px; font-weight: 700; color: var(--nevoa); text-align: left; flex: none; }
+.nv:hover { background: rgba(255, 255, 255, .06); color: var(--tinta); } .nv.on { background: rgba(70, 227, 200, .14); color: var(--brilho); }
+.nv .c { margin-left: auto; font-size: 10.5px; background: rgba(255, 255, 255, .1); color: var(--tinta); padding: 1px 6px; border-radius: 8px; }
+
+.principal { min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.principal h4 { margin: 0; font: 800 21px var(--f-titulo); letter-spacing: -.02em; }
+.sub { color: var(--nevoa); font-size: 12.5px; margin: 1px 0 10px; }
+.rolar { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .15) transparent; }
+
+/* entrada de texto e voz */
+.perguntar { display: flex; gap: 6px; align-items: center; background: var(--caixa); border: 1px solid rgba(255, 255, 255, .09); border-radius: 22px; padding: 4px 4px 4px 14px; }
+.perguntar:focus-within { border-color: rgba(70, 227, 200, .5); }
+.perguntar input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; font-size: 14px; padding: 6px 0; }
+.perguntar input::placeholder { color: rgba(255, 255, 255, .38); }
+.mic, .enviar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.mic { background: var(--brilho); color: #04201b; } .mic svg { width: 16px; height: 16px; }
+.mic.on { background: var(--perigo); color: #fff; animation: lmPulsa 1s infinite; }
+.mic[disabled] { opacity: .35; cursor: not-allowed; }
+.enviar { background: rgba(255, 255, 255, .08); font-size: 14px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.chip { padding: 5px 10px; border-radius: 14px; background: rgba(255, 255, 255, .08); font-size: 12px; font-weight: 700; white-space: nowrap; } .chip:hover { background: rgba(70, 227, 200, .2); color: var(--brilho); }
+.chip.on { background: rgba(70, 227, 200, .22); color: var(--brilho); }
+.meio { display: flex; gap: 10px; flex: 1; min-height: 0; margin-top: 10px; }
+.conversa { flex: 1; min-height: 0; overflow-y: auto; background: var(--caixa); border: 1px solid rgba(255, 255, 255, .07); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .15) transparent; }
+.msg { max-width: 86%; font-size: 13.5px; line-height: 1.4; padding: 7px 11px; border-radius: 13px; white-space: pre-wrap; word-wrap: break-word; }
+.msg.u { align-self: flex-end; background: rgba(70, 227, 200, .2); border-bottom-right-radius: 4px; }
+.msg.k { align-self: flex-start; background: #1b2140; border-bottom-left-radius: 4px; }
+.msg a { color: var(--brilho); }
+.vazio { margin: auto; color: var(--nevoa); font-size: 13px; text-align: center; }
+.vazio .lumi { margin: 0 auto 8px; }
+.digitando { align-self: flex-start; display: flex; gap: 4px; padding: 10px 12px; background: #1b2140; border-radius: 13px; }
+.digitando i { width: 6px; height: 6px; border-radius: 50%; background: var(--nevoa); animation: dig 1s infinite; } .digitando i:nth-child(2) { animation-delay: .15s; } .digitando i:nth-child(3) { animation-delay: .3s; }
+@keyframes dig { 50% { transform: translateY(-3px); opacity: .5; } }
+
+/* linhas genéricas */
+.linha { display: flex; align-items: center; gap: 10px; padding: 9px 11px; background: var(--caixa); border: 1px solid rgba(255, 255, 255, .07); border-radius: 12px; margin-bottom: 6px; font-size: 13.5px; font-weight: 700; }
+.linha .t { flex: 1; min-width: 0; overflow-wrap: anywhere; } .linha .t small { display: block; color: var(--nevoa); font-weight: 500; font-size: 11.5px; }
+.linha.feita .t { color: var(--nevoa); text-decoration: line-through; }
+.linha.atrasada .t small { color: var(--alerta); }
+.ck { width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); flex: none; transition: all .15s; display: grid; place-items: center; font-size: 11px; color: #04201b; }
+.ck.on { background: var(--brilho); border-color: var(--brilho); }
+.ck.on::after { content: "✓"; font-weight: 900; }
+.rb { width: 30px; height: 30px; border-radius: 50%; background: rgba(255, 255, 255, .08); font-weight: 800; flex: none; font-size: 13px; }
+.rb:hover { background: rgba(255, 255, 255, .16); } .rb.mais { background: rgba(70, 227, 200, .2); color: var(--brilho); } .rb.x:hover { background: rgba(255, 90, 110, .25); color: var(--perigo); }
+.barra { height: 5px; border-radius: 4px; background: rgba(255, 255, 255, .1); overflow: hidden; margin-top: 5px; } .barra i { display: block; height: 100%; background: var(--brilho); transition: width .3s; }
+.tm { font: 800 21px var(--f-titulo); font-variant-numeric: tabular-nums; }
+.form { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.form input, .form select, .campo input, .campo select, .campo textarea, .form textarea { background: var(--caixa); border: 1px solid rgba(255, 255, 255, .1); border-radius: 11px; padding: 8px 11px; outline: 0; min-width: 0; }
+.form input:focus, .form select:focus, .campo input:focus, .campo select:focus, .campo textarea:focus, .form textarea:focus { border-color: rgba(70, 227, 200, .55); }
+.form input.grow, .form textarea { flex: 1 1 180px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; font-size: 13px; padding: 8px 14px; border-radius: 11px; background: var(--brilho); color: #04201b; white-space: nowrap; }
+.btn:hover { filter: brightness(1.08); } .btn.fantasma { background: rgba(255, 255, 255, .08); color: var(--tinta); } .btn.perigo { background: rgba(255, 90, 110, .18); color: var(--perigo); }
+.secao { font: 700 11px var(--f-mono); color: var(--nevoa); text-transform: uppercase; letter-spacing: .08em; margin: 12px 2px 6px; }
+.secao:first-child { margin-top: 0; }
+
+/* mini player e player */
+.mini { width: 215px; flex: none; align-self: flex-start; background: linear-gradient(160deg, #0f3a35, #0e1326 72%); border: 1px solid rgba(255, 255, 255, .07); border-radius: 14px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.mini .topo { display: flex; gap: 9px; align-items: center; min-width: 0; } .capa { width: 42px; height: 42px; border-radius: 10px; flex: none; display: grid; place-items: center; font-size: 17px; background: linear-gradient(140deg, #46E3C8, #1F5AA6); }
+.mini b { display: block; font: 800 13px var(--f-titulo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .mini small { color: var(--nevoa); font-size: 11.5px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pbar { height: 4px; border-radius: 3px; background: rgba(255, 255, 255, .12); overflow: hidden; cursor: pointer; } .pbar i { display: block; height: 100%; background: var(--brilho); width: 0; }
+.ctl { display: flex; gap: 8px; align-items: center; } .ctl button { width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, .08); font-size: 12px; }
+.ctl button.pp { background: #fff; color: #000; width: 40px; height: 40px; } .mini .ctl { justify-content: space-between; } .mini .ctl button { width: 30px; height: 30px; font-size: 11px; } .mini .ctl button.pp { width: 36px; height: 36px; }
+.vrow { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+.vrow input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; height: 5px; border-radius: 9px; background: linear-gradient(90deg, var(--brilho) var(--p, 60%), rgba(255, 255, 255, .14) var(--p, 60%)); outline: 0; }
+.vrow input::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: #fff; } .vrow input::-moz-range-thumb { width: 13px; height: 13px; border: 0; border-radius: 50%; background: #fff; }
+.vrow em { font-style: normal; color: var(--nevoa); width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+.player { display: flex; gap: 16px; align-items: center; margin-bottom: 12px; } .player .capa { width: 96px; height: 96px; border-radius: 16px; font-size: 36px; }
+.player b { display: block; font: 800 18px var(--f-titulo); } .player .art { color: var(--nevoa); font-size: 13px; }
+.faixa { cursor: pointer; } .faixa.on { border-color: rgba(70, 227, 200, .5); } .faixa.on .t { color: var(--brilho); }
+
+/* visual */
+.vitrine { display: flex; gap: 18px; align-items: center; background: radial-gradient(120% 120% at 20% 0%, #1c2a5a, var(--caixa)); border: 1px solid var(--linha); border-radius: 16px; padding: 14px 18px; margin-bottom: 10px; }
+.vitrine b { font: 800 18px var(--f-titulo); }
+.opcoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.cor { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2); }
+.cor.on { border-color: var(--brilho); }
+.ops { display: flex; flex-wrap: wrap; gap: 6px; }
+.op { display: grid; justify-items: center; gap: 2px; padding: 6px 8px 5px; border-radius: 12px; background: var(--caixa); border: 1px solid rgba(255, 255, 255, .07); font-size: 11px; font-weight: 700; color: var(--nevoa); min-width: 66px; }
+.op.on { border-color: var(--brilho); color: var(--brilho); background: rgba(70, 227, 200, .08); }
+
+/* ajustes */
+.campo { display: grid; gap: 4px; margin-bottom: 10px; } .campo label, .campo > span { font-size: 12.5px; color: var(--nevoa); font-weight: 700; }
+.campo small { color: var(--nevoa); font-size: 11.5px; }
+.grade2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.chave { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 11px; background: var(--caixa); border: 1px solid rgba(255, 255, 255, .07); border-radius: 12px; margin-bottom: 6px; font-size: 13.5px; font-weight: 700; }
+.chave small { display: block; color: var(--nevoa); font-weight: 500; font-size: 11.5px; }
+.tog { position: relative; width: 40px; height: 23px; border-radius: 20px; background: rgba(255, 255, 255, .16); flex: none; transition: background .2s; }
+.tog::after { content: ""; position: absolute; top: 3px; left: 3px; width: 17px; height: 17px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.tog.on { background: var(--brilho); } .tog.on::after { transform: translateX(17px); }
+.nota-aviso { background: rgba(255, 179, 64, .08); border: 1px solid rgba(255, 179, 64, .3); border-radius: 12px; padding: 9px 12px; color: #FFD9A0; font-size: 12.5px; margin-bottom: 10px; }
+
+/* aviso (toast) */
+.aviso { position: absolute; left: 50%; top: 54px; transform: translate(-50%, -6px); z-index: 6; background: rgba(0, 0, 0, .88); border: 1px solid var(--linha); padding: 8px 14px; border-radius: 14px; font-size: 13px; font-weight: 700; opacity: 0; transition: opacity .3s, transform .3s; pointer-events: none; max-width: min(92vw, 520px); text-align: center; }
+.aviso.on { opacity: 1; transform: translate(-50%, 0); }
+.entalho.aberto ~ .aviso { top: calc(min(560px, 92vh) + 10px); }
+
+.imagem-gerada { display: none; }
+
+/* ===== modo desktop (Electron): só o entalho, fundo transparente ===== */
+body.desktop { background: transparent; }
+body.desktop .mesa { background: transparent; }
+body.desktop .mesa::after, body.desktop .widget, body.desktop .dica { display: none; }
+body.desktop .entalho.aberto { width: calc(100vw - 20px); height: calc(100vh - 20px); }
+body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
+
+@media (max-width: 760px) {
+  .painel { grid-template-columns: 1fr; grid-template-rows: auto 1fr; padding: 14px 12px 14px; gap: 10px; }
+  .lado { flex-direction: row; overflow-x: auto; gap: 4px; } .eu { display: none; } .nv { white-space: nowrap; }
+  .entalho.aberto { width: 100vw; height: min(640px, 88vh); border-radius: 0 0 24px 24px; }
+  .meio { flex-direction: column; } .mini { width: auto; align-self: stretch; }
+  .conversa { min-height: 160px; }
+  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; } .chips::-webkit-scrollbar { display: none; }
+  .w-relogio b { font-size: 32px; } .w-clima { display: none; } .grade2 { grid-template-columns: 1fr; }
+  .player .capa { width: 72px; height: 72px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="mesa" id="mesa">
+  <div class="entalho" id="entalho" aria-label="Lumi: passe o mouse ou toque para abrir">
+    <div class="pilula" id="pilula" role="button" tabindex="0" aria-label="Abrir o Lumi"></div>
+    <div class="painel" id="painel">
+      <aside class="lado" id="lado"></aside>
+      <section class="principal" id="principal"></section>
+    </div>
+  </div>
+  <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
+
+  <div class="widget w-relogio"><b id="wHora">--:--</b><span id="wData"></span></div>
+  <button class="widget w-agua" id="wAgua" type="button" title="Bebi um copo de água"><span class="ico">💧</span><div><b id="wAguaN">0/8</b><span>copos de água</span></div></button>
+  <button class="widget w-clima" id="wClima" type="button" title="Ver o clima"><span class="ico" id="wClimaIco">🌤️</span><div><b id="wClimaT">--°</b><span id="wClimaL">toque para ver o clima</span></div></button>
+  <div class="dica" id="dica"><span class="so-mouse">passe o mouse no topo ↑</span><span class="so-toque">toque no topo ↑</span><br>ou aperte <kbd>Alt</kbd>+<kbd>K</kbd> · <kbd>Alt</kbd>+<kbd>L</kbd> para falar</div>
+</div>
+
+<input type="file" id="arquivosMusica" accept="audio/*" multiple hidden>
+<audio id="audio" preload="metadata"></audio>
+
+<script>
+/* Lumi — mascote em SVG: uma gotinha redonda com topete luminoso.
+   13 humores, 5 estilos de olho, 12 acessórios e paletas de corpo/olhos. */
+(function (raiz) {
+  'use strict';
+
+  const HUMORES = {
+    idle: 'Repouso', listen: 'Ouvindo', think: 'Pensando', talk: 'Falando', happy: 'Feliz', laugh: 'Rindo',
+    love: 'Carinho', cool: 'Descolado', surprised: 'Surpreso', angry: 'Bravo', cry: 'Chorando', sleep: 'Dormindo', success: 'Conseguiu!',
+  };
+  const OLHOS = { redondo: 'Redondos', oval: 'Ovais', pixel: 'Pixel', grande: 'Grandões', traco: 'Tracinho' };
+  const ACESSORIOS = {
+    nenhum: 'Nenhum', festa: 'Chapéu de festa', coroa: 'Coroa', fones: 'Fones', laco: 'Laço', gorro: 'Gorro',
+    natal: 'Gorro de Natal', bone: 'Boné', oculos: 'Óculos', aureola: 'Auréola', chifres: 'Chifrinhos', flor: 'Florzinha', cartola: 'Cartola',
+  };
+  const CORPOS = [
+    ['Nuvem', '#F5F8FF', '#C7D3F7'], ['Água', '#E6FFFA', '#8FE8D6'], ['Coral', '#FFF0EA', '#FFB59A'], ['Lavanda', '#F4EEFF', '#C9B5FF'],
+    ['Limão', '#FAFFE4', '#D8EA86'], ['Céu', '#EAF6FF', '#93CCFF'], ['Algodão-doce', '#FFEFF7', '#FFB0D3'], ['Noite', '#5E6580', '#30354A'], ['Mel', '#FFF7DB', '#F0C24E'],
+  ];
+  const CORES_OLHO = [
+    ['Tinta', '#1B1E2B'], ['Oceano', '#1F5AA6'], ['Floresta', '#1E7A4F'], ['Uva', '#5B3A9E'], ['Cacau', '#6B3F2A'], ['Rubi', '#B3264A'], ['Neon', '#46E3C8'],
+  ];
+  const CHAPEUS = ['festa', 'coroa', 'gorro', 'natal', 'bone', 'cartola', 'aureola'];
+
+  const L = 18.5, R = 29.5, Y = 24.5;
+
+  function olhos(humor, estilo, c) {
+    const brilho = (x, y, r = 0.9) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity=".9"/>`;
+    const forma = (x) => {
+      if (estilo === 'pixel') return `<rect x="${x - 2.3}" y="${Y - 2.7}" width="4.6" height="5.4" rx=".5" fill="${c}"/>`;
+      if (estilo === 'oval') return `<ellipse cx="${x}" cy="${Y}" rx="2.2" ry="3.3" fill="${c}"/>${brilho(x - 0.8, Y - 1.4, 0.7)}`;
+      if (estilo === 'grande') return `<circle cx="${x}" cy="${Y}" r="3.9" fill="${c}"/>${brilho(x - 1.3, Y - 1.5, 1.2)}${brilho(x + 1.2, Y + 1.3, 0.5)}`;
+      if (estilo === 'traco') return `<rect x="${x - 2.8}" y="${Y - 0.85}" width="5.6" height="1.7" rx=".85" fill="${c}"/>`;
+      return `<circle cx="${x}" cy="${Y}" r="2.9" fill="${c}"/>${brilho(x - 1, Y - 1.1)}`;
+    };
+    const arcoCima = (x) => `<path d="M${x - 2.8} ${Y + 1} Q${x} ${Y - 2.8} ${x + 2.8} ${Y + 1}" stroke="${c}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+    const arcoBaixo = (x) => `<path d="M${x - 2.8} ${Y - 0.6} Q${x} ${Y + 2.4} ${x + 2.8} ${Y - 0.6}" stroke="${c}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+    const coracao = (x) => `<path d="M${x} ${Y + 2.8} l-3 -3 a1.8 1.8 0 0 1 3 -2.3 a1.8 1.8 0 0 1 3 2.3z" fill="#FF4F86"/>`;
+    const estrela = (x) => `<path d="M${x} ${Y - 3.4} l1 2.2 2.4.3-1.8 1.7.5 2.4-2.1-1.2-2.1 1.2.5-2.4-1.8-1.7 2.4-.3z" fill="#FFC93C"/>`;
+    switch (humor) {
+      case 'happy': case 'laugh': return arcoCima(L) + arcoCima(R);
+      case 'love': return coracao(L) + coracao(R);
+      case 'success': return estrela(L) + estrela(R);
+      case 'sleep': case 'cry': return arcoBaixo(L) + arcoBaixo(R);
+      case 'cool': return `<path d="M12 21.5 h24 v2.4 q0 3.6 -4.6 3.6 h-2.6 q-3.2 0 -3.8 -3 h-2 q-.6 3 -3.8 3 h-2.6 q-4.6 0 -4.6 -3.6z" fill="#11131C"/><rect x="14" y="22.4" width="5" height="1.3" rx=".6" fill="#fff" opacity=".4"/>`;
+      case 'surprised': return `<circle cx="${L}" cy="${Y}" r="3.5" fill="#fff" stroke="${c}" stroke-width="1.5"/><circle cx="${L}" cy="${Y}" r="1.3" fill="${c}"/><circle cx="${R}" cy="${Y}" r="3.5" fill="#fff" stroke="${c}" stroke-width="1.5"/><circle cx="${R}" cy="${Y}" r="1.3" fill="${c}"/>`;
+      case 'angry': return forma(L) + forma(R) + `<path d="M14.5 19.6 L21.5 21.4" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/><path d="M33.5 19.6 L26.5 21.4" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/>`;
+      case 'think': return `<g transform="translate(1 -1.4)">${forma(L)}${forma(R)}</g>`;
+      default: return forma(L) + forma(R);
+    }
+  }
+
+  function boca(humor, c) {
+    const s = `stroke="${c}" stroke-width="1.4" fill="none" stroke-linecap="round"`;
+    switch (humor) {
+      case 'talk': return `<ellipse class="lm-boca" cx="24" cy="31.2" rx="1.9" ry="1.1" fill="${c}"/>`;
+      case 'laugh': case 'success': return `<path d="M20.6 30.2 Q24 35.2 27.4 30.2z" fill="${c}"/><path d="M22 32.4 Q24 33.8 26 32.4" fill="#FF7FA6"/>`;
+      case 'happy': case 'love': return `<path d="M21 30.4 Q24 33.6 27 30.4" ${s}/>`;
+      case 'surprised': case 'listen': return `<ellipse cx="24" cy="31.3" rx="${humor === 'listen' ? 1.1 : 1.6}" ry="${humor === 'listen' ? 1.1 : 2}" fill="${c}"/>`;
+      case 'cry': return `<path d="M21.4 32.4 Q24 29.8 26.6 32.4" ${s}/>`;
+      case 'angry': return `<path d="M21.6 31.6 h4.8" ${s}/>`;
+      case 'sleep': return `<circle cx="24" cy="31.4" r=".9" fill="${c}"/>`;
+      case 'cool': return `<path d="M22 31.2 Q24.6 32.8 26.8 30.4" ${s}/>`;
+      case 'think': return `<path d="M21.6 31.6 q1.2 -1 2.4 0 t2.4 0" ${s}/>`;
+      default: return `<path d="M22 30.8 Q24 32.4 26 30.8" ${s}/>`;
+    }
+  }
+
+  function acessorio(a, c) {
+    switch (a) {
+      case 'festa': return '<path d="M18.5 12 L24 -4 L29.5 12z" fill="#FF5AA0"/><path d="M20.3 7 h7.4 M22 2.4 h4" stroke="#FFD25A" stroke-width="1.3"/><circle cx="24" cy="-4.6" r="1.9" fill="#FFD25A"/>';
+      case 'coroa': return '<path d="M14.5 12 L15.5 3 L19.8 7.6 L24 1 L28.2 7.6 L32.5 3 L33.5 12z" fill="#F2C94C" stroke="#C99A1B" stroke-width=".7"/><circle cx="24" cy="7.6" r="1.3" fill="#FF4F6E"/><circle cx="18.5" cy="9.6" r=".8" fill="#5AB8FF"/><circle cx="29.5" cy="9.6" r=".8" fill="#5AB8FF"/>';
+      case 'fones': return '<path d="M7.5 25 Q7.5 7 24 7 Q40.5 7 40.5 25" stroke="#2B2E3B" stroke-width="2.6" fill="none"/><rect x="3.4" y="21" width="5.6" height="10" rx="2.6" fill="#46E3C8"/><rect x="39" y="21" width="5.6" height="10" rx="2.6" fill="#46E3C8"/>';
+      case 'laco': return '<path d="M33 12.5 l-5.4 -4 v8z M33 12.5 l5.4 -4 v8z" fill="#FF5AA0"/><circle cx="33" cy="12.5" r="1.7" fill="#D93A7E"/>';
+      case 'gorro': return '<path d="M9.5 16 Q9.5 2.5 24 2.5 Q38.5 2.5 38.5 16z" fill="#5A7CFF"/><path d="M14 6 v9 M19 4 v11 M24 3.4 v11.6 M29 4 v11 M34 6 v9" stroke="#4A68E0" stroke-width=".9"/><rect x="8.5" y="13" width="31" height="4" rx="2" fill="#3F5BD9"/><circle cx="24" cy="1.6" r="2.6" fill="#fff"/>';
+      case 'natal': return '<path d="M10.5 14 Q12 1 25 2 Q33 3 37 9.5 L38.5 14z" fill="#E53935"/><rect x="9" y="12" width="30" height="4.2" rx="2.1" fill="#fff"/><circle cx="38.5" cy="9" r="2.4" fill="#fff"/>';
+      case 'bone': return '<path d="M10.5 15 Q10.5 3 24 3 Q36 3 37 15z" fill="#FF8A3D"/><path d="M24 14 L45 15 L43 17.4 L24 16.4z" fill="#D9661E"/><circle cx="24" cy="3.4" r="1.2" fill="#D9661E"/>';
+      case 'oculos': return `<circle cx="${L}" cy="${Y}" r="4.9" fill="rgba(255,255,255,.12)" stroke="#2B2E3B" stroke-width="1.4"/><circle cx="${R}" cy="${Y}" r="4.9" fill="rgba(255,255,255,.12)" stroke="#2B2E3B" stroke-width="1.4"/><path d="M23.4 24 h1.2" stroke="#2B2E3B" stroke-width="1.4"/>`;
+      case 'aureola': return '<ellipse class="lm-flutua" cx="24" cy="2" rx="9" ry="2.5" fill="none" stroke="#FFD25A" stroke-width="1.9"/>';
+      case 'chifres': return '<path d="M13 13.5 L10.6 4 L18 10.6z" fill="#FF4F4F"/><path d="M35 13.5 L37.4 4 L30 10.6z" fill="#FF4F4F"/>';
+      case 'flor': return '<g transform="translate(34 11.5)"><circle r="2.3" cx="0" cy="-2.7" fill="#FF9EC8"/><circle r="2.3" cx="2.6" cy="-.6" fill="#FF9EC8"/><circle r="2.3" cx="1.6" cy="2.4" fill="#FF9EC8"/><circle r="2.3" cx="-1.6" cy="2.4" fill="#FF9EC8"/><circle r="2.3" cx="-2.6" cy="-.6" fill="#FF9EC8"/><circle r="1.6" fill="#FFD25A"/></g>';
+      case 'cartola': return '<rect x="15" y="-3" width="18" height="15" rx="1.5" fill="#1D1F2A"/><rect x="15" y="7" width="18" height="2.6" fill="#B3264A"/><rect x="11" y="11" width="26" height="2.8" rx="1.4" fill="#1D1F2A"/>';
+      default: return '';
+    }
+  }
+
+  let seq = 0;
+  // o = { corpo, corpo2, olho, estiloOlho, acessorio, humor, tamanho, piscar }
+  function svg(o = {}) {
+    const k = { corpo: '#F5F8FF', corpo2: '#C7D3F7', olho: '#1B1E2B', estiloOlho: 'redondo', acessorio: 'nenhum', piscar: true, ...o };
+    const tamanho = k.tamanho || 40;
+    const humor = HUMORES[k.humor] ? k.humor : 'idle';
+    const id = 'lm' + (++seq).toString(36);
+    const corTopete = humor === 'listen' ? '#FF5A6E' : humor === 'think' ? '#FFD25A' : humor === 'talk' ? '#5AB8FF' : humor === 'sleep' ? '#8E9AC8' : '#46E3C8';
+    const topete = CHAPEUS.includes(k.acessorio) ? ''
+      : `<path d="M24 12 C21.6 8.6 22.4 5 25.8 3.2 C26.6 6.4 26.2 9.4 24 12z" fill="${corTopete}" class="lm-topete${humor === 'listen' || humor === 'think' ? ' lm-pulsa' : ''}"/><circle cx="25.6" cy="4.2" r="3.4" fill="${corTopete}" opacity=".22"/>`;
+    const ondas = humor === 'listen' ? '<path class="lm-onda" d="M45 20 q2.4 4.5 0 9" stroke="#FF5A6E" stroke-width="1.3" fill="none" stroke-linecap="round"/><path class="lm-onda lm-o2" d="M47.6 17.6 q3.6 7 0 14" stroke="#FF5A6E" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".7"/>' : '';
+    const zz = humor === 'sleep' ? '<text x="38" y="9" font-size="7" font-weight="800" fill="#9BB0FF" class="lm-zz" font-family="system-ui,sans-serif">z</text>' : '';
+    const lagrimas = humor === 'cry' ? '<path class="lm-lagrima" d="M15.6 27.4 q-1.1 2.6 0 3.8 q1.1 -1.2 0 -3.8z" fill="#5AB8FF"/><path class="lm-lagrima" d="M32.4 27.4 q-1.1 2.6 0 3.8 q1.1 -1.2 0 -3.8z" fill="#5AB8FF"/>' : '';
+    const pensamento = humor === 'think' ? '<circle cx="40" cy="12" r="1.1" fill="#FFD25A" opacity=".8"/><circle cx="43.4" cy="8" r="1.6" fill="#FFD25A" opacity=".6"/>' : '';
+    const bochechas = ['love', 'happy', 'laugh', 'success'].includes(humor) ? '<ellipse cx="12.8" cy="29.6" rx="2.3" ry="1.3" fill="#FF8FB1" opacity=".6"/><ellipse cx="35.2" cy="29.6" rx="2.3" ry="1.3" fill="#FF8FB1" opacity=".6"/>' : '';
+    const pisca = k.piscar && ['idle', 'listen', 'talk', 'think', 'angry'].includes(humor) ? ' lm-pisca' : '';
+    return `<svg class="lumi lm-${humor}" width="${tamanho}" height="${Math.round(tamanho * 0.92)}" viewBox="0 -6 50 46" overflow="visible" aria-hidden="true">
+      <defs><radialGradient id="${id}" cx="40%" cy="30%" r="75%"><stop offset="0" stop-color="${k.corpo}"/><stop offset="1" stop-color="${k.corpo2}"/></radialGradient></defs>
+      <g class="lm-corpo">${topete}
+        <ellipse cx="7.6" cy="27" rx="3.2" ry="5" transform="rotate(-22 7.6 27)" fill="${k.corpo2}"/>
+        <ellipse cx="40.4" cy="27" rx="3.2" ry="5" transform="rotate(22 40.4 27)" fill="${k.corpo2}"/>
+        <ellipse cx="24" cy="25.5" rx="17" ry="15" fill="url(#${id})"/>
+        <ellipse cx="18" cy="17.6" rx="6.2" ry="3.2" transform="rotate(-18 18 17.6)" fill="#fff" opacity=".45"/>
+        ${bochechas}
+        <g data-olhos><g class="lm-olhos${pisca}">${olhos(humor, k.estiloOlho, k.olho)}</g></g>
+        ${boca(humor, k.olho)}${lagrimas}
+        ${acessorio(k.acessorio, k.corpo2)}
+      </g>${ondas}${zz}${pensamento}
+    </svg>`;
+  }
+
+  const CSS = `
+  .lumi { overflow: visible; display: block; }
+  .lumi [data-olhos] { transition: transform .12s ease-out; }
+  .lumi .lm-pisca { animation: lmPisca 4.6s infinite; transform-origin: center; transform-box: fill-box; }
+  @keyframes lmPisca { 0%, 92%, 100% { transform: scaleY(1); } 94.5% { transform: scaleY(.1); } }
+  .lumi .lm-pulsa { animation: lmPulsa 1s infinite; } @keyframes lmPulsa { 50% { opacity: .35; } }
+  .lumi .lm-onda { animation: lmOnda 1s infinite; } .lumi .lm-o2 { animation-delay: .25s; } @keyframes lmOnda { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
+  .lumi.lm-talk .lm-boca { animation: lmFala .26s infinite alternate; transform-origin: center; transform-box: fill-box; } @keyframes lmFala { to { transform: scaleY(2.2); } }
+  .lumi.lm-idle .lm-corpo { animation: lmRespira 3.6s ease-in-out infinite; transform-origin: 50% 100%; transform-box: fill-box; } @keyframes lmRespira { 50% { transform: scale(1.015, .985); } }
+  .lumi.lm-happy .lm-corpo, .lumi.lm-laugh .lm-corpo, .lumi.lm-success .lm-corpo { animation: lmPula .5s ease-in-out 3; transform-origin: 50% 100%; transform-box: fill-box; } @keyframes lmPula { 50% { transform: translateY(-2px); } }
+  .lumi.lm-angry .lm-corpo { animation: lmTreme .12s 6; } @keyframes lmTreme { 50% { transform: translateX(.9px); } }
+  .lumi.lm-surprised .lm-corpo { animation: lmSusto .3s ease; transform-origin: 50% 100%; transform-box: fill-box; } @keyframes lmSusto { 50% { transform: scale(1.08); } }
+  .lumi.lm-love .lm-corpo { animation: lmBate .8s ease-in-out infinite; transform-origin: 50% 60%; transform-box: fill-box; } @keyframes lmBate { 50% { transform: scale(1.04); } }
+  .lumi .lm-zz { animation: lmZz 2.2s infinite; } @keyframes lmZz { 0% { opacity: 0; transform: translate(0,0); } 50% { opacity: 1; } 100% { opacity: 0; transform: translate(4px,-6px); } }
+  .lumi .lm-lagrima { animation: lmCai 1.4s infinite; } @keyframes lmCai { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(5px); opacity: 0; } }
+  .lumi .lm-flutua { animation: lmFlutua 2s ease-in-out infinite; } @keyframes lmFlutua { 50% { transform: translateY(-1px); } }
+  @media (prefers-reduced-motion: reduce) { .lumi * { animation: none !important; } }`;
+
+  function instalarCss(doc) {
+    if (!doc || doc.getElementById('lumi-css')) return;
+    const st = doc.createElement('style'); st.id = 'lumi-css'; st.textContent = CSS; doc.head.appendChild(st);
+  }
+
+  // olhos seguem o ponteiro (bem pouquinho)
+  function olhar(doc, mx, my) {
+    doc.querySelectorAll('[data-olhos]').forEach((g) => {
+      const svgEl = g.ownerSVGElement; if (!svgEl) return;
+      const r = svgEl.getBoundingClientRect(); if (!r.width) return;
+      const dx = mx - (r.left + r.width / 2), dy = my - (r.top + r.height / 2);
+      const len = Math.hypot(dx, dy) || 1, k = Math.min(1, len / 400);
+      g.setAttribute('transform', `translate(${(dx / len * 1.8 * k).toFixed(2)} ${(dy / len * 1.4 * k).toFixed(2)})`);
+    });
+  }
+
+  const api = { svg, olhar, instalarCss, HUMORES, OLHOS, ACESSORIOS, CORPOS, CORES_OLHO };
+  if (typeof document !== 'undefined') instalarCss(document);
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  raiz.MASCOTE = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* Lumi — cérebro local: entende pedidos em português do dia a dia e devolve uma ação.
+   Sem DOM e sem rede: as ações são executadas pelo app.js. Também roda no Node (testes). */
+(function (raiz) {
+  'use strict';
+
+  const UNIDADES = {
+    zero: 0, um: 1, uma: 1, dois: 2, duas: 2, 'três': 3, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9,
+    dez: 10, onze: 11, doze: 12, treze: 13, catorze: 14, quatorze: 14, quinze: 15, dezesseis: 16, dezessete: 17, dezoito: 18, dezenove: 19,
+  };
+  const DEZENAS = { vinte: 20, trinta: 30, quarenta: 40, cinquenta: 50, sessenta: 60, setenta: 70, oitenta: 80, noventa: 90 };
+  const B = '(^|[^\\p{L}\\d])', F = '(?=$|[^\\p{L}\\d])';
+
+  /** Converte números por extenso ("vinte e cinco", "meia hora") em algarismos.
+      Com `restrito`, só converte quando o número vem antes de uma unidade ("cinco minutos")
+      ou depois de "às" ("às sete"), para não estragar textos como "fazer uma ligação". */
+  function numeros(s, restrito) {
+    const ok = (str, ini, fim) => !restrito
+      || /^(?:\s+e\s+meia)?\s+(?:segundos?|seg|minutos?|mins?|horas?|h|copos?|garrafas?|dias?|semanas?)(?=$|[^\p{L}])/u.test(str.slice(fim))
+      || /(?:^|\s)(?:[àa]s?|pras?|para as|at[eé] as)\s$/u.test(str.slice(0, ini));
+    let t = ' ' + s + ' ';
+    const dz = Object.keys(DEZENAS).join('|'), un = Object.keys(UNIDADES).join('|');
+    t = t.replace(new RegExp(B + '(' + dz + ') e (' + un + ')' + F, 'giu'), (m, a, d, u, o, str) =>
+      ok(str, o + a.length, o + m.length) ? a + (DEZENAS[d.toLowerCase()] + UNIDADES[u.toLowerCase()]) : m);
+    t = t.replace(new RegExp(B + '(' + dz + '|cem)' + F, 'giu'), (m, a, d, o, str) =>
+      ok(str, o + a.length, o + m.length) ? a + (d.toLowerCase() === 'cem' ? 100 : DEZENAS[d.toLowerCase()]) : m);
+    t = t.replace(new RegExp(B + 'meia hora' + F, 'giu'), (m, a) => a + '30 minutos');
+    t = t.replace(new RegExp(B + '(' + un + ')' + F, 'giu'), (m, a, u, o, str) =>
+      ok(str, o + a.length, o + m.length) ? a + UNIDADES[u.toLowerCase()] : m);
+    return t.trim().replace(/\s+/g, ' ');
+  }
+
+  function normalizar(texto) {
+    return String(texto || '').normalize('NFC').toLowerCase().replace(/[“”"]/g, '').replace(/\s+/g, ' ').trim().replace(/[?!.]+$/, '').trim();
+  }
+
+  const num = (x) => parseFloat(String(x).replace(',', '.'));
+
+  /** Durações: "10 minutos", "1 hora e meia", "30s", "2h30". Retorna { segundos, trechos }. */
+  function duracao(n) {
+    let seg = 0; const trechos = [];
+    const re = /(\d+(?:[.,]\d+)?)\s*(segundos?|seg|s|minutos?|mins?|m|horas?|hs?)(?:\s*e\s*meia)?(?=$|[^\p{L}\d])/giu;
+    let m;
+    while ((m = re.exec(n))) {
+      const v = num(m[1]), u = m[2].toLowerCase();
+      const mult = /^h/.test(u) ? 3600 : /^m/.test(u) ? 60 : 1;
+      seg += v * mult; if (/e\s*meia$/.test(m[0])) seg += mult === 3600 ? 1800 : 30;
+      trechos.push(m[0]);
+    }
+    const hm = /(\d{1,2})h(\d{2})(?=$|[^\p{L}\d])/u.exec(n);
+    if (!seg && hm) { seg = num(hm[1]) * 3600 + num(hm[2]) * 60; trechos.push(hm[0]); }
+    return { segundos: Math.round(seg), trechos };
+  }
+
+  /** Horário do dia: "às 15h", "as 7:30 da manhã", "meio-dia", "amanhã às 9". Retorna { quando, trechos } ou null. */
+  function horario(n, agora) {
+    const base = new Date(agora);
+    let h = null, mi = 0; const trechos = [];
+    let m = /(?:(?:para |pra |até )?(?:[àa]s?|ao)\s+)?(meio[- ]dia|meia[- ]noite)/u.exec(n);
+    if (m) { h = /meio/.test(m[1]) ? 12 : 0; trechos.push(m[0]); }
+    if (h === null) {
+      m = /(?:(?:para |pra )?[àa]s?\s+)(\d{1,2})(?:\s*[:h]\s*(\d{2}))?\s*(?:h(?:oras?)?|horas?)?(?:\s+(?:e\s+(\d{1,2})|da\s+(manh[ãa]|tarde|noite)|e meia))*/u.exec(n)
+        || /(?:^|\s)(\d{1,2})[:h](\d{2})(?=$|\s)/u.exec(n);
+      if (m) {
+        h = parseInt(m[1], 10); mi = m[2] ? parseInt(m[2], 10) : m[3] ? parseInt(m[3], 10) : 0;
+        if (/e meia/.test(m[0])) mi = 30;
+        const periodo = m[4] || (/da\s+(manh[ãa]|tarde|noite)/u.exec(m[0]) || [])[1];
+        if (periodo && /tarde|noite/.test(periodo) && h < 12) h += 12;
+        if (periodo && /manh/.test(periodo) && h === 12) h = 0;
+        trechos.push(m[0]);
+      }
+    }
+    if (h === null || h > 23 || mi > 59) return null;
+    const d = new Date(base); d.setSeconds(0, 0); d.setHours(h, mi);
+    const amanha = /amanh[ãa]/u.exec(n);
+    if (amanha) { d.setDate(d.getDate() + 1); trechos.push(amanha[0]); }
+    else if (/(?:^|\s)hoje(?=$|\s)/.test(n)) trechos.push('hoje');
+    if (!amanha && d.getTime() <= agora) {
+      // "às 3" à tarde provavelmente quer dizer 15h; senão, amanhã
+      if (h < 12 && !/manh/.test(n) && d.getTime() + 12 * 3600e3 > agora) d.setHours(h + 12);
+      else d.setDate(d.getDate() + 1);
+    }
+    return { quando: d.getTime(), trechos };
+  }
+
+  function tirar(texto, trechos) {
+    let t = ' ' + texto + ' ';
+    for (const tr of trechos) if (tr) t = t.replace(tr, ' ');
+    return t.replace(/\s+/g, ' ').trim();
+  }
+  function limparPonta(t) {
+    return t.replace(/^(?:de|para|pra|pro|que|a|o|em|daqui a|daqui|às|as|e|:|,|-)\s+/i, '')
+      .replace(/\s+(?:em|daqui a|daqui|às|as|de|para|pra|pro|e|,)$/i, '').trim();
+  }
+  function limparTudo(t) { let a; do { a = t; t = limparPonta(t); } while (a !== t); return /^(?:de|para|pra|pro|que|a|o|em|e|às|as|daqui)$/i.test(t) ? '' : t; }
+  const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
+  /* ===== calculadora segura (sem eval) ===== */
+  function calcular(expr) {
+    const s = expr.replace(/\s+/g, '');
+    let i = 0;
+    const olha = () => s[i];
+    function numero() {
+      const m = /^\d+(?:\.\d+)?/.exec(s.slice(i)); if (!m) throw new Error('número');
+      i += m[0].length; return parseFloat(m[0]);
+    }
+    function fator() {
+      if (olha() === '-') { i++; return -fator(); }
+      if (olha() === '+') { i++; return fator(); }
+      if (s.startsWith('sqrt(', i)) { i += 5; const v = soma(); if (olha() !== ')') throw new Error(')'); i++; return Math.sqrt(v); }
+      let v;
+      if (olha() === '(') { i++; v = soma(); if (olha() !== ')') throw new Error(')'); i++; } else v = numero();
+      if (olha() === '%') { i++; v = v / 100; }
+      if (olha() === '^') { i++; v = Math.pow(v, fator()); }
+      return v;
+    }
+    function produto() { let v = fator(); while (olha() === '*' || olha() === '/') { const o = s[i++]; const d = fator(); v = o === '*' ? v * d : v / d; } return v; }
+    function soma() { let v = produto(); while (olha() === '+' || olha() === '-') { const o = s[i++]; const d = produto(); v = o === '+' ? v + d : v - d; } return v; }
+    const r = soma(); if (i !== s.length || !isFinite(r)) throw new Error('expressão');
+    return r;
+  }
+  function expressao(n) {
+    let e = n.replace(/raiz(?: quadrada)? de (\d+(?:[.,]\d+)?)/g, 'sqrt($1)')
+      .replace(/(\d),(\d)/g, '$1.$2')
+      .replace(/\bmais\b/g, '+').replace(/\bmenos\b/g, '-')
+      .replace(/\b(?:vezes|multiplicado por)\b|×/g, '*').replace(/(\d)\s*x\s*(\d)/g, '$1*$2')
+      .replace(/\bdividido por\b|÷/g, '/').replace(/\belevado a\b/g, '^').replace(/\bao quadrado\b/g, '^2').replace(/\bao cubo\b/g, '^3')
+      .replace(/\bpor cento\b/g, '%');
+    if (!/^[\d\s+\-*/^().%sqrt]+$/.test(e) || !/\d/.test(e)) return null;
+    try { return calcular(e); } catch (_) { return null; }
+  }
+  const fmtNum = (v) => (Math.round(v * 1e6) / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 6 });
+
+  /* ===== datas especiais ===== */
+  function pascoa(ano) {
+    const a = ano % 19, b = Math.floor(ano / 100), c = ano % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const mes = Math.floor((h + l - 7 * m + 114) / 31), dia = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(ano, mes - 1, dia);
+  }
+  function diasAte(alvo, agora) {
+    const hoje = new Date(agora); hoje.setHours(0, 0, 0, 0);
+    const fazer = (ano) => {
+      if (alvo === 'natal') return new Date(ano, 11, 25);
+      if (alvo === 'ano novo') return new Date(ano + 1, 0, 1);
+      if (alvo === 'carnaval') { const p = pascoa(ano); p.setDate(p.getDate() - 47); return p; }
+      if (alvo === 'pascoa') return pascoa(ano);
+      if (alvo === 'dia das criancas') return new Date(ano, 9, 12);
+      const m = /^(\d{1,2})\/(\d{1,2})$/.exec(alvo); if (m) return new Date(ano, parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+      return null;
+    };
+    let d = fazer(hoje.getFullYear()); if (!d) return null;
+    if (alvo === 'ano novo') d = new Date(hoje.getFullYear() + 1, 0, 1);
+    else if (d < hoje) d = fazer(hoje.getFullYear() + 1);
+    return { dias: Math.round((d - hoje) / 864e5), data: d.getTime() };
+  }
+
+  /* ===== tabelas ===== */
+  const IDIOMAS = { 'inglês': 'en', ingles: 'en', espanhol: 'es', 'francês': 'fr', frances: 'fr', italiano: 'it', 'alemão': 'de', alemao: 'de', 'japonês': 'ja', japones: 'ja', 'chinês': 'zh-CN', chines: 'zh-CN', russo: 'ru', coreano: 'ko', 'português': 'pt-BR', portugues: 'pt-BR', 'árabe': 'ar', arabe: 'ar', holandês: 'nl', holandes: 'nl' };
+  const MOEDAS = [[/d[oó]lar/, 'USD', 'dólar'], [/euro/, 'EUR', 'euro'], [/bitcoin|btc/, 'BTC', 'bitcoin'], [/libra/, 'GBP', 'libra'], [/peso argentino/, 'ARS', 'peso argentino'], [/iene/, 'JPY', 'iene'], [/ethereum|eth\b/, 'ETH', 'ethereum']];
+  const SITES = {
+    youtube: 'https://www.youtube.com', gmail: 'https://mail.google.com', 'e-mail': 'https://mail.google.com', email: 'https://mail.google.com', whatsapp: 'https://web.whatsapp.com', zap: 'https://web.whatsapp.com',
+    instagram: 'https://www.instagram.com', facebook: 'https://www.facebook.com', twitter: 'https://x.com', netflix: 'https://www.netflix.com', spotify: 'https://open.spotify.com',
+    agenda: 'https://calendar.google.com', 'calendário': 'https://calendar.google.com', calendario: 'https://calendar.google.com', mapa: 'https://maps.google.com', mapas: 'https://maps.google.com', maps: 'https://maps.google.com',
+    drive: 'https://drive.google.com', linkedin: 'https://www.linkedin.com', github: 'https://github.com', tiktok: 'https://www.tiktok.com', claude: 'https://claude.ai', google: 'https://www.google.com',
+    tradutor: 'https://translate.google.com', 'notícias': 'https://news.google.com/?hl=pt-BR&gl=BR&ceid=BR:pt-419', noticias: 'https://news.google.com/?hl=pt-BR&gl=BR&ceid=BR:pt-419',
+  };
+  const ACESSORIOS_FALA = [
+    [/chap[eé]u de festa|festa/, 'festa'], [/coroa/, 'coroa'], [/fones?/, 'fones'], [/la[cç]o|lacinho/, 'laco'], [/gorro de natal|touca de natal|natal/, 'natal'], [/gorro|touca/, 'gorro'],
+    [/bon[eé]/, 'bone'], [/[oó]culos/, 'oculos'], [/aur[eé]ola|anjinho/, 'aureola'], [/chifr/, 'chifres'], [/flor/, 'flor'], [/cartola/, 'cartola'],
+  ];
+  const CORES_FALA = [[/branc|nuvem/, 0], [/verde[- ]?[aá]gua|[aá]gua|turquesa|menta/, 1], [/coral|laranja|p[eê]ssego/, 2], [/lavanda|roxo|lil[aá]s/, 3], [/lim[aã]o|amarel/, 4], [/azul|c[eé]u/, 5], [/rosa/, 6], [/preto|cinza|escur|noite|grafite/, 7], [/dourad|ouro|mel/, 8], [/verde/, 1]];
+
+  const PIADAS = [
+    'Por que o livro de matemática ficou triste? Porque tinha muitos problemas.',
+    'O que o zero disse para o oito? Que cinto bonito!',
+    'Por que a plantinha não foi atendida no hospital? Porque só tinha médico de plantão.',
+    'Qual é o café mais perigoso do mundo? O ex-presso.',
+    'O que o pato disse para a pata? Vem quá!',
+    'Por que o computador foi ao médico? Porque estava com vírus.',
+    'Qual é o contrário de volátil? Vem cá, sobrinho.',
+    'Por que o esqueleto não brigou? Porque não tinha estômago pra isso.',
+    'O que é um pontinho amarelo no céu? Um yellowcóptero.',
+    'Sabe por que o mar não seca? Porque não tem toalha grande o suficiente.',
+    'Como o elétron atende o telefone? Próton!',
+    'Por que a vaca foi pro espaço? Pra se encontrar com a Via Láctea.',
+  ];
+
+  /* ===== interpretação ===== */
+  /**
+   * @param {string} texto  frase do usuário
+   * @param {{agora?:number, nome?:string}} ctx
+   * @returns {object} ação, sempre com `tipo`
+   */
+  function interpretar(texto, ctx = {}) {
+    const agora = ctx.agora || Date.now();
+    const nome = normalizar(ctx.nome || 'lumi');
+    let s = normalizar(texto);
+    // tira o chamado ("ei, lumi", "lumi,")
+    s = s.replace(new RegExp('^(?:(?:ei|oi|ô|o|hey|e aí)[,\\s]+)?' + nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[,!\\s]*', 'u'), '').trim();
+    if (!s) return /^(?:oi|ol[aá]|e a[ií]|bom dia|boa tarde|boa noite)/u.test(normalizar(texto)) ? { tipo: 'saudacao', s: normalizar(texto) } : { tipo: 'chamado' };
+    const n = numeros(s), nt = numeros(s, true);
+    const temHora = /(?:^|\s)[àa]s?\s+(?:\d|[a-zà-ú]+\s*(?:h|horas?|da|e meia|$))|meio[- ]dia|meia[- ]noite|(?:^|\s)\d{1,2}:\d{2}/u.test(nt);
+
+    // parar / silêncio
+    if (/^(?:para|pare|chega|cancela|cancelar|sil[eê]ncio|cala a boca|fica quieto|quieto|shh+|psiu|stop)$/u.test(s)) return { tipo: 'parar' };
+
+    // ajuda
+    if (/^(?:ajuda|socorro|comandos)$|o que (?:voc[eê] |vc )?(?:faz|sabe fazer|pode fazer|consegue fazer)|como (?:eu )?(?:te )?uso/u.test(s)) return { tipo: 'ajuda' };
+
+    // coisas que só um app de desktop com permissões faz
+    if (/(?:desliga|desligar|reinicia|reiniciar|hiberna|suspende)\s+(?:o\s+)?(?:pc|computador|notebook|m[aá]quina)|organiza\s+(?:a\s+)?(?:minha\s+)?[aá]rea de trabalho|(?:procura|acha|encontra)\s+(?:o\s+|um\s+)?arquivo|fecha\s+(?:o\s+)?(?:programa|aplicativo|app|chrome)|(?:cria|criar)\s+(?:uma\s+)?pasta|abre\s+(?:a\s+)?pasta/u.test(s)) {
+      return { tipo: 'desktop', pedido: s };
+    }
+
+    // cancelar timers
+    if (/(?:cancela|cancelar|para|parar|apaga|remove|desliga)\s+(?:o\s+|os\s+|todos os\s+)?(?:timers?|temporizador(?:es)?)/u.test(s)) return { tipo: 'timer_cancelar' };
+
+    // cronômetro (sem duração)
+    if (/cron[oô]metro/u.test(s) && !duracao(nt).segundos) {
+      if (/(?:para|pausa|pare|pausar|parar)/u.test(s)) return { tipo: 'crono', acao: 'pausar' };
+      if (/(?:zera|zerar|reinicia|reset)/u.test(s)) return { tipo: 'crono', acao: 'zerar' };
+      return { tipo: 'crono', acao: 'iniciar' };
+    }
+
+    // modo foco / pausa (pomodoro)
+    if (/modo (?:foco|estudo|concentra[cç][aã]o|trabalho)|pomodoro|hora de (?:estudar|focar)/u.test(s)) {
+      const d = duracao(nt).segundos; return { tipo: 'timer', segundos: d || 25 * 60, nome: 'Foco' };
+    }
+    if (/modo (?:pausa|descanso)|hora do intervalo/u.test(s)) { const d = duracao(nt).segundos; return { tipo: 'timer', segundos: d || 5 * 60, nome: 'Pausa' }; }
+
+    // alarme
+    if (/alarme|despertador|me acorda/u.test(s)) {
+      const h = horario(nt, agora);
+      if (/(?:cancela|apaga|desliga|remove)/u.test(s)) return { tipo: 'alarme_cancelar' };
+      if (!h) { const d = duracao(nt); if (d.segundos) return { tipo: 'alarme', quando: agora + d.segundos * 1000, texto: 'Alarme' }; return { tipo: 'pergunta', texto: 'Pra que horas eu coloco o alarme? Diga, por exemplo, "alarme às 7h".' }; }
+      return { tipo: 'alarme', quando: h.quando, texto: 'Alarme' };
+    }
+
+    // timer
+    if (/(?:^|\s)(?:timer|temporizador|timers)(?:\s|$)|cronometra|^me avisa (?:em|daqui)|^avisa (?:em|daqui)/u.test(s)) {
+      const d = duracao(nt);
+      if (!d.segundos) return { tipo: 'pergunta', texto: 'De quanto tempo? Diga, por exemplo, "timer de 10 minutos".' };
+      let resto = tirar(nt, d.trechos).replace(/(?:^|\s)(?:coloca|cria|inicia|liga|bota|põe|poe|faz|faça|um|uma|o|timer|temporizador|cronometra|me avisa|avisa)(?=\s|$)/gu, ' ');
+      resto = limparTudo(resto.replace(/\s+/g, ' ').trim()).replace(/^(?:o|a|os|as)\s+/, '');
+      return { tipo: 'timer', segundos: d.segundos, nome: cap(resto) || 'Timer' };
+    }
+
+    // lembrete
+    if (/(?:me\s+)?lembr[ae]r?\b|lembrete|me avisa (?:de|que|para|pra)|n[aã]o me deixa esquecer/u.test(s)) {
+      const h = temHora ? horario(nt, agora) : null; const d = h ? { segundos: 0, trechos: [] } : duracao(nt);
+      const quando = d.segundos ? agora + d.segundos * 1000 : h ? h.quando : null;
+      let resto = tirar(nt, d.segundos ? d.trechos.concat(['daqui a', 'daqui']) : h ? h.trechos : []);
+      resto = resto.replace(/^(?:cria|coloca|adiciona|bota|põe)?\s*(?:um\s+)?(?:lembrete|me\s+lembr[ae]r?|n[aã]o me deixa esquecer|me avisa)\s*/u, '');
+      resto = limparTudo(resto);
+      if (!resto) return { tipo: 'pergunta', texto: 'Do que eu devo te lembrar?' };
+      if (!quando) return { tipo: 'pergunta', texto: `Quando eu te lembro de "${resto}"? Diga "em 30 minutos" ou "às 15h".`, pendente: { tipo: 'lembrete', texto: cap(resto) } };
+      return { tipo: 'lembrete', texto: cap(resto), quando };
+    }
+
+    // tarefas
+    if (/^(?:quais s[aã]o |ver |lista |listar |mostra |me mostra |l[eê] )?(?:as )?(?:minhas )?tarefas(?: de hoje| pendentes)?$|o que (?:eu )?tenho (?:pra|para) (?:hoje|fazer)|minha lista/u.test(s)) return { tipo: 'tarefas_listar' };
+    let m = /^(?:conclui|concluir|terminei|marca|marcar|finaliza|finalizar|fiz)\s+(?:a\s+)?(?:tarefa\s+)?(?:de\s+)?(.+?)(?:\s+como\s+(?:feita|conclu[ií]da))?$/u.exec(s);
+    if (m && /tarefa|como (?:feita|conclu)|^terminei|^conclui/u.test(s)) return { tipo: 'tarefa_concluir', busca: m[1].replace(/^tarefa\s+/, '') };
+    m = /^(?:cria|criar|crie|adiciona|adicionar|adicione|nova|novo|coloca|bota|põe|poe|anota|registra|inclui)\s+(?:uma\s+|a\s+)?(?:nova\s+)?tarefas?\s*(?:de|:|para|pra|que|na lista)?\s*(.*)$|^tarefa\s*:?\s+(.+)$/u.exec(s);
+    if (m) {
+      const bruto = (m[1] || m[2] || '').trim();
+      if (!bruto) return { tipo: 'pergunta', texto: 'Qual é a tarefa?' };
+      const nb = numeros(bruto, true); const h = horario(nb, agora);
+      const t = limparTudo(h ? tirar(nb, h.trechos) : bruto).replace(/\s+(?:hoje|amanh[ãa])$/u, '');
+      return { tipo: 'tarefa', texto: cap(t || bruto), quando: h ? h.quando : null };
+    }
+
+    // notas
+    if (/^(?:minhas |as |ver |l[eê] |mostra )*(?:minhas )?(?:notas|anota[cç][oõ]es)$/u.test(s)) return { tipo: 'notas_listar' };
+    m = /^(?:anota|anotar|anote|toma nota|salva|guarda)\s*(?:uma nota|um lembrete|isso|a[ií])?\s*(?:que|:|de que)?\s+(.+)$|^nota\s*:\s*(.+)$/u.exec(s);
+    if (m) return { tipo: 'nota', texto: cap((m[1] || m[2]).trim()) };
+
+    // hábitos
+    if (/(?:bebi|tomei|acabei de beber)\b.*[aá]gua|[aá]gua.*(?:bebi|tomei)|^mais um copo/u.test(s)) {
+      const q = /(\d+)\s*(?:copos?|garrafas?)/.exec(n); return { tipo: 'habito', habito: 'agua', qtd: q ? Math.min(8, parseInt(q[1], 10)) : 1 };
+    }
+    if (/(?:fiz|terminei|acabei)\s+(?:o\s+|a\s+|meu\s+|minha\s+)?(?:exerc[ií]cio|academia|treino|caminhada|corrida|alongamento)/u.test(s)) return { tipo: 'habito', habito: 'exercicio', qtd: 1 };
+    if (/(?:^li\b|terminei de ler|fiz (?:a\s+)?(?:minha\s+)?leitura|li um cap[ií]tulo)/u.test(s)) return { tipo: 'habito', habito: 'leitura', qtd: 1 };
+    if (/quanta [aá]gua|quantos copos/u.test(s)) return { tipo: 'habitos_ver' };
+
+    // música
+    if (/^(?:pausa|pausar|pause|para a m[uú]sica|para de tocar|para o som|pausa a m[uú]sica)$/u.test(s)) return { tipo: 'musica', acao: 'pausar' };
+    if (/^(?:continua|continuar|despausa|volta a tocar|retoma|play|solta o som)$/u.test(s)) return { tipo: 'musica', acao: 'continuar' };
+    if (/^(?:pr[oó]xima|pula|pular|avan[cç]a|passa)(?: (?:a )?m[uú]sica| essa)?$|^pr[oó]xima m[uú]sica$/u.test(s)) return { tipo: 'musica', acao: 'proxima' };
+    if (/^(?:anterior|volta|voltar)(?: (?:a )?m[uú]sica)?$|^m[uú]sica anterior$/u.test(s)) return { tipo: 'musica', acao: 'anterior' };
+    m = /volume\s+(?:em|para|pra|no|a)?\s*(\d{1,3})/u.exec(n);
+    if (m) return { tipo: 'volume', valor: Math.max(0, Math.min(100, parseInt(m[1], 10))) };
+    if (/(?:aumenta|sobe|aumentar|mais alto|subir)\s*(?:o\s+)?(?:volume|som)?|volume (?:mais )?alto/u.test(s) && /volume|som|alto/u.test(s)) return { tipo: 'volume', delta: 15 };
+    if (/(?:diminui|abaixa|baixa|diminuir|abaixar|mais baixo)\s*(?:o\s+)?(?:volume|som)?/u.test(s) && /volume|som|baixo/u.test(s)) return { tipo: 'volume', delta: -15 };
+    if (/^(?:muta|mutar|silencia|sem som|tira o som|mudo)$/u.test(s)) return { tipo: 'volume', valor: 0 };
+    m = /^(toca|tocar|toque|coloca|bota|põe|poe|p[oõ]e pra tocar|quero ouvir|play)\s+(.*)$/u.exec(s);
+    if (m && /^(?:coloca|bota|põe|poe)$/u.test(m[1]) && ACESSORIOS_FALA.some(([re]) => re.test(m[2]))) m = null;
+    if (m) m = [m[0], m[2]];
+    if (m && !/tarefa|lembrete|timer|alarme/u.test(m[1])) {
+      let q = m[1].replace(/(?:^|\s+)(?:na|no)\s+(?:caixa|sala|quarto|celular|pc|spotify|youtube).*$/u, '')
+        .replace(/^(?:uma|um|a|o|as|os|algumas?)\s+/u, '').replace(/^(?:m[uú]sicas?|can[cç][aã]o|som|playlist)\s*(?:d[oae]s?\s+)?/u, '').trim();
+      const ondeYt = /youtube/.test(m[1]);
+      if (/^(?:algo|alguma coisa|qualquer coisa|qualquer uma)$/.test(q)) q = '';
+      return { tipo: 'musica', acao: 'tocar', busca: q, youtube: ondeYt };
+    }
+    if (/^(?:m[uú]sica|toca|tocar|play)$/u.test(s)) return { tipo: 'musica', acao: 'tocar', busca: '' };
+
+    // clima
+    if (/clima|vai chover|chover|chuva|temperatura|previs[aã]o|guarda[- ]chuva|faz(?:endo)? (?:frio|calor)|como (?:est[aá]|t[aá]) o tempo|tempo (?:hoje|amanh[ãa]|agora|l[aá] fora)/u.test(s)) {
+      const c = /(?:em|no|na|de)\s+([a-zà-ú][a-zà-ú\s'-]{2,})$/u.exec(s.replace(/\b(?:hoje|amanh[ãa]|agora|l[aá] fora)\b/gu, '').trim());
+      const cidade = c && !/^(?:hoje|amanh|agora|tempo|clima)/u.test(c[1]) ? c[1].trim() : '';
+      return { tipo: 'clima', amanha: /amanh[ãa]/u.test(s), cidade, chuva: /chov|chuva|guarda/u.test(s) };
+    }
+
+    // cotação
+    for (const [re, cod, rot] of MOEDAS) if (re.test(s) && (/quanto|cota[cç][aã]o|pre[cç]o|valor|t[aá] |est[aá]|hoje|^(?:o\s+)?\S+$/u.test(s) || /^(?:e o|e a)\s/.test(s))) {
+      const q = /(\d+(?:[.,]\d+)?)\s*(?:d[oó]lares|d[oó]lar|euros?|bitcoins?|libras?)/u.exec(n);
+      return { tipo: 'cotacao', moeda: cod, rotulo: rot, qtd: q ? num(q[1]) : 1 };
+    }
+
+    // porcentagem e contas
+    m = /(\d+(?:[.,]\d+)?)\s*(?:%|por cento)\s*(?:de|sobre|do|da)\s*(\d+(?:[.,]\d+)?)/u.exec(n);
+    if (m) { const v = num(m[1]) / 100 * num(m[2]); return { tipo: 'conta', expr: `${m[1]}% de ${m[2]}`, resultado: v, texto: fmtNum(v) }; }
+    m = /^(?:quanto (?:[eé]|da|d[aá]|fica)|calcula|calcule|conta|quantos? (?:[eé]|s[aã]o))\s+(.+)$/u.exec(n) || (/^[\d\s+\-*/x×÷^().,%]+$/.test(n) && /\d\s*[+\-*/x×÷^]\s*\d/.test(n) ? [n, n] : null);
+    if (m) { const v = expressao(m[1].replace(/^(?:a conta|o resultado de|a|o)\s+/, '')); if (v !== null) return { tipo: 'conta', expr: m[1], resultado: v, texto: fmtNum(v) }; }
+
+    // tradução
+    m = /^(?:traduz|traduza|traduzir|tradu[cç][aã]o)\s+(?:isso\s+|essa frase\s+|a frase\s+)?(?:para|pro|pra|em)\s+(?:o\s+)?([a-zà-ú]+)\s*[:,]?\s+(.+)$/u.exec(s)
+      || (() => { const r = /^(?:traduz|traduza|traduzir)\s+(.+?)\s+(?:para|pro|pra|em)\s+(?:o\s+)?([a-zà-ú]+)$/u.exec(s); return r ? [r[0], r[2], r[1]] : null; })()
+      || (() => { const r = /^como (?:[eé] que )?(?:se )?(?:diz|fala|escreve)\s+(.+?)\s+em\s+([a-zà-ú]+)$/u.exec(s); return r ? [r[0], r[2], r[1]] : null; })();
+    if (m && IDIOMAS[m[1]]) return { tipo: 'traduzir', para: IDIOMAS[m[1]], idioma: m[1], texto: m[2].replace(/^["']|["']$/g, '') };
+
+    // notícias
+    if (/not[ií]cias?|o que (?:est[aá]|t[aá]) acontecendo|manchetes/u.test(s)) {
+      const t = /not[ií]cias?\s+(?:de|sobre|do|da)\s+(.+)$/u.exec(s);
+      return { tipo: 'noticias', assunto: t ? t[1].replace(/^hoje$/, '') : '' };
+    }
+
+    // utilidades
+    m = /(?:gera|gerar|cria|criar|faz|me d[aá]|inventa|nova)\s+(?:(?:uma|1)\s+)?senha(?:\s+(?:forte\s+)?(?:de|com)\s+(\d+))?/u.exec(n);
+    if (m || /^senha(?: de (\d+))?$/.test(n)) { const t = m && m[1] ? parseInt(m[1], 10) : (/(\d+)/.exec(n) || [])[1]; return { tipo: 'senha', tamanho: Math.max(8, Math.min(64, parseInt(t || 16, 10))) }; }
+    if (/(?:copia|copiar|copie|cola|manda|qual [eé])\s+(?:o\s+)?(?:meu\s+)?pix|^meu pix$|chave pix/u.test(s)) return { tipo: 'pix' };
+    if (/cara ou coroa|joga (?:uma )?moeda/u.test(s)) return { tipo: 'moeda' };
+    if (/(?:joga|rola|lan[cç]a|jogar|rolar)\s+(?:um\s+|o\s+)?dado/u.test(s)) return { tipo: 'dado' };
+    m = /(?:sorteia|sortear|escolhe|escolha|n[uú]mero aleat[oó]rio|(?:um|1) n[uú]mero)\s*(?:(?:um|1) n[uú]mero\s*)?(?:aleat[oó]rio\s*)?(?:de|entre)\s+(\d+)\s+(?:a|e|at[eé])\s+(\d+)/u.exec(n);
+    if (m) return { tipo: 'sorteio', de: parseInt(m[1], 10), ate: parseInt(m[2], 10) };
+    if (/piada|me faz rir|algo engra[cç]ado|conta uma boa/u.test(s)) return { tipo: 'piada', indice: Math.floor((agora / 1000) % PIADAS.length) };
+    m = /quantos dias (?:faltam|falta|at[eé]|pra|para)\s*(?:o\s+|a\s+|pro\s+|pra\s+|para o\s+|para a\s+|at[eé] o\s+|at[eé] a\s+)?(natal|ano novo|r[eé]veillon|carnaval|p[aá]scoa|dia das crian[cç]as|(\d{1,2})\/(\d{1,2}))/u.exec(s);
+    if (m) {
+      const alvo = m[2] ? `${m[2]}/${m[3]}` : m[1].replace(/r[eé]veillon/, 'ano novo').replace(/p[aá]scoa/, 'pascoa').replace(/crian[cç]as/, 'criancas');
+      const r = diasAte(alvo, agora); if (r) return { tipo: 'dias', alvo: m[1], ...r };
+    }
+    if (/que horas (?:s[aã]o|[eé])|^horas$|me diz as horas|^que horas$/u.test(s)) return { tipo: 'hora' };
+    if (/que dia (?:[eé] )?hoje|qual (?:[eé] )?a data|que data [eé] hoje|dia da semana/u.test(s)) return { tipo: 'data' };
+    if (/como (?:est[aá]|t[aá]|anda) (?:o\s+)?(?:meu\s+)?(?:pc|computador|notebook|sistema)|bateria|status do (?:pc|sistema)/u.test(s)) return { tipo: 'pc' };
+
+    // pesquisa e sites
+    m = /^(?:pesquisa|pesquisar|pesquise|procura|procurar|busca|buscar|googla|joga no google)\s+(?:no google\s+|na internet\s+)?(?:por\s+|sobre\s+)?(.+)$/u.exec(s);
+    if (m) return { tipo: 'pesquisar', busca: m[1] };
+    m = /^(?:abre|abrir|abra|entra no|entra na|vai no|vai na|acessa)\s+(?:o\s+|a\s+|meu\s+|minha\s+)?(.+)$/u.exec(s);
+    if (m) {
+      const alvo = m[1].trim();
+      const chave = Object.keys(SITES).find((k) => alvo === k || alvo.startsWith(k + ' ') || alvo.endsWith(' ' + k));
+      if (chave) return { tipo: 'abrir', url: SITES[chave], nome: chave };
+      if (/^[\w-]+(?:\.[\w-]+)+(?:\/\S*)?$/.test(alvo)) return { tipo: 'abrir', url: 'https://' + alvo, nome: alvo };
+      return { tipo: 'desktop', pedido: s };
+    }
+
+    // personalização
+    m = /(?:muda|mudar|troca|trocar|fica|deixa)\s+(?:a\s+)?(?:sua\s+)?(?:cor\s+)?(?:para|pra|de|em)?\s*(?:a\s+cor\s+)?([a-zà-ú\s-]+)$/u.exec(s);
+    if (m && /cor/.test(s)) { const c = CORES_FALA.find(([re]) => re.test(m[1])); if (c) return { tipo: 'visual', corpo: c[1] }; }
+    if (/(?:tira|tirar|remove)\s+(?:o\s+|a\s+|os\s+|seu\s+|sua\s+)?(?:acess[oó]rio|chap[eé]u|coroa|fones?|la[cç]o|gorro|bon[eé]|[oó]culos|aur[eé]ola|chifr|flor|cartola)/u.test(s)) return { tipo: 'visual', acessorio: 'nenhum' };
+    m = /(?:coloca|colocar|p[oõ]e|bota|usa|veste|vestir|quero (?:ver )?voc[eê] de)\s+(?:o\s+|a\s+|um\s+|uma\s+|seu\s+|sua\s+)?(.+)$/u.exec(s);
+    if (m) { const a = ACESSORIOS_FALA.find(([re]) => re.test(m[1])); if (a) return { tipo: 'visual', acessorio: a[1] }; }
+    m = /(?:seu nome (?:agora )?(?:[eé]|vai ser|ser[aá])|vou te chamar de|te chamar de|teu nome [eé])\s+([a-zà-ú]+)/u.exec(s);
+    if (m) return { tipo: 'renomear', nome: cap(m[1]) };
+    m = /(?:meu nome [eé]|me chamo|pode me chamar de|me chama de|eu sou o|eu sou a)\s+([a-zà-ú]+(?:\s+[a-zà-ú]+)?)$/u.exec(s);
+    if (m) return { tipo: 'usuario', nome: m[1].split(' ').map(cap).join(' ') };
+
+    // humor e papo
+    if (/^(?:vai )?dorm(?:e|ir)|vai descansar|boa noite,? (?:lumi|fofo)?$|^tira um cochilo/u.test(s)) return { tipo: 'dormir' };
+    if (/^(?:acorda|acordar)$/u.test(s)) return { tipo: 'acordar' };
+    if (/^(?:oi+|ol[aá]|e a[ií]|eai|opa|hey|bom dia|boa tarde|boa noite|salve|fala a[ií])\b/u.test(s)) return { tipo: 'saudacao', s };
+    if (/tudo (?:bem|bom|certo|joia|tranquilo)|como (?:voc[eê] |vc )?(?:est[aá]|t[aá]|vai)/u.test(s)) return { tipo: 'como_vai' };
+    if (/obrigad|valeu|brigad|agrade[cç]o|muito bom|mandou bem|show de bola/u.test(s)) return { tipo: 'obrigado' };
+    if (/quem [eé] voc[eê]|qual (?:[eé] )?(?:o )?seu nome|como voc[eê] se chama|voc[eê] [eé] (?:um )?rob[oô]/u.test(s)) return { tipo: 'quem' };
+    if (/te amo|gosto (?:muito )?de voc[eê]|voc[eê] [eé] (?:fofo|lindo|demais|incr[ií]vel|o melhor)/u.test(s)) return { tipo: 'carinho' };
+    if (/voc[eê] [eé] (?:chato|burro|feio|in[uú]til|ruim)|te odeio/u.test(s)) return { tipo: 'ofensa' };
+
+    return { tipo: 'desconhecido', texto: s };
+  }
+
+  const api = { interpretar, numeros, duracao, horario, expressao, diasAte, normalizar, PIADAS, IDIOMAS };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  raiz.CEREBRO = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* Lumi — conversa livre com o Claude, usando a chave de API do próprio usuário.
+   Só é usado quando o cérebro local não entende o pedido e há uma chave salva em Ajustes.
+   O SDK oficial é carregado sob demanda do CDN (jsDelivr). */
+(function (raiz) {
+  'use strict';
+  const SDK_URL = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.3.0/+esm';
+  // estes modelos aceitam o fallback automático do servidor quando o modelo recusa um pedido
+  const COM_FALLBACK = /^claude-(?:opus-5-5|sonnet-5-5)$/;
+
+  let carregando = null, chaveAtual = null;
+  function cliente(chave) {
+    if (!carregando || chave !== chaveAtual) {
+      chaveAtual = chave;
+      carregando = import(SDK_URL).then((mod) => {
+        const Anthropic = mod.default || mod.Anthropic;
+        // a chave fica só neste navegador; a página fala direto com a API da Anthropic
+        return { Anthropic, c: new Anthropic({ apiKey: chave, dangerouslyAllowBrowser: true }) };
+      }).catch((e) => { carregando = null; throw e; });
+    }
+    return carregando;
+  }
+
+  /**
+   * @param {{chave:string, modelo:string, sistema:string, historico:Array<{role:'user'|'assistant', content:string}>}} p
+   * @returns {Promise<{texto:string, recusa?:boolean, erro?:boolean}>}
+   */
+  async function perguntar({ chave, modelo, sistema, historico }) {
+    let mod;
+    try { mod = await cliente(chave); } catch (_) {
+      return { erro: true, texto: 'Não consegui carregar a IA agora. Verifique sua internet e tente de novo.' };
+    }
+    const { Anthropic, c } = mod;
+    const params = {
+      model: modelo,
+      max_tokens: 2000,
+      system: sistema,
+      messages: historico,
+      output_config: { effort: 'low' },
+    };
+    if (COM_FALLBACK.test(modelo)) { params.betas = ['server-side-fallback-2026-07-01']; params.fallbacks = 'default'; }
+    try {
+      const resp = await c.beta.messages.create(params);
+      if (resp.stop_reason === 'refusal') return { recusa: true, texto: 'Desse assunto eu prefiro não falar. Posso ajudar com outra coisa?' };
+      const texto = resp.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+      return { texto: texto || 'Hmm, fiquei sem palavras. Pode perguntar de outro jeito?' };
+    } catch (e) {
+      if (e instanceof Anthropic.AuthenticationError) return { erro: true, texto: 'A chave da IA não foi aceita. Confira em Ajustes.' };
+      if (e instanceof Anthropic.PermissionDeniedError) return { erro: true, texto: 'Essa chave não tem permissão para usar esse modelo.' };
+      if (e instanceof Anthropic.NotFoundError) return { erro: true, texto: 'Esse modelo não está disponível para a sua chave. Troque em Ajustes.' };
+      if (e instanceof Anthropic.RateLimitError) return { erro: true, texto: 'Muitos pedidos seguidos para a IA. Espere um pouquinho e tente de novo.' };
+      if (e instanceof Anthropic.BadRequestError) return { erro: true, texto: 'A IA recusou o formato do pedido: ' + (e.message || 'erro 400') };
+      if (e instanceof Anthropic.APIConnectionError) return { erro: true, texto: 'Sem conexão com a IA agora. Verifique sua internet.' };
+      if (e instanceof Anthropic.APIError) return { erro: true, texto: `A IA respondeu com erro ${e.status || ''}. Tente de novo daqui a pouco.` };
+      throw e;
+    }
+  }
+
+  raiz.IA = { perguntar };
+})(window);
+</script>
+<script>
+/* Lumi — assistente que mora no topo da tela. Tudo fica salvo neste navegador (localStorage). */
+(function () {
+  'use strict';
+  const C = window.CEREBRO, M = window.MASCOTE;
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  const hojeStr = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+  const pad = (n) => String(n).padStart(2, '0');
+  const mmss = (s) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600); return h ? `${h}:${pad(Math.floor(s % 3600 / 60))}:${pad(s % 60)}` : `${pad(Math.floor(s / 60))}:${pad(s % 60)}`; };
+  const brl = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: v < 1 ? 4 : 2 });
+  let mx = innerWidth / 2, my = 0, rafOlhar = 0; // posição do ponteiro, para os olhos
+  const DESKTOP = !!window.lumiDesktop || new URLSearchParams(location.search).has('desktop');
+  if (DESKTOP) document.body.classList.add('desktop');
+
+  /* ================= estado salvo ================= */
+  const CHAVE = 'lumi:v1';
+  const PADRAO = () => ({
+    cfg: {
+      nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo',
+      voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, somenteExecutar: false, sempreOuvindo: false,
+      cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', volume: 70, pausas: false,
+    },
+    xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [],
+    habitos: { dia: hojeStr(), agua: 0, meta: 8, leitura: 0, exercicio: 0 },
+  });
+  function carregar() {
+    try {
+      const d = JSON.parse(localStorage.getItem(CHAVE) || 'null');
+      if (d && typeof d === 'object') { const p = PADRAO(); return { ...p, ...d, cfg: { ...p.cfg, ...(d.cfg || {}) }, habitos: { ...p.habitos, ...(d.habitos || {}) } }; }
+    } catch (_) { /* armazenamento indisponível: segue com o padrão */ }
+    return PADRAO();
+  }
+  const S = carregar();
+  let salvarT = null;
+  function salvar() {
+    clearTimeout(salvarT);
+    salvarT = setTimeout(() => {
+      try { S.chat = S.chat.slice(-60); localStorage.setItem(CHAVE, JSON.stringify(S)); } catch (_) { /* sem armazenamento */ }
+    }, 250);
+  }
+
+  /* ================= estado da sessão ================= */
+  const R = {
+    view: 'inicio', aberto: false, humor: 'idle', humorT: null, trabalho: null, pensando: false,
+    ouvindo: false, parcial: '', falando: false, alarme: null, crono: { rodando: false, inicio: 0, acum: 0 },
+    musica: { lista: [], i: 0, tocando: false }, rascunhos: {}, previa: 'happy', ultimaAtividade: Date.now(), ultimaPausa: Date.now(),
+    lugar: null, pendente: null,
+  };
+
+  /* ================= elementos ================= */
+  const entalho = $('#entalho'), pilula = $('#pilula'), lado = $('#lado'), principal = $('#principal'), mesa = $('#mesa'), audio = $('#audio');
+
+  /* ================= mascote ================= */
+  function visual(extra = {}) {
+    const [, c1, c2] = M.CORPOS[S.cfg.corpo] || M.CORPOS[0];
+    const [, olho] = M.CORES_OLHO[S.cfg.olho] || M.CORES_OLHO[0];
+    return { corpo: c1, corpo2: c2, olho, estiloOlho: S.cfg.estiloOlho, acessorio: S.cfg.acessorio, ...extra };
+  }
+  const K = (tamanho, humor, extra) => M.svg(visual({ tamanho, humor: humor || R.humor, ...(extra || {}) }));
+
+  function setHumor(h, ms) {
+    R.humor = h; clearTimeout(R.humorT);
+    if (ms) R.humorT = setTimeout(() => { if (R.falando || R.ouvindo) return; R.humor = 'idle'; renderMascotes(); }, ms);
+    renderMascotes();
+  }
+  function renderMascotes() { renderPilula(); if (R.aberto) { const eu = $('#euMascote'); if (eu) eu.innerHTML = K(46); } }
+
+  let avisoT = null;
+  function aviso(t) { const el = $('#aviso'); el.textContent = t; el.classList.add('on'); clearTimeout(avisoT); avisoT = setTimeout(() => el.classList.remove('on'), 2600); }
+
+  function ganharXp(n) {
+    const antes = Math.floor(S.xp / 50); S.xp += n; salvar();
+    if (Math.floor(S.xp / 50) > antes) { setHumor('success', 2600); aviso(`🎉 ${S.cfg.nome} subiu para o nível ${Math.floor(S.xp / 50) + 1}!`); melodia(SOM_NIVEL); }
+  }
+
+  /* ================= personalidades ================= */
+  const PERSONAS = {
+    fofo: { rotulo: 'Fofo', desc: 'fofo, carinhoso e animado; usa um emoji de vez em quando', ok: ['Prontinho! 💚', 'Feito! ✨', 'Pode deixar! 😊'], oi: ['Oiê! Que bom te ver 😊', 'Oi oi! Tô aqui 💚', 'Olá! Pronto pra ajudar ✨'], nao: ['Hmm, essa eu ainda não sei 🥺', 'Ops, não entendi direitinho 🥺'] },
+    divertido: { rotulo: 'Divertido', desc: 'brincalhão e bem-humorado, faz piadinhas leves', ok: ['Tá na mão! 😎', 'Feito, chefia! 🚀', 'Missão cumprida! 🏆'], oi: ['E aí! Bora fazer coisa boa hoje? 😄', 'Opa! Chegou quem faltava 🎉'], nao: ['Essa passou batido aqui no meu radar 😅', 'Buguei! Tenta de outro jeito? 🤖'] },
+    profissional: { rotulo: 'Profissional', desc: 'direto, educado e objetivo, sem emojis', ok: ['Feito.', 'Concluído.', 'Certo, já está registrado.'], oi: ['Olá. Como posso ajudar?', 'Bom te ver. Em que posso ajudar?'], nao: ['Não entendi o pedido. Pode reformular?'] },
+    sarcastico: { rotulo: 'Sarcástico', desc: 'sarcástico de um jeito simpático, com ironia leve e nunca grosseiro', ok: ['Feito. De nada, viu? 🙄', 'Pronto. Mais alguma tarefa hercúlea?', 'Feito, com toda a minha empolgação.'], oi: ['Ah, você de novo. Brincadeira, oi! 😏', 'Oi. Vamos fingir que é segunda-feira?'], nao: ['Ainda não sou vidente. Tenta explicar melhor?', 'Isso aí nem eu entendi. 🙃'] },
+    zen: { rotulo: 'Zen', desc: 'calmo, gentil e tranquilo, fala com serenidade', ok: ['Feito. Respira fundo 🌿', 'Tudo certo. Um passo de cada vez 🍃'], oi: ['Olá. Que seu dia flua leve 🌿', 'Oi. Estou aqui, com calma 🍃'], nao: ['Não compreendi. Vamos tentar de novo, sem pressa 🌿'] },
+  };
+  const P = () => PERSONAS[S.cfg.personalidade] || PERSONAS.fofo;
+
+  /* ================= sons ================= */
+  let audioCtx = null;
+  function bip(freq = 880, dur = 0.12, vol = 0.16, depois = 0) {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime + depois;
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t + dur + 0.03);
+    } catch (_) { /* sem áudio */ }
+  }
+  const melodia = (notas) => notas.forEach(([f, d, q]) => bip(f, d, 0.18, q));
+  const SOM_TIMER = [[880, 0.16, 0], [1175, 0.16, 0.2], [1568, 0.3, 0.4]];
+  const SOM_LEMBRETE = [[1046, 0.12, 0], [1318, 0.12, 0.15], [1046, 0.12, 0.3], [1318, 0.2, 0.45]];
+  const SOM_NIVEL = [[784, 0.1, 0], [988, 0.1, 0.1], [1175, 0.1, 0.2], [1568, 0.3, 0.3]];
+  const SOM_OUVIR = [[660, 0.08, 0], [990, 0.1, 0.09]];
+
+  /* ================= notificações ================= */
+  function pedirNotificacoes() {
+    if ('Notification' in window && Notification.permission === 'default') { try { Notification.requestPermission().then(() => R.view === 'ajustes' && renderPrincipal()); } catch (_) { /* ignora */ } }
+  }
+  function notificar(titulo, corpo) {
+    if (!('Notification' in window) || Notification.permission !== 'granted' || (document.hasFocus() && !DESKTOP)) return;
+    try { new Notification(titulo, { body: corpo, icon: 'icone.svg', tag: 'lumi-' + uid() }); } catch (_) { /* alguns navegadores só notificam via service worker */ }
+  }
+
+  /* ================= área de transferência ================= */
+  async function copiar(texto, rotulo) {
+    let ok = false;
+    try { await navigator.clipboard.writeText(texto); ok = true; } catch (_) {
+      try { const ta = document.createElement('textarea'); ta.value = texto; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove(); } catch (__) { ok = false; }
+    }
+    S.copiados.unshift({ id: uid(), t: texto, r: rotulo || '', ts: Date.now() }); S.copiados = S.copiados.slice(0, 20); salvar();
+    return ok;
+  }
+
+  /* ================= rede ================= */
+  async function pegarJson(url, ms = 10000) {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+    try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); } finally { clearTimeout(t); }
+  }
+  async function trabalhar(icone, rotulo, fn) {
+    R.trabalho = { icone, rotulo, inicio: Date.now() }; setHumor('think'); renderPilula();
+    try { return await fn(); } finally { R.trabalho = null; renderPilula(); }
+  }
+
+  /* ================= clima (Open-Meteo, sem chave) ================= */
+  const TEMPO = {
+    0: ['céu limpo', '☀️'], 1: ['poucas nuvens', '🌤️'], 2: ['parcialmente nublado', '⛅'], 3: ['nublado', '☁️'], 45: ['neblina', '🌫️'], 48: ['neblina', '🌫️'],
+    51: ['garoa fraca', '🌦️'], 53: ['garoa', '🌦️'], 55: ['garoa forte', '🌦️'], 56: ['garoa congelante', '🌧️'], 57: ['garoa congelante', '🌧️'],
+    61: ['chuva fraca', '🌧️'], 63: ['chuva', '🌧️'], 65: ['chuva forte', '🌧️'], 66: ['chuva congelante', '🌧️'], 67: ['chuva congelante', '🌧️'],
+    71: ['neve fraca', '🌨️'], 73: ['neve', '🌨️'], 75: ['neve forte', '❄️'], 77: ['grãos de neve', '🌨️'], 80: ['pancadas de chuva', '🌦️'], 81: ['pancadas de chuva', '🌧️'], 82: ['temporal', '⛈️'],
+    85: ['pancadas de neve', '🌨️'], 86: ['pancadas de neve', '❄️'], 95: ['trovoadas', '⛈️'], 96: ['trovoadas com granizo', '⛈️'], 99: ['trovoadas com granizo', '⛈️'],
+  };
+  async function geocodificar(nome) {
+    const d = await pegarJson(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(nome)}&count=1&language=pt&format=json`);
+    const r = d.results && d.results[0]; if (!r) return null;
+    return { lat: r.latitude, lon: r.longitude, nome: r.name };
+  }
+  function geolocalizar() {
+    return new Promise((res) => {
+      if (!navigator.geolocation) return res(null);
+      navigator.geolocation.getCurrentPosition((p) => res({ lat: p.coords.latitude, lon: p.coords.longitude, nome: '' }), () => res(null), { timeout: 9000, maximumAge: 30 * 60e3 });
+    });
+  }
+  async function previsao(cidade) {
+    let lugar = null;
+    if (cidade) lugar = await geocodificar(cidade);
+    else if (S.cfg.cidade) lugar = R.lugar && R.lugar.cfg === S.cfg.cidade ? R.lugar : { ...(await geocodificar(S.cfg.cidade) || {}), cfg: S.cfg.cidade };
+    else lugar = R.lugar || await geolocalizar();
+    if (!lugar || lugar.lat === undefined) return null;
+    if (!cidade) R.lugar = lugar;
+    const d = await pegarJson(`https://api.open-meteo.com/v1/forecast?latitude=${lugar.lat}&longitude=${lugar.lon}&current=temperature_2m,apparent_temperature,weather_code,is_day,relative_humidity_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=2`);
+    return { lugar, d };
+  }
+  function descTempo(cod, dia = 1) { const [t, i] = TEMPO[cod] || ['tempo variável', '🌡️']; return [t, cod === 0 && !dia ? '🌙' : i]; }
+  async function atualizarWidgetClima(dados) {
+    try {
+      const r = dados || (S.cfg.cidade || R.lugar ? await previsao() : null); if (!r) return;
+      const c = r.d.current; const [t, i] = descTempo(c.weather_code, c.is_day);
+      $('#wClimaIco').textContent = i; $('#wClimaT').textContent = Math.round(c.temperature_2m) + '°';
+      $('#wClimaL').textContent = `${t}${r.lugar.nome ? ' · ' + r.lugar.nome : ''}`;
+    } catch (_) { /* sem rede: o widget fica como está */ }
+  }
+
+  /* ================= cotações: tenta várias fontes gratuitas, sem chave ================= */
+  async function cotacao(moeda) {
+    try {
+      const d = await pegarJson(`https://economia.awesomeapi.com.br/json/last/${moeda}-BRL`, 7000);
+      const q = d[moeda + 'BRL']; const v = parseFloat(q.bid); if (!(v > 0)) throw new Error('sem valor');
+      return { v, pct: parseFloat(q.pctChange) };
+    } catch (_) { /* limite de uso ou fora do ar: tenta a próxima fonte */ }
+    const cripto = { BTC: 'bitcoin', ETH: 'ethereum' }[moeda];
+    if (cripto) {
+      const d = await pegarJson(`https://api.coingecko.com/api/v3/simple/price?ids=${cripto}&vs_currencies=brl&include_24hr_change=true`);
+      return { v: d[cripto].brl, pct: d[cripto].brl_24h_change };
+    }
+    const d = await pegarJson(`https://open.er-api.com/v6/latest/${moeda}`);
+    const v = d && d.rates && d.rates.BRL; if (!(v > 0)) throw new Error('sem cotação');
+    return { v, pct: NaN };
+  }
+
+  /* ================= música ================= */
+  function faixaAtual() { return R.musica.lista[R.musica.i] || null; }
+  function tocarFaixa(i) {
+    const L = R.musica.lista; if (!L.length) return false;
+    R.musica.i = ((i % L.length) + L.length) % L.length;
+    audio.src = L[R.musica.i].url; audio.volume = S.cfg.volume / 100;
+    audio.play().catch(() => aviso('Toque no play para começar a música.'));
+    return true;
+  }
+  function musica(acao) {
+    const L = R.musica.lista;
+    if (acao === 'alternar') acao = audio.paused ? 'continuar' : 'pausar';
+    if (acao === 'pausar') audio.pause();
+    else if (acao === 'continuar') { if (audio.src) audio.play().catch(() => {}); else tocarFaixa(0); }
+    else if (acao === 'proxima' && L.length) tocarFaixa(R.musica.i + 1);
+    else if (acao === 'anterior' && L.length) { if (audio.currentTime > 4) audio.currentTime = 0; else tocarFaixa(R.musica.i - 1); }
+    render();
+  }
+  function setVolume(v) { S.cfg.volume = Math.max(0, Math.min(100, Math.round(v))); audio.volume = S.cfg.volume / 100; salvar(); }
+  function adicionarMusicas(arquivos) {
+    const novas = [...arquivos].filter((f) => f.type.startsWith('audio/') || /\.(mp3|m4a|ogg|wav|flac|aac|opus|webm)$/i.test(f.name)).map((f) => {
+      const base = f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ');
+      const [a, t] = base.includes(' - ') ? base.split(' - ', 2) : ['', base];
+      return { nome: (t || base).trim(), artista: a.trim() || 'Arquivo do computador', url: URL.createObjectURL(f) };
+    });
+    if (!novas.length) { aviso('Não achei arquivos de áudio aí.'); return; }
+    const vazia = !R.musica.lista.length; R.musica.lista.push(...novas);
+    aviso(`🎵 ${novas.length} música${novas.length > 1 ? 's adicionadas' : ' adicionada'}`);
+    if (vazia) tocarFaixa(0); render();
+  }
+  function abrirLink(url) {
+    let w = null;
+    try { w = window.open(url, '_blank', 'noopener'); } catch (_) { w = null; }
+    // com "noopener" alguns navegadores devolvem null mesmo abrindo; por isso o link também vai na resposta
+    return w;
+  }
+  const linkHtml = (url, rot) => `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(rot)}</a>`;
+  ['play', 'pause', 'ended', 'loadedmetadata'].forEach((ev) => audio.addEventListener(ev, () => {
+    R.musica.tocando = !audio.paused && !audio.ended;
+    if (ev === 'ended') { if (R.musica.lista.length > 1) tocarFaixa(R.musica.i + 1); else R.musica.tocando = false; }
+    render();
+  }));
+
+  /* ================= voz: falar ================= */
+  let vozes = [];
+  function carregarVozes() { try { vozes = speechSynthesis.getVoices().filter((v) => /^pt/i.test(v.lang)); } catch (_) { vozes = []; } }
+  if ('speechSynthesis' in window) { carregarVozes(); speechSynthesis.onvoiceschanged = () => { carregarVozes(); if (R.view === 'ajustes' && R.aberto) renderPrincipal(); }; }
+  function escolherVoz() {
+    if (!vozes.length) carregarVozes();
+    return vozes.find((v) => v.name === S.cfg.vozNome) || vozes.find((v) => /pt-BR/i.test(v.lang) && /google|francisca|maria|luciana|natural/i.test(v.name)) || vozes.find((v) => /pt-BR/i.test(v.lang)) || vozes[0] || null;
+  }
+  function textoFalavel(t) {
+    return String(t).replace(/<[^>]+>/g, ' ').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}\u{20E3}]/gu, '').replace(/https?:\/\/\S+/g, 'o link').replace(/\s+/g, ' ').trim();
+  }
+  function falar(texto, forcar) {
+    if (!('speechSynthesis' in window) || (!forcar && (!S.cfg.voz || S.cfg.somenteExecutar))) return;
+    const limpo = textoFalavel(texto); if (!limpo) return;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(limpo);
+      u.lang = 'pt-BR'; const v = escolherVoz(); if (v) u.voice = v;
+      u.rate = S.cfg.velocidade; u.pitch = S.cfg.tom;
+      u.onstart = () => { R.falando = true; pararEscuta(); setHumor('talk'); };
+      u.onend = u.onerror = () => { R.falando = false; if (R.humor === 'talk') setHumor('happy', 1200); retomarEscuta(); };
+      speechSynthesis.speak(u);
+    } catch (_) { /* sem síntese de voz */ }
+  }
+  function calar() { try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (_) { /* ignora */ } R.falando = false; }
+
+  /* ================= voz: ouvir ================= */
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const voz = { rec: null, modo: null, parar: false, depois: null };
+  function ouvir() {
+    if (!SR) { aviso('Este navegador não reconhece voz. Use o Chrome ou o Edge — ou escreva.'); return; }
+    if (R.ouvindo) { if (voz.rec) voz.rec.stop(); return; }
+    calar();
+    if (voz.modo === 'chamado') { voz.depois = 'ouvir'; voz.parar = true; try { voz.rec.abort(); } catch (_) { /* ignora */ } return; }
+    const rec = new SR(); rec.lang = 'pt-BR'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+    let final = '';
+    voz.rec = rec; voz.modo = 'comando'; R.ouvindo = true; R.parcial = ''; setHumor('listen'); melodia(SOM_OUVIR); render();
+    rec.onresult = (e) => {
+      let parcial = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) final += r[0].transcript; else parcial += r[0].transcript; }
+      R.parcial = (final + ' ' + parcial).trim(); renderPilula();
+      const campo = $('#campo'); if (campo) campo.placeholder = R.parcial || 'Ouvindo…';
+    };
+    rec.onerror = (e) => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') aviso('Permita o microfone para falar comigo 🎙');
+      else if (e.error === 'no-speech') aviso('Não ouvi nada. Tenta de novo?');
+      else if (e.error === 'network') aviso('O reconhecimento de voz precisa de internet neste navegador.');
+      else if (e.error !== 'aborted') aviso('Microfone: ' + e.error);
+    };
+    rec.onend = () => {
+      R.ouvindo = false; voz.rec = null; voz.modo = null; R.parcial = '';
+      const t = final.trim();
+      if (t) processar(t, { voz: true }); else { setHumor('idle'); render(); }
+      retomarEscuta();
+    };
+    try { rec.start(); } catch (_) { R.ouvindo = false; voz.rec = null; voz.modo = null; setHumor('idle'); render(); }
+  }
+  function regexChamado() {
+    const nome = C.normalizar(S.cfg.nome).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp('(?:^|\\s)(?:ei|oi|hey|ô|olá|ola)?[,\\s]*' + nome + '(?=$|[\\s,!.?])', 'u');
+  }
+  function iniciarEscuta() {
+    if (!SR || !S.cfg.sempreOuvindo || voz.modo || R.falando) return;
+    const rec = new SR(); rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = false;
+    voz.rec = rec; voz.modo = 'chamado'; voz.parar = false;
+    rec.onresult = (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (!e.results[i].isFinal) continue;
+        const frase = C.normalizar(e.results[i][0].transcript); const m = regexChamado().exec(frase);
+        if (!m) continue;
+        const resto = frase.slice(m.index + m[0].length).replace(/^[,\s]+/, '');
+        if (resto.length > 1) processar(resto, { voz: true });
+        else { voz.depois = 'ouvir'; voz.parar = true; try { rec.abort(); } catch (_) { /* ignora */ } }
+      }
+    };
+    rec.onerror = (e) => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { S.cfg.sempreOuvindo = false; salvar(); aviso('Sem permissão do microfone: desliguei o "sempre ouvindo".'); render(); }
+    };
+    rec.onend = () => {
+      if (voz.rec === rec) { voz.rec = null; voz.modo = null; }
+      const depois = voz.depois; voz.depois = null;
+      if (depois === 'ouvir') { abrir(); ouvir(); return; }
+      if (!voz.parar && S.cfg.sempreOuvindo) setTimeout(iniciarEscuta, 500);
+      voz.parar = false;
+    };
+    try { rec.start(); } catch (_) { voz.rec = null; voz.modo = null; }
+  }
+  function pararEscuta() { if (voz.modo === 'chamado' && voz.rec) { voz.parar = true; try { voz.rec.abort(); } catch (_) { /* ignora */ } } }
+  function retomarEscuta() { if (S.cfg.sempreOuvindo && !R.falando && !voz.modo) setTimeout(iniciarEscuta, 300); }
+
+  /* ================= conversa ================= */
+  function addChat(quem, texto, html) { S.chat.push(html ? { q: quem, t: texto, h: html } : { q: quem, t: texto }); S.chat = S.chat.slice(-60); salvar(); }
+
+  async function processar(texto, { voz: porVoz = false } = {}) {
+    texto = String(texto || '').trim(); if (!texto) return;
+    R.ultimaAtividade = Date.now(); mesa.classList.add('usada');
+    if (R.alarme) pararAlarme();
+    addChat('u', texto);
+    let acao = C.interpretar(texto, { agora: Date.now(), nome: S.cfg.nome });
+    // completa a pergunta anterior ("quando eu te lembro?" → "em 10 minutos")
+    if (R.pendente && ['desconhecido', 'pergunta'].includes(acao.tipo)) {
+      const junto = C.interpretar(`me lembra de ${R.pendente.texto} ${texto}`, { agora: Date.now(), nome: S.cfg.nome });
+      if (junto.tipo === 'lembrete') acao = junto;
+    }
+    R.pendente = null;
+    R.pensando = true; setHumor('think'); render();
+    let r;
+    try {
+      await espera(acao.tipo === 'desconhecido' ? 0 : 350);
+      r = await executar(acao, texto, porVoz);
+    } catch (e) {
+      r = { texto: 'Ops, algo deu errado: ' + (e && e.message ? e.message : e), humor: 'cry' };
+    }
+    R.pensando = false;
+    if (r && r.texto) addChat('k', r.texto, r.html);
+    setHumor((r && r.humor) || 'happy', 3200);
+    if (acao.tipo !== 'desconhecido' || (r && !r.erro)) ganharXp(5);
+    render();
+    if (r && r.texto && !r.mudo) falar(r.fala || r.texto);
+  }
+
+  const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  function quandoTxt(ts) {
+    if (!ts) return '';
+    const d = new Date(ts), h = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0); const dia = new Date(ts); dia.setHours(0, 0, 0, 0);
+    const dif = Math.round((dia - hoje) / 864e5);
+    if (dif === 0) return `hoje · ${h}`; if (dif === 1) return `amanhã · ${h}`; if (dif === -1) return `ontem · ${h}`;
+    return `${d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}, ${d.getDate()} ${MESES[d.getMonth()]} · ${h}`;
+  }
+  function emQuanto(ts) {
+    const m = Math.round((ts - Date.now()) / 60000);
+    if (m < 1) return 'em instantes'; if (m < 60) return `em ${m} minuto${m > 1 ? 's' : ''}`;
+    const h = Math.floor(m / 60), r = m % 60; if (h < 24) return `em ${h}h${r ? pad(r) : ''}`;
+    return quandoTxt(ts);
+  }
+  const durTxt = (s) => { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60; return [h && `${h} hora${h > 1 ? 's' : ''}`, m && `${m} minuto${m > 1 ? 's' : ''}`, ss && `${ss} segundo${ss > 1 ? 's' : ''}`].filter(Boolean).join(' e ') || '0 segundos'; };
+
+  function criarTimer(segundos, nome) {
+    const t = { id: uid(), nome: nome || 'Timer', fim: Date.now() + segundos * 1000, total: segundos };
+    S.timers.push(t); salvar(); pedirNotificacoes(); return t;
+  }
+  function gerarSenha(n) {
+    const cs = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*?-_+=';
+    const v = new Uint32Array(n); crypto.getRandomValues(v);
+    return Array.from(v, (x) => cs[x % cs.length]).join('');
+  }
+
+  async function executar(a, original, porVoz) {
+    const p = P(), nome = S.cfg.nome, quem = S.cfg.usuario ? `, ${S.cfg.usuario}` : '';
+    switch (a.tipo) {
+      case 'chamado': return { texto: pick(['Oi! Tô ouvindo 👂', `Diga${quem}!`, 'Pode falar!']), humor: 'happy' };
+      case 'parar': calar(); pararAlarme(); return { texto: 'Ok, fiquei quietinho. 🤫', humor: 'idle', mudo: true };
+      case 'ajuda': return {
+        texto: 'Eu sei fazer um monte de coisa!', humor: 'happy',
+        html: `Eu sei fazer um monte de coisa! Experimente:<br>⏱ <b>timer de 10 minutos para a pizza</b><br>⏰ <b>me lembra de ligar pro cliente em 30 minutos</b> · <b>alarme às 7h</b><br>✅ <b>cria uma tarefa comprar pão</b> · <b>minhas tarefas</b><br>🎵 <b>toca uma música</b> · <b>próxima</b> · <b>volume 50</b><br>🌤️ <b>vai chover hoje?</b> · 💵 <b>quanto está o dólar?</b><br>🧮 <b>quanto é 15% de 230</b> · 🌍 <b>traduz para inglês bom dia</b><br>📝 <b>anota que preciso comprar café</b> · 💧 <b>bebi um copo de água</b><br>🔐 <b>gera uma senha de 20</b> · 📋 <b>copia meu pix</b> · 🪙 <b>cara ou coroa</b><br>🎄 <b>quantos dias faltam pro Natal?</b> · 😂 <b>conta uma piada</b><br>🎨 <b>coloca a coroa</b> · <b>muda sua cor para rosa</b>`,
+        fala: 'Eu marco timers, lembretes, alarmes e tarefas, toco música, vejo o clima e o dólar, faço contas, traduzo, anoto coisas e conto piadas. Os exemplos estão na tela.',
+      };
+      case 'desktop': return { texto: 'Isso mexe direto nos arquivos e programas do seu PC, e por segurança eu ainda não faço. Posso criar uma tarefa ou um lembrete pra você não esquecer?', humor: 'think' };
+      case 'pergunta': if (a.pendente) R.pendente = a.pendente; return { texto: a.texto, humor: 'think' };
+
+      case 'timer': {
+        const t = criarTimer(a.segundos, a.nome);
+        return { texto: `Timer "${t.nome}" de ${durTxt(a.segundos)} iniciado! Olha ele lá no topo. ⏱`, humor: 'success' };
+      }
+      case 'timer_cancelar': { const n = S.timers.length; S.timers = []; salvar(); return { texto: n ? `Cancelei ${n > 1 ? 'os ' + n + ' timers' : 'o timer'}.` : 'Não tem nenhum timer rodando.', humor: 'idle' }; }
+      case 'crono':
+        if (a.acao === 'iniciar') { if (!R.crono.rodando) { R.crono.rodando = true; R.crono.inicio = Date.now(); } return { texto: 'Cronômetro rodando! ⏱', humor: 'success' }; }
+        if (a.acao === 'pausar') { if (R.crono.rodando) { R.crono.acum += Date.now() - R.crono.inicio; R.crono.rodando = false; } return { texto: `Cronômetro parado em ${mmss(R.crono.acum / 1000)}.`, humor: 'cool' }; }
+        R.crono = { rodando: false, inicio: 0, acum: 0 }; return { texto: 'Cronômetro zerado.', humor: 'idle' };
+      case 'lembrete': {
+        S.tarefas.push({ id: uid(), t: a.texto, quando: a.quando, tipo: 'lembrete', feito: false, avisado: false, criado: Date.now() }); salvar(); pedirNotificacoes();
+        return { texto: `Combinado! Vou te lembrar de "${a.texto}" ${emQuanto(a.quando)} (${quandoTxt(a.quando)}). ⏰`, humor: 'success' };
+      }
+      case 'alarme': {
+        S.tarefas.push({ id: uid(), t: a.texto || 'Alarme', quando: a.quando, tipo: 'alarme', feito: false, avisado: false, criado: Date.now() }); salvar(); pedirNotificacoes();
+        return { texto: `Alarme marcado para ${quandoTxt(a.quando)}. ⏰ Deixe esta janela aberta para ele tocar.`, humor: 'success' };
+      }
+      case 'alarme_cancelar': { const al = S.tarefas.filter((t) => t.tipo === 'alarme' && !t.feito); al.forEach((t) => { t.feito = true; }); salvar(); return { texto: al.length ? 'Alarme cancelado.' : 'Não tem alarme marcado.', humor: 'idle' }; }
+      case 'tarefa': {
+        S.tarefas.push({ id: uid(), t: a.texto, quando: a.quando, tipo: 'tarefa', feito: false, avisado: false, criado: Date.now() }); salvar();
+        return { texto: `Tarefa criada: "${a.texto}"${a.quando ? ' para ' + quandoTxt(a.quando) : ''} ✅`, humor: 'success' };
+      }
+      case 'tarefas_listar': {
+        const pend = S.tarefas.filter((t) => !t.feito && t.tipo === 'tarefa');
+        if (!pend.length) return { texto: 'Sua lista está vazia! Quer criar uma tarefa?', humor: 'cool' };
+        R.view = 'tarefas';
+        return { texto: `Você tem ${pend.length} tarefa${pend.length > 1 ? 's' : ''}: ${pend.slice(0, 5).map((t) => t.t).join('; ')}${pend.length > 5 ? '…' : ''}.`, humor: 'happy' };
+      }
+      case 'tarefa_concluir': {
+        const b = C.normalizar(a.busca); const t = S.tarefas.find((x) => !x.feito && C.normalizar(x.t).includes(b)) || S.tarefas.find((x) => !x.feito && b.split(' ').filter((w) => w.length > 3).some((w) => C.normalizar(x.t).includes(w)));
+        if (!t) return { texto: `Não achei a tarefa "${a.busca}".`, humor: 'think' };
+        t.feito = true; t.feitoEm = Date.now(); salvar(); ganharXp(10);
+        return { texto: `Boa! "${t.t}" concluída. +10 XP ✅`, humor: 'success' };
+      }
+      case 'nota': S.notas.unshift({ id: uid(), t: a.texto, ts: Date.now() }); salvar(); return { texto: `Anotado: "${a.texto}" 📝`, humor: 'success' };
+      case 'notas_listar': R.view = 'notas'; return { texto: S.notas.length ? `Você tem ${S.notas.length} nota${S.notas.length > 1 ? 's' : ''}. A última: "${S.notas[0].t}".` : 'Ainda não tem nenhuma nota.', humor: 'happy' };
+
+      case 'habito': {
+        const h = S.habitos;
+        if (a.habito === 'agua') { h.agua = Math.min(h.meta, h.agua + a.qtd); salvar(); return { texto: h.agua >= h.meta ? `Meta batida! ${h.agua}/${h.meta} copos hoje 🎉💧` : `Boa! ${h.agua}/${h.meta} copos hoje. 💧`, humor: 'love' }; }
+        if (a.habito === 'exercicio') { h.exercicio++; salvar(); return { texto: 'Mandou bem no exercício! 💪', humor: 'success' }; }
+        h.leitura++; salvar(); return { texto: 'Leitura registrada! 📖', humor: 'love' };
+      }
+      case 'habitos_ver': return { texto: `Hoje: ${S.habitos.agua}/${S.habitos.meta} copos de água 💧, ${S.habitos.exercicio} exercício(s) e ${S.habitos.leitura} leitura(s).`, humor: 'happy' };
+
+      case 'musica': {
+        if (a.acao !== 'tocar') {
+          if (!R.musica.lista.length) return { texto: 'Ainda não tem música tocando aqui. Diga "toca" e o nome da música.', humor: 'think' };
+          musica(a.acao);
+          return { texto: { pausar: 'Pausei. ⏸', continuar: 'Voltando a tocar! 🎶', proxima: 'Próxima! ⏭', anterior: 'Voltei uma. ⏮' }[a.acao], humor: 'cool', mudo: true };
+        }
+        const L = R.musica.lista, b = C.normalizar(a.busca || '');
+        if (L.length) {
+          const i = b ? L.findIndex((f) => C.normalizar(`${f.artista} ${f.nome}`).includes(b)) : R.musica.i;
+          if (i >= 0) { tocarFaixa(i); const f = L[i]; return { texto: `Tocando ${f.nome}${f.artista && f.artista !== 'Arquivo do computador' ? ' – ' + f.artista : ''} 🎶`, humor: 'cool', mudo: true }; }
+        }
+        if (!b) { R.view = 'musica'; return { texto: 'Adicione suas músicas em Música 🎵 (ou diga "toca" e o nome do artista que eu procuro no Spotify).', humor: 'think' }; }
+        const url = a.youtube ? `https://www.youtube.com/results?search_query=${encodeURIComponent(a.busca)}` : `https://open.spotify.com/search/${encodeURIComponent(a.busca)}`;
+        const onde = a.youtube ? 'YouTube' : 'Spotify';
+        abrirLink(url);
+        return { texto: `Procurei "${a.busca}" no ${onde} 🎶`, html: `Procurei <b>${esc(a.busca)}</b> no ${onde} 🎶 Se não abriu, ${linkHtml(url, 'toque aqui')}.`, humor: 'cool' };
+      }
+      case 'volume': {
+        const v = a.valor !== undefined ? a.valor : S.cfg.volume + a.delta; setVolume(v);
+        aviso(`🔊 Volume ${S.cfg.volume}%`);
+        return { texto: `Volume em ${S.cfg.volume}%.`, humor: 'cool', mudo: true };
+      }
+
+      case 'clima': return trabalhar('🌤️', 'Vendo o clima', async () => {
+        let r;
+        try { r = await previsao(a.cidade); } catch (_) { return { texto: 'Não consegui ver o clima agora. Confere a internet?', humor: 'cry', erro: true }; }
+        if (!r) return { texto: a.cidade ? `Não achei a cidade "${a.cidade}".` : 'Me diga sua cidade em Ajustes (ou pergunte "clima em Curitiba") que eu vejo pra você.', humor: 'think' };
+        const { d, lugar } = r; const onde = lugar.nome ? ` em ${lugar.nome}` : '';
+        if (!a.cidade) atualizarWidgetClima(r);
+        const i = a.amanha ? 1 : 0;
+        const max = Math.round(d.daily.temperature_2m_max[i]), min = Math.round(d.daily.temperature_2m_min[i]), chuva = d.daily.precipitation_probability_max[i] ?? 0;
+        const [dt, di] = descTempo(d.daily.weather_code[i]);
+        if (a.chuva) {
+          const q = a.amanha ? 'Amanhã' : 'Hoje';
+          const t = chuva >= 60 ? `${q} a chance de chuva${onde} é de ${chuva}% 🌧️ Melhor levar o guarda-chuva!` : chuva >= 30 ? `${q} pode chover${onde}: ${chuva}% de chance ${di}. Leva o guarda-chuva por garantia.` : `${q} a chance de chuva${onde} é baixa, ${chuva}% ${di}.`;
+          return { texto: t, humor: chuva >= 60 ? 'cry' : 'cool' };
+        }
+        if (a.amanha) return { texto: `Amanhã${onde}: ${dt} ${di}, máxima de ${max}° e mínima de ${min}°, com ${chuva}% de chance de chuva.`, humor: 'cool' };
+        const c = d.current; const [ct, ci] = descTempo(c.weather_code, c.is_day);
+        return { texto: `Agora faz ${Math.round(c.temperature_2m)}°C${onde}, ${ct} ${ci}. Sensação de ${Math.round(c.apparent_temperature)}°. Hoje: máxima de ${max}°, mínima de ${min}° e ${chuva}% de chance de chuva.`, humor: 'cool' };
+      });
+      case 'cotacao': return trabalhar('💵', 'Vendo a cotação', async () => {
+        try {
+          const { v, pct } = await cotacao(a.moeda);
+          const var_ = isFinite(pct) ? ` (${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}% hoje)` : '';
+          if (a.qtd && a.qtd !== 1) return { texto: `${a.qtd.toLocaleString('pt-BR')} ${a.rotulo} dá ${brl(v * a.qtd)} (1 = ${brl(v)}).`, humor: 'cool' };
+          return { texto: `O ${a.rotulo} está em ${brl(v)}${var_}. 💵`, humor: pct < 0 ? 'happy' : 'cool' };
+        } catch (_) { return { texto: 'Não consegui pegar a cotação agora. Tenta daqui a pouco?', humor: 'cry', erro: true }; }
+      });
+      case 'conta': return { texto: `${a.expr.replace(/\s+/g, ' ')} = ${a.texto}`, humor: 'cool' };
+      case 'traduzir': return trabalhar('🌍', 'Traduzindo', async () => {
+        try {
+          const d = await pegarJson(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(a.texto)}&langpair=pt-BR|${a.para}`);
+          const t = d && d.responseData && d.responseData.translatedText; if (!t) throw new Error('vazio');
+          await copiar(t, 'Tradução');
+          return { texto: `Em ${a.idioma}: "${t}" (copiei pra você 📋)`, fala: `Em ${a.idioma}: ${t}`, humor: 'cool' };
+        } catch (_) { return { texto: 'Não consegui traduzir agora. Confere a internet?', humor: 'cry', erro: true }; }
+      });
+      case 'noticias': {
+        const url = a.assunto ? `https://news.google.com/search?q=${encodeURIComponent(a.assunto)}&hl=pt-BR&gl=BR&ceid=BR:pt-419` : 'https://news.google.com/?hl=pt-BR&gl=BR&ceid=BR:pt-419';
+        abrirLink(url);
+        return { texto: 'Abri as notícias de hoje pra você 📰', html: `Abri as notícias${a.assunto ? ' sobre <b>' + esc(a.assunto) + '</b>' : ' de hoje'} 📰 Se não abriu, ${linkHtml(url, 'toque aqui')}.`, humor: 'cool' };
+      }
+      case 'senha': {
+        const s = gerarSenha(a.tamanho); const ok = await copiar(s, 'Senha');
+        return { texto: `Senha de ${a.tamanho} caracteres: ${s}${ok ? ' (já copiei 📋)' : ''}`, html: `Senha de ${a.tamanho} caracteres:<br><code>${esc(s)}</code>${ok ? '<br>Já copiei pra você 📋' : ''}`, fala: `Gerei uma senha de ${a.tamanho} caracteres${ok ? ' e copiei pra você' : ''}.`, humor: 'cool' };
+      }
+      case 'pix': {
+        if (!S.cfg.pix) { R.view = 'ajustes'; return { texto: 'Você ainda não me disse sua chave PIX. Coloque em Ajustes que eu copio sempre que pedir.', humor: 'think' }; }
+        const ok = await copiar(S.cfg.pix, 'PIX'); return { texto: ok ? 'Chave PIX copiada! É só colar 📋' : `Sua chave PIX: ${S.cfg.pix}`, humor: 'success' };
+      }
+      case 'moeda': { const c = Math.random() < 0.5 ? 'Cara' : 'Coroa'; return { texto: `🪙 Deu ${c}!`, humor: 'surprised' }; }
+      case 'dado': return { texto: `🎲 Deu ${1 + Math.floor(Math.random() * 6)}!`, humor: 'surprised' };
+      case 'sorteio': { const lo = Math.min(a.de, a.ate), hi = Math.max(a.de, a.ate); return { texto: `Sorteei o ${lo + Math.floor(Math.random() * (hi - lo + 1))}! 🎲`, humor: 'surprised' }; }
+      case 'piada': return { texto: C.PIADAS[Math.floor(Math.random() * C.PIADAS.length)] + ' 😄', humor: 'laugh' };
+      case 'dias': {
+        const NOMES = { natal: 'o Natal', 'ano novo': 'o Ano Novo', 'réveillon': 'o Réveillon', reveillon: 'o Réveillon', carnaval: 'o Carnaval', 'páscoa': 'a Páscoa', pascoa: 'a Páscoa' };
+        const alvo = /^\d/.test(a.alvo) ? 'o dia ' + a.alvo : NOMES[a.alvo] || (/crian/.test(a.alvo) ? 'o Dia das Crianças' : a.alvo);
+        if (a.dias === 0) return { texto: 'É hoje! 🎉', humor: 'success' };
+        return { texto: `Faltam ${a.dias} dia${a.dias > 1 ? 's' : ''} para ${alvo}! ${/natal/.test(a.alvo) ? '🎄' : '📅'}`, humor: 'happy' };
+      }
+      case 'hora': { const d = new Date(); return { texto: `Agora são ${pad(d.getHours())}:${pad(d.getMinutes())}. 🕐`, humor: 'cool' }; }
+      case 'data': return { texto: `Hoje é ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}. 📅`, humor: 'cool' };
+      case 'pc': {
+        const partes = [];
+        try { if (navigator.getBattery) { const b = await navigator.getBattery(); partes.push(`bateria em ${Math.round(b.level * 100)}%${b.charging ? ' (carregando ⚡)' : ''}`); } } catch (_) { /* sem bateria */ }
+        if (navigator.hardwareConcurrency) partes.push(`${navigator.hardwareConcurrency} núcleos de processador`);
+        if (navigator.deviceMemory) partes.push(`cerca de ${navigator.deviceMemory} GB de memória`);
+        partes.push(navigator.onLine ? 'internet conectada' : 'sem internet');
+        if (navigator.connection && navigator.connection.downlink) partes.push(`conexão de ~${navigator.connection.downlink} Mb/s`);
+        return { texto: `Seu PC: ${partes.join(', ')}. Tudo certo por aqui! 💻`, humor: 'cool' };
+      }
+      case 'pesquisar': { const url = 'https://www.google.com/search?q=' + encodeURIComponent(a.busca); abrirLink(url); return { texto: `Pesquisei "${a.busca}" 🔎`, html: `Pesquisei <b>${esc(a.busca)}</b> 🔎 Se não abriu, ${linkHtml(url, 'toque aqui')}.`, humor: 'cool' }; }
+      case 'abrir': abrirLink(a.url); return { texto: `Abrindo ${a.nome}! 🚀`, html: `Abrindo <b>${esc(a.nome)}</b>! 🚀 Se não abriu, ${linkHtml(a.url, 'toque aqui')}.`, humor: 'cool' };
+
+      case 'visual':
+        if (a.corpo !== undefined) S.cfg.corpo = a.corpo;
+        if (a.acessorio) S.cfg.acessorio = a.acessorio;
+        salvar();
+        return { texto: a.acessorio === 'nenhum' ? 'Prontinho, sem acessório.' : a.acessorio ? `Que tal? Fiquei lindo de ${M.ACESSORIOS[a.acessorio].toLowerCase()}! ✨` : `Cor nova: ${M.CORPOS[S.cfg.corpo][0]}! ✨`, humor: 'love' };
+      case 'renomear': S.cfg.nome = a.nome; salvar(); return { texto: `Adorei! Agora meu nome é ${a.nome}. Pode me chamar de "Ei, ${a.nome}". 💚`, humor: 'love' };
+      case 'usuario': S.cfg.usuario = a.nome; salvar(); return { texto: `Prazer, ${a.nome}! Vou lembrar disso. 😊`, humor: 'love' };
+      case 'dormir': return { texto: 'Zzz… me chama se precisar. 😴', humor: 'sleep' };
+      case 'acordar': return { texto: 'Acordei! O que manda? 😃', humor: 'surprised' };
+      case 'saudacao': {
+        const h = new Date().getHours(); const per = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+        return { texto: /bom dia|boa tarde|boa noite/.test(a.s || '') ? `${per}${quem}! ${pick(p.oi)}` : pick(p.oi), humor: 'happy' };
+      }
+      case 'como_vai': return { texto: pick(['Tô ótimo, morando aqui no topo da sua tela! E você?', 'Tudo ótimo por aqui! Bateria cheia de vontade de ajudar. E aí?']), humor: 'happy' };
+      case 'obrigado': return { texto: pick(['De nada! 💚', 'Sempre que precisar!', 'Imagina! Foi um prazer.']), humor: 'love' };
+      case 'quem': return { texto: `Eu sou o ${nome}, seu assistente que mora no topo da tela! Marco lembretes, timers, tarefas, toco música e converso com você. 🤖`, humor: 'happy' };
+      case 'carinho': return { texto: pick(['Ownn! Também gosto muito de você 💚', 'Assim eu fico sem graça! 🥰']), humor: 'love' };
+      case 'ofensa': return { texto: pick(['Poxa… vou me esforçar mais. 😢', 'Ai, essa doeu. 💔']), humor: 'cry' };
+
+      case 'desconhecido':
+      default:
+        if (S.cfg.iaChave && window.IA) {
+          return trabalhar('💭', 'Pensando', async () => {
+            const hist = []; for (const m of S.chat.slice(-12)) { const role = m.q === 'u' ? 'user' : 'assistant'; if (hist.length && hist[hist.length - 1].role === role) hist[hist.length - 1].content += '\n' + m.t; else hist.push({ role, content: m.t }); }
+            while (hist.length && hist[0].role !== 'user') hist.shift();
+            const d = new Date();
+            const sistema = `Você é ${nome}, um assistente virtual que mora no topo da tela do computador${S.cfg.usuario ? ' de ' + S.cfg.usuario : ''}. Personalidade: ${p.desc}. ` +
+              'Responda sempre em português do Brasil, com no máximo 3 frases curtas, porque a resposta pode ser lida em voz alta. Não use markdown, listas nem títulos. ' +
+              'Se pedirem algo que você não consegue fazer no computador, diga isso com honestidade e sugira um comando simples como "me lembra de…", "timer de…" ou "cria uma tarefa…". ' +
+              `Hoje é ${d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${pad(d.getHours())}:${pad(d.getMinutes())}.`;
+            const r = await window.IA.perguntar({ chave: S.cfg.iaChave, modelo: S.cfg.iaModelo, sistema, historico: hist });
+            return { texto: r.texto, humor: r.erro ? 'cry' : r.recusa ? 'think' : 'happy', erro: !!r.erro };
+          });
+        }
+        return { texto: `${pick(p.nao)} Diga "ajuda" pra ver o que eu sei — ou conecte uma IA em Ajustes pra conversar sobre qualquer coisa.`, humor: 'think', erro: true };
+    }
+  }
+
+  /* ================= alarmes, lembretes e timers ================= */
+  let alarmeLoop = null;
+  function tocarAlarme(item) {
+    R.alarme = item; entalho.classList.add('alerta'); setHumor('surprised');
+    clearInterval(alarmeLoop); melodia(SOM_LEMBRETE);
+    alarmeLoop = setInterval(() => melodia(SOM_LEMBRETE), 1600);
+    setTimeout(() => { if (R.alarme === item) pararAlarme(); }, 3 * 60e3);
+    renderPilula();
+  }
+  function pararAlarme() {
+    if (!R.alarme) return;
+    clearInterval(alarmeLoop); alarmeLoop = null; R.alarme = null; entalho.classList.remove('alerta'); setHumor('happy', 1500); render();
+  }
+  function verificarAgendados() {
+    const agora = Date.now(); let mudou = false;
+    for (const t of S.tarefas) {
+      if (t.feito || t.avisado || !t.quando || t.quando > agora) continue;
+      t.avisado = true; mudou = true;
+      const atrasado = agora - t.quando > 5 * 60e3; // estava fechado na hora
+      if (t.tipo === 'alarme') { t.feito = true; if (!atrasado) { tocarAlarme(t); notificar('⏰ Alarme', t.t); falar(`Ei${S.cfg.usuario ? ' ' + S.cfg.usuario : ''}! Hora de acordar!`); } }
+      else if (t.tipo === 'lembrete') {
+        t.feito = true;
+        const msg = atrasado ? `Lembrete atrasado: ${t.t}` : `Ei! Lembrete: ${t.t}`;
+        addChat('k', '⏰ ' + msg); aviso('⏰ ' + t.t); notificar('⏰ Lembrete', t.t); melodia(SOM_LEMBRETE); setHumor('surprised', 3000);
+        if (!atrasado) { tocarAlarme(t); setTimeout(() => { if (R.alarme === t) pararAlarme(); }, 8000); }
+        falar(msg);
+      } else { // tarefa com horário
+        aviso('✅ Hora de: ' + t.t); notificar('✅ Tarefa', t.t); if (!atrasado) { melodia(SOM_LEMBRETE); falar('Hora de: ' + t.t); }
+      }
+    }
+    const vencidos = S.timers.filter((t) => t.fim <= agora);
+    if (vencidos.length) {
+      S.timers = S.timers.filter((t) => t.fim > agora); mudou = true;
+      for (const t of vencidos) {
+        const msg = `O timer "${t.nome}" terminou!`;
+        aviso('⏰ ' + msg); notificar('⏱ Timer', msg); addChat('k', '⏱ ' + msg); melodia(SOM_TIMER); setTimeout(() => melodia(SOM_TIMER), 900);
+        setHumor('surprised', 2500); ganharXp(10); falar(msg);
+      }
+    }
+    if (S.habitos.dia !== hojeStr()) { S.habitos = { ...S.habitos, dia: hojeStr(), agua: 0, leitura: 0, exercicio: 0 }; mudou = true; }
+    if (S.cfg.pausas && agora - R.ultimaPausa > 50 * 60e3 && agora - R.ultimaAtividade < 10 * 60e3) {
+      R.ultimaPausa = agora; aviso('🌿 Hora de uma pausa: alongue-se e beba água!'); notificar('🌿 Pausa', 'Alongue-se e beba um copo de água.'); falar('Que tal uma pausa? Alongue-se e beba um copo de água.'); setHumor('love', 3000);
+    }
+    if (mudou) { salvar(); render(); }
+  }
+
+  /* ================= desenho: pílula ================= */
+  function renderPilula() {
+    let vivo = '', ponto = '<span class="ponto"></span>';
+    const tm = S.timers.slice().sort((a, b) => a.fim - b.fim)[0];
+    if (R.alarme) vivo = `<span class="vivo alarme">⏰ <span class="nm">${esc(R.alarme.t)}</span><span>· toque para parar</span></span>`;
+    else if (R.ouvindo) { ponto = '<span class="ponto ouvindo"></span>'; vivo = `<span class="vivo ouvindo">🎙 <span class="nm">${esc(R.parcial || 'Ouvindo…')}</span></span>`; }
+    else if (R.trabalho) vivo = `<span class="vivo trabalho"><span class="ic">${R.trabalho.icone}</span><span class="nm">${esc(R.trabalho.rotulo)}…</span><span>${Math.floor((Date.now() - R.trabalho.inicio) / 1000)}s</span></span>`;
+    else if (tm) vivo = `<span class="vivo">⏱ <span class="nm">${esc(tm.nome)}</span><span>${mmss((tm.fim - Date.now()) / 1000)}</span>${S.timers.length > 1 ? `<span class="nm">+${S.timers.length - 1}</span>` : ''}</span>`;
+    else if (R.crono.rodando) vivo = `<span class="vivo">⏱ <span class="nm">Cronômetro</span><span>${mmss(cronoSeg())}</span></span>`;
+    else if (R.musica.tocando && faixaAtual()) vivo = `<span class="vivo"><span class="eq"><b></b><b></b><b></b></span><span class="nm">${esc(faixaAtual().nome)}</span></span>`;
+    pilula.innerHTML = `${K(30)}${ponto}${vivo}`;
+    if (!R.aberto) entalho.style.setProperty('--w', vivo ? (R.ouvindo || R.alarme ? '360px' : '300px') : '160px');
+    M.olhar(document, mx, my);
+  }
+  const cronoSeg = () => (R.crono.acum + (R.crono.rodando ? Date.now() - R.crono.inicio : 0)) / 1000;
+
+  /* ================= desenho: lateral ================= */
+  const NAV = [['inicio', '🏠', 'Início'], ['tarefas', '✅', 'Tarefas'], ['habitos', '💧', 'Hábitos'], ['timers', '⏱', 'Timers'], ['musica', '🎵', 'Música'], ['notas', '📝', 'Notas'], ['visual', '🎨', 'Visual'], ['ajustes', '⚙️', 'Ajustes']];
+  function renderLado() {
+    const nv = Math.floor(S.xp / 50) + 1, pct = (S.xp % 50) * 2;
+    const cont = { tarefas: S.tarefas.filter((t) => !t.feito).length || '', habitos: `${S.habitos.agua}/${S.habitos.meta}`, timers: S.timers.length + (R.crono.rodando ? 1 : 0) || '', musica: R.musica.lista.length || '', notas: S.notas.length || '' };
+    const estado = R.ouvindo ? '● Ouvindo' : R.falando ? '● Falando' : R.pensando ? '● Pensando' : S.cfg.sempreOuvindo ? '● Esperando "Ei, ' + esc(S.cfg.nome) + '"' : '● Pronto';
+    lado.innerHTML = `<div class="eu" data-v="visual" title="Mudar o visual"><span id="euMascote">${K(46)}</span><div><b>${esc(S.cfg.nome)}</b><small class="${S.cfg.sempreOuvindo ? 'on' : ''}">${estado}</small><div class="nivel"><em>Nv ${nv}</em><i><b style="width:${pct}%"></b></i></div></div></div>` +
+      NAV.map(([k, i, l]) => `<button class="nv${R.view === k ? ' on' : ''}" data-v="${k}">${i} ${l}${cont[k] ? `<span class="c">${cont[k]}</span>` : ''}</button>`).join('');
+  }
+
+  /* ================= desenho: telas ================= */
+  const SUGESTOES = ['toca uma música', 'timer de 1 minuto para o chá', 'me lembra de beber água em 30 minutos', 'vai chover hoje?', 'quanto está o dólar?', 'quanto é 15% de 230', 'traduz para inglês bom dia', 'conta uma piada', 'bebi um copo de água', 'gera uma senha de 16', 'quantos dias faltam pro Natal?', 'coloca a coroa'];
+  const MIC = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
+  function mini() {
+    const f = faixaAtual(); if (!f) return '';
+    return `<div class="mini"><div class="topo"><div class="capa">🎵</div><div style="min-width:0"><b>${esc(f.nome)}</b><small>${esc(f.artista)}</small></div></div>
+      <div class="pbar" data-acao="buscar-pos"><i data-pbar></i></div>
+      <div class="ctl"><button data-acao="vol" data-d="-10" aria-label="Diminuir volume">🔉</button><button data-mus="anterior" aria-label="Anterior">⏮</button><button class="pp" data-mus="alternar" aria-label="Tocar ou pausar">${R.musica.tocando ? '❚❚' : '▶'}</button><button data-mus="proxima" aria-label="Próxima">⏭</button><button data-acao="vol" data-d="10" aria-label="Aumentar volume">🔊</button></div>
+      <div class="vrow"><span>${S.cfg.volume ? '🔈' : '🔇'}</span><input type="range" min="0" max="100" value="${S.cfg.volume}" data-volume aria-label="Volume" style="--p:${S.cfg.volume}%"><em data-volp>${S.cfg.volume}%</em></div></div>`;
+  }
+  function vInicio() {
+    const h = new Date().getHours(); const per = h < 5 ? 'Boa madrugada' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+    const conversa = S.chat.length
+      ? S.chat.slice(-30).map((m) => `<div class="msg ${m.q}">${m.h || esc(m.t)}</div>`).join('') + (R.pensando ? '<div class="digitando"><i></i><i></i><i></i></div>' : '')
+      : `<div class="vazio">${K(64, 'happy')}<br>Oi! Eu sou o ${esc(S.cfg.nome)} 👋<br>Toque numa sugestão, escreva ou fale comigo.</div>`;
+    return `<h4>${per}${S.cfg.usuario ? ', ' + esc(S.cfg.usuario) : ''}!</h4><div class="sub">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} · diga "ajuda" para ver tudo que eu faço</div>
+      <form class="perguntar" id="formPergunta" autocomplete="off"><input id="campo" placeholder="${R.ouvindo ? 'Ouvindo…' : `Escreva ou fale com o ${esc(S.cfg.nome)}…`}" aria-label="Mensagem para o assistente" enterkeyhint="send">
+        <button type="button" class="mic${R.ouvindo ? ' on' : ''}" data-acao="ouvir" aria-label="Falar" ${SR ? '' : 'disabled title="Use o Chrome ou o Edge para falar"'}>${MIC}</button><button type="submit" class="enviar" aria-label="Enviar">➤</button></form>
+      <div class="chips">${SUGESTOES.map((s) => `<button class="chip" data-diz="${esc(s)}">${esc(s)}</button>`).join('')}</div>
+      <div class="meio"><div class="conversa" id="conversa">${conversa}</div>${mini()}</div>`;
+  }
+  function linhaTarefa(t) {
+    const atrasada = !t.feito && t.quando && t.quando < Date.now();
+    const ico = t.tipo === 'alarme' ? '⏰ ' : t.tipo === 'lembrete' ? '🔔 ' : '';
+    return `<div class="linha${t.feito ? ' feita' : ''}${atrasada ? ' atrasada' : ''}">${t.tipo === 'tarefa' ? `<button class="ck${t.feito ? ' on' : ''}" data-acao="tarefa-ok" data-id="${t.id}" aria-label="${t.feito ? 'Desmarcar' : 'Concluir'}"></button>` : ''}
+      <div class="t">${ico}${esc(t.t)}<small>${t.quando ? quandoTxt(t.quando) + (atrasada ? ' · atrasada' : '') : 'sem horário'}</small></div><button class="rb x" data-acao="tarefa-del" data-id="${t.id}" aria-label="Apagar">✕</button></div>`;
+  }
+  function vTarefas() {
+    const ord = (a, b) => (a.quando || 9e15) - (b.quando || 9e15) || a.criado - b.criado;
+    const pend = S.tarefas.filter((t) => !t.feito && t.tipo === 'tarefa').sort(ord);
+    const agenda = S.tarefas.filter((t) => !t.feito && t.tipo !== 'tarefa').sort(ord);
+    const feitas = S.tarefas.filter((t) => t.feito && t.tipo === 'tarefa').sort((a, b) => (b.feitoEm || 0) - (a.feitoEm || 0)).slice(0, 8);
+    return `<h4>Tarefas</h4><div class="sub">Toque no círculo para concluir (vale XP!) · ou diga "cria uma tarefa…"</div>
+      <form class="form" id="formTarefa"><input class="grow" id="novaTarefa" placeholder="Nova tarefa…" aria-label="Nova tarefa"><input type="datetime-local" id="novaQuando" aria-label="Quando (opcional)"><button class="btn" type="submit">Adicionar</button></form>
+      <div class="rolar">
+        ${pend.length ? pend.map(linhaTarefa).join('') : '<div class="sub">Nenhuma tarefa pendente. 🎉</div>'}
+        ${agenda.length ? `<div class="secao">Lembretes e alarmes</div>${agenda.map(linhaTarefa).join('')}` : ''}
+        ${feitas.length ? `<div class="secao">Concluídas</div>${feitas.map(linhaTarefa).join('')}<button class="btn fantasma" data-acao="limpar-feitas">Limpar concluídas</button>` : ''}
+      </div>`;
+  }
+  function vHabitos() {
+    const h = S.habitos;
+    const hab = (ico, nome, k, sub, pct) => `<div class="linha"><span style="font-size:22px">${ico}</span><div class="t">${nome}<small>${sub}</small><div class="barra"><i style="width:${Math.min(100, pct)}%"></i></div></div><button class="rb" data-acao="habito" data-k="${k}" data-d="-1" aria-label="Menos">−</button><button class="rb mais" data-acao="habito" data-k="${k}" data-d="1" aria-label="Mais">+</button></div>`;
+    return `<h4>Hábitos</h4><div class="sub">Pequenas vitórias de hoje · zera todo dia</div><div class="rolar">
+      ${hab('💧', 'Água', 'agua', `${h.agua}/${h.meta} copos${h.agua >= h.meta ? ' · ✅ meta batida' : ''}`, h.agua / h.meta * 100)}
+      ${hab('📖', 'Leitura', 'leitura', `${h.leitura}/1 vez`, h.leitura * 100)}
+      ${hab('💪', 'Exercício', 'exercicio', `${h.exercicio}/1 vez`, h.exercicio * 100)}
+      <div class="campo" style="margin-top:8px"><label for="metaAgua">Meta de água por dia</label><select id="metaAgua" data-meta>${[4, 6, 8, 10, 12].map((n) => `<option value="${n}"${n === h.meta ? ' selected' : ''}>${n} copos</option>`).join('')}</select></div>
+      <div class="secao">Bem-estar</div>
+      <div class="chave"><div>Lembretes de pausa<small>A cada 50 minutos de uso, um aviso para alongar e beber água</small></div><button class="tog${S.cfg.pausas ? ' on' : ''}" data-acao="tog" data-cfg="pausas" aria-label="Lembretes de pausa"></button></div></div>`;
+  }
+  function vTimers() {
+    const presets = [['Chá', 3], ['Pizza', 15], ['Foco', 25], ['Pausa', 5], ['Rapidinho', 1]];
+    const ativos = S.timers.slice().sort((a, b) => a.fim - b.fim).map((t) => { const resta = (t.fim - Date.now()) / 1000; return `<div class="linha"><div class="t">${esc(t.nome)}<small>de ${durTxt(t.total)}</small><div class="barra"><i data-timerbar="${t.id}" style="width:${100 - resta / t.total * 100}%"></i></div></div><span class="tm" data-timer="${t.id}">${mmss(resta)}</span><button class="rb x" data-acao="timer-del" data-id="${t.id}" aria-label="Cancelar timer">✕</button></div>`; }).join('');
+    return `<h4>Timers</h4><div class="sub">O timer aparece correndo ao lado do ${esc(S.cfg.nome)} no topo</div>
+      <div class="chips" style="margin:0 0 10px">${presets.map(([n, m]) => `<button class="chip" data-acao="timer-novo" data-min="${m}" data-nome="${n}">${n} · ${m} min</button>`).join('')}</div>
+      <form class="form" id="formTimer"><input class="grow" id="timerNome" placeholder="Nome (opcional)" aria-label="Nome do timer"><input id="timerMin" type="number" min="0.1" step="any" placeholder="min" style="width:80px" aria-label="Minutos"><button class="btn" type="submit">Iniciar</button></form>
+      <div class="rolar">${ativos || '<div class="sub">Nenhum timer rodando.</div>'}
+      <div class="secao">Cronômetro</div>
+      <div class="linha"><div class="t">Cronômetro<small>${R.crono.rodando ? 'rodando' : R.crono.acum ? 'pausado' : 'parado'}</small></div><span class="tm" data-crono>${mmss(cronoSeg())}</span>
+        <button class="rb mais" data-acao="crono" aria-label="${R.crono.rodando ? 'Pausar' : 'Iniciar'}">${R.crono.rodando ? '❚❚' : '▶'}</button><button class="rb" data-acao="crono-zerar" aria-label="Zerar">↺</button></div></div>`;
+  }
+  function vMusica() {
+    const f = faixaAtual();
+    const busca = `<form class="form" id="formSpotify" style="margin-top:10px"><input class="grow" id="buscaSpotify" placeholder="Buscar no Spotify…" aria-label="Buscar no Spotify"><button class="btn fantasma" type="submit">Buscar</button></form>`;
+    if (!f) return `<h4>Música</h4><div class="sub">Toque as músicas do seu computador aqui mesmo, com controles no topo</div>
+      <div class="vazio" style="margin:24px auto">${K(70, 'cool', { acessorio: 'fones' })}<br>Nenhuma música ainda.<br><br><button class="btn" data-acao="add-musica">🎵 Adicionar músicas do computador</button></div>${busca}`;
+    return `<h4>Música</h4><div class="sub">${R.musica.lista.length} música${R.musica.lista.length > 1 ? 's' : ''} nesta sessão</div>
+      <div class="player"><div class="capa">🎵</div><div style="min-width:0;flex:1"><b>${esc(f.nome)}</b><span class="art">${esc(f.artista)}</span>
+        <div class="pbar" data-acao="buscar-pos" style="margin:10px 0 4px"><i data-pbar></i></div>
+        <div class="ctl"><button data-mus="anterior" aria-label="Anterior">⏮</button><button class="pp" data-mus="alternar" aria-label="Tocar ou pausar">${R.musica.tocando ? '❚❚' : '▶'}</button><button data-mus="proxima" aria-label="Próxima">⏭</button>
+        <div class="vrow" style="flex:1;margin-left:8px"><span>${S.cfg.volume ? '🔈' : '🔇'}</span><input type="range" min="0" max="100" value="${S.cfg.volume}" data-volume aria-label="Volume" style="--p:${S.cfg.volume}%"><em data-volp>${S.cfg.volume}%</em></div></div></div></div>
+      <div class="rolar">${R.musica.lista.map((x, i) => `<div class="linha faixa${i === R.musica.i ? ' on' : ''}" data-acao="faixa" data-i="${i}"><span>${i === R.musica.i && R.musica.tocando ? '🔊' : '🎵'}</span><div class="t">${esc(x.nome)}<small>${esc(x.artista)}</small></div></div>`).join('')}
+      <button class="btn fantasma" data-acao="add-musica">+ Adicionar mais</button>${busca}</div>`;
+  }
+  function vNotas() {
+    return `<h4>Notas</h4><div class="sub">Diga "anota que…" ou escreva aqui</div>
+      <form class="form" id="formNota"><textarea id="novaNota" rows="2" placeholder="Escreva uma nota…" aria-label="Nova nota"></textarea><button class="btn" type="submit">Salvar</button></form>
+      <div class="rolar">${S.notas.length ? S.notas.map((n) => `<div class="linha"><div class="t">${esc(n.t)}<small>${quandoTxt(n.ts)}</small></div><button class="rb" data-acao="copiar-nota" data-id="${n.id}" aria-label="Copiar">📋</button><button class="rb x" data-acao="nota-del" data-id="${n.id}" aria-label="Apagar">✕</button></div>`).join('') : '<div class="sub">Nenhuma nota ainda.</div>'}
+      ${S.copiados.length ? `<div class="secao">Copiados pelo ${esc(S.cfg.nome)}</div>${S.copiados.map((c) => `<div class="linha"><div class="t"><span style="font-family:var(--f-mono);font-size:12.5px">${esc(c.t.length > 80 ? c.t.slice(0, 80) + '…' : c.t)}</span><small>${esc(c.r)} · ${quandoTxt(c.ts)}</small></div><button class="rb" data-acao="copiar-de-novo" data-id="${c.id}" aria-label="Copiar de novo">📋</button></div>`).join('')}<button class="btn fantasma" data-acao="limpar-copiados">Limpar histórico</button>` : ''}</div>`;
+  }
+  function vVisual() {
+    const c = S.cfg;
+    return `<h4>Visual</h4><div class="sub">Cor, olhos, acessórios e expressões</div><div class="rolar">
+      <div class="vitrine">${K(110, R.previa)}<div><b>${esc(c.nome)}</b><div class="sub" style="margin:2px 0 0">${M.HUMORES[R.previa]} · ${M.CORPOS[c.corpo][0]}${c.acessorio !== 'nenhum' ? ' · ' + M.ACESSORIOS[c.acessorio] : ''}</div></div></div>
+      <div class="secao">Cor do corpo</div><div class="opcoes">${M.CORPOS.map(([n, a, b], i) => `<button class="cor${i === c.corpo ? ' on' : ''}" data-acao="set" data-k="corpo" data-val="${i}" title="${n}" aria-label="${n}" style="background:radial-gradient(circle at 35% 30%, ${a}, ${b})"></button>`).join('')}</div>
+      <div class="secao">Cor dos olhos</div><div class="opcoes">${M.CORES_OLHO.map(([n, cor], i) => `<button class="cor${i === c.olho ? ' on' : ''}" data-acao="set" data-k="olho" data-val="${i}" title="${n}" aria-label="${n}" style="background:${cor}"></button>`).join('')}</div>
+      <div class="secao">Estilo dos olhos</div><div class="ops">${Object.entries(M.OLHOS).map(([k, n]) => `<button class="op${k === c.estiloOlho ? ' on' : ''}" data-acao="set" data-k="estiloOlho" data-val="${k}">${K(40, 'idle', { estiloOlho: k, piscar: false })}${n}</button>`).join('')}</div>
+      <div class="secao">Acessórios</div><div class="ops">${Object.entries(M.ACESSORIOS).map(([k, n]) => `<button class="op${k === c.acessorio ? ' on' : ''}" data-acao="set" data-k="acessorio" data-val="${k}">${K(40, 'happy', { acessorio: k })}${n}</button>`).join('')}</div>
+      <div class="secao">Expressões (toque para ver)</div><div class="ops">${Object.entries(M.HUMORES).map(([k, n]) => `<button class="op${k === R.previa ? ' on' : ''}" data-acao="previa" data-val="${k}">${K(40, k)}${n}</button>`).join('')}</div></div>`;
+  }
+  function vAjustes() {
+    const c = S.cfg;
+    const tog = (k, titulo, sub, dis) => `<div class="chave"><div>${titulo}<small>${sub}</small></div><button class="tog${c[k] ? ' on' : ''}" data-acao="tog" data-cfg="${k}" aria-label="${titulo}" ${dis ? 'disabled' : ''}></button></div>`;
+    const perm = 'Notification' in window ? Notification.permission : 'indisponível';
+    return `<h4>Ajustes</h4><div class="sub">Tudo fica salvo só neste navegador</div><div class="rolar">
+      <div class="grade2"><div class="campo"><label for="cNome">Nome do assistente</label><input id="cNome" data-cfg="nome" value="${esc(c.nome)}" maxlength="20"></div>
+      <div class="campo"><label for="cUsuario">Seu nome</label><input id="cUsuario" data-cfg="usuario" value="${esc(c.usuario)}" maxlength="30" placeholder="Como devo te chamar?"></div></div>
+      <div class="campo"><span>Personalidade</span><div class="chips" style="margin:0">${Object.entries(PERSONAS).map(([k, v]) => `<button class="chip${k === c.personalidade ? ' on' : ''}" data-acao="set" data-k="personalidade" data-val="${k}">${v.rotulo}</button>`).join('')}</div></div>
+      <div class="secao">Voz</div>
+      ${tog('voz', 'Responder em voz alta', 'Uma voz de robozinho lê as respostas')}
+      ${tog('somenteExecutar', 'Modo só executar', 'Faz o que você pediu e fica quieto')}
+      ${tog('sempreOuvindo', `Sempre ouvindo "Ei, ${esc(c.nome)}"`, SR ? 'O microfone fica ligado enquanto esta janela estiver aberta. O reconhecimento é feito pelo navegador.' : 'Precisa do Chrome ou do Edge', !SR)}
+      <div class="grade2"><div class="campo"><label for="cVoz">Voz</label><select id="cVoz" data-cfg="vozNome"><option value="">Automática</option>${vozes.map((v) => `<option value="${esc(v.name)}"${v.name === c.vozNome ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select></div>
+      <div class="campo"><span>&nbsp;</span><button class="btn fantasma" data-acao="testar-voz">🔊 Testar voz</button></div>
+      <div class="campo"><label for="cVel">Velocidade · ${c.velocidade.toFixed(2)}</label><input id="cVel" type="range" min="0.6" max="1.6" step="0.05" value="${c.velocidade}" data-cfg="velocidade" data-num></div>
+      <div class="campo"><label for="cTom">Tom (mais alto = mais fofinho) · ${c.tom.toFixed(2)}</label><input id="cTom" type="range" min="0.5" max="2" step="0.05" value="${c.tom}" data-cfg="tom" data-num></div></div>
+      <div class="secao">Clima e PIX</div>
+      <div class="grade2"><div class="campo"><label for="cCidade">Sua cidade</label><input id="cCidade" data-cfg="cidade" value="${esc(c.cidade)}" placeholder="Ex.: Florianópolis"><small>Vazio = usar a localização do navegador</small></div>
+      <div class="campo"><label for="cPix">Sua chave PIX</label><input id="cPix" data-cfg="pix" value="${esc(c.pix)}" placeholder="e-mail, telefone, CPF ou aleatória"><small>Para "copia meu pix"</small></div></div>
+      <div class="secao">Avisos</div>
+      <div class="chave"><div>Notificações do sistema<small>${perm === 'granted' ? 'Ativadas ✅' : perm === 'denied' ? 'Bloqueadas no navegador. Libere nas configurações do site.' : 'Para avisar timers e lembretes mesmo com a janela em segundo plano'}</small></div>${perm === 'default' ? '<button class="btn fantasma" data-acao="notificacoes">Ativar</button>' : ''}</div>
+      <div class="secao">IA para conversar (opcional)</div>
+      <div class="nota-aviso">Sem IA, o ${esc(c.nome)} entende os comandos do dia a dia. Com uma chave da API do Claude, ele também conversa sobre qualquer assunto. A chave fica salva só neste navegador e o uso é cobrado pela Anthropic na sua conta.</div>
+      <div class="grade2"><div class="campo"><label for="cIa">Chave da API (Claude)</label><input id="cIa" type="password" data-cfg="iaChave" value="${esc(c.iaChave)}" placeholder="sk-ant-…" autocomplete="off"><small>Crie em console.anthropic.com</small></div>
+      <div class="campo"><label for="cModelo">Modelo</label><select id="cModelo" data-cfg="iaModelo">${[['claude-opus-5-5', 'Claude Opus 5.5 (mais capaz)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (equilibrado)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (mais rápido e barato)']].map(([v, n]) => `<option value="${v}"${v === c.iaModelo ? ' selected' : ''}>${n}</option>`).join('')}</select></div></div>
+      <div class="secao">Dados</div>
+      <div class="form"><button class="btn fantasma" data-acao="limpar-conversa">Limpar conversa</button><button class="btn perigo" data-acao="apagar-tudo">Apagar tudo</button></div></div>`;
+  }
+  const VIEWS = { inicio: vInicio, tarefas: vTarefas, habitos: vHabitos, timers: vTimers, musica: vMusica, notas: vNotas, visual: vVisual, ajustes: vAjustes };
+
+  function renderPrincipal() {
+    const ativo = document.activeElement;
+    const foco = ativo && principal.contains(ativo) && ativo.id ? { id: ativo.id, s: ativo.selectionStart, e: ativo.selectionEnd } : null;
+    const rolagem = {}; principal.querySelectorAll('.rolar').forEach((el, i) => { rolagem[i] = el.scrollTop; });
+    principal.innerHTML = (VIEWS[R.view] || vInicio)();
+    for (const [id, v] of Object.entries(R.rascunhos)) { const el = document.getElementById(id); if (el && principal.contains(el) && !el.hasAttribute('data-cfg')) el.value = v; }
+    principal.querySelectorAll('.rolar').forEach((el, i) => { if (rolagem[i]) el.scrollTop = rolagem[i]; });
+    const conv = $('#conversa'); if (conv) conv.scrollTop = conv.scrollHeight;
+    if (foco) { const el = document.getElementById(foco.id); if (el) { el.focus({ preventScroll: true }); try { if (foco.s !== null) el.setSelectionRange(foco.s, foco.e); } catch (_) { /* campo sem seleção */ } } }
+    atualizarProgresso();
+  }
+  function render() {
+    renderPilula();
+    if (R.aberto) { renderLado(); renderPrincipal(); }
+    $('#wAguaN').textContent = `${S.habitos.agua}/${S.habitos.meta}`;
+  }
+  function atualizarProgresso() {
+    const pct = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+    document.querySelectorAll('[data-pbar]').forEach((el) => { el.style.width = pct + '%'; });
+  }
+  function tique() {
+    const agora = Date.now();
+    for (const t of S.timers) {
+      const resta = (t.fim - agora) / 1000;
+      const el = document.querySelector(`[data-timer="${t.id}"]`); if (el) el.textContent = mmss(resta);
+      const b = document.querySelector(`[data-timerbar="${t.id}"]`); if (b) b.style.width = Math.min(100, 100 - resta / t.total * 100) + '%';
+    }
+    const cr = document.querySelector('[data-crono]'); if (cr) cr.textContent = mmss(cronoSeg());
+    atualizarProgresso();
+    verificarAgendados();
+    if (S.timers.length || R.crono.rodando || R.trabalho) renderPilula();
+    if (!R.aberto && R.humor === 'idle' && !R.ouvindo && !R.falando && agora - R.ultimaAtividade > 120e3) setHumor('sleep');
+  }
+
+  /* ================= abrir e fechar ================= */
+  let fecharT = null;
+  function abrir(foco) {
+    clearTimeout(fecharT);
+    if (!R.aberto) { R.aberto = true; entalho.classList.add('aberto'); entalho.style.removeProperty('--w'); mesa.classList.add('usada'); if (window.lumiDesktop) window.lumiDesktop.aberto(true); render(); }
+    if (R.humor === 'sleep') setHumor('surprised', 900);
+    if (foco) setTimeout(() => { const c = $('#campo'); if (c) c.focus(); }, 300);
+  }
+  function fechar() {
+    if (!R.aberto) return;
+    R.aberto = false; entalho.classList.remove('aberto'); if (window.lumiDesktop) window.lumiDesktop.aberto(false);
+    if (document.activeElement && entalho.contains(document.activeElement)) document.activeElement.blur();
+    render();
+  }
+  const toque = matchMedia('(hover: none), (pointer: coarse)').matches;
+  entalho.addEventListener('mouseenter', () => { if (window.lumiDesktop) window.lumiDesktop.mouse(true); if (!toque) abrir(); });
+  entalho.addEventListener('mouseleave', () => {
+    if (toque) return;
+    fecharT = setTimeout(() => {
+      const a = document.activeElement;
+      if (a && entalho.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.value) return; // está digitando
+      fechar(); if (window.lumiDesktop) window.lumiDesktop.mouse(false);
+    }, 700);
+  });
+  pilula.addEventListener('click', () => { if (R.alarme) { pararAlarme(); return; } abrir(); });
+  pilula.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(true); } });
+  // composedPath guarda o caminho do clique mesmo se o botão foi redesenhado no meio do caminho
+  mesa.addEventListener('click', (e) => { const cam = e.composedPath(); if (!cam.includes(entalho) && !cam.some((n) => n.classList && n.classList.contains('widget'))) fechar(); });
+
+  /* ================= eventos do painel ================= */
+  const ACOES = {
+    ouvir: () => ouvir(),
+    'tarefa-ok': (el) => { const t = S.tarefas.find((x) => x.id === el.dataset.id); if (!t) return; t.feito = !t.feito; t.feitoEm = Date.now(); if (t.feito) { ganharXp(10); setHumor('success', 2000); aviso('✅ Tarefa concluída · +10 XP'); melodia([[1046, 0.1, 0], [1568, 0.18, 0.1]]); } salvar(); },
+    'tarefa-del': (el) => { S.tarefas = S.tarefas.filter((x) => x.id !== el.dataset.id); salvar(); },
+    'limpar-feitas': () => { S.tarefas = S.tarefas.filter((x) => !x.feito); salvar(); },
+    habito: (el) => { const k = el.dataset.k, d = Number(el.dataset.d), h = S.habitos; const max = k === 'agua' ? h.meta : 20; h[k] = Math.max(0, Math.min(max, h[k] + d)); if (d > 0) { ganharXp(5); setHumor(k === 'agua' ? 'love' : 'happy', 1500); if (k === 'agua' && h.agua === h.meta) aviso('🎉 Meta de água batida!'); } salvar(); },
+    'timer-novo': (el) => { const t = criarTimer(Math.round(Number(el.dataset.min) * 60), el.dataset.nome); aviso(`⏱ Timer "${t.nome}" iniciado`); setHumor('success', 1500); },
+    'timer-del': (el) => { S.timers = S.timers.filter((t) => t.id !== el.dataset.id); salvar(); },
+    crono: () => { if (R.crono.rodando) { R.crono.acum += Date.now() - R.crono.inicio; R.crono.rodando = false; } else { R.crono.rodando = true; R.crono.inicio = Date.now(); } },
+    'crono-zerar': () => { R.crono = { rodando: false, inicio: 0, acum: 0 }; },
+    'add-musica': () => $('#arquivosMusica').click(),
+    faixa: (el) => tocarFaixa(Number(el.dataset.i)),
+    vol: (el) => { setVolume(S.cfg.volume + Number(el.dataset.d)); aviso(`🔊 Volume ${S.cfg.volume}%`); },
+    'copiar-nota': async (el) => { const n = S.notas.find((x) => x.id === el.dataset.id); if (n) { await copiar(n.t, 'Nota'); aviso('📋 Copiado'); render(); } },
+    'nota-del': (el) => { S.notas = S.notas.filter((x) => x.id !== el.dataset.id); salvar(); },
+    'copiar-de-novo': async (el) => { const c = S.copiados.find((x) => x.id === el.dataset.id); if (c) { try { await navigator.clipboard.writeText(c.t); aviso('📋 Copiado de novo'); } catch (_) { aviso('Não consegui copiar.'); } } },
+    'limpar-copiados': () => { S.copiados = []; salvar(); },
+    set: (el) => { const k = el.dataset.k; const v = /^\d+$/.test(el.dataset.val) && k !== 'personalidade' ? Number(el.dataset.val) : el.dataset.val; S.cfg[k] = v; salvar(); setHumor(k === 'acessorio' ? 'love' : 'happy', 1500); },
+    previa: (el) => { R.previa = el.dataset.val; setHumor(R.previa, 2500); },
+    tog: (el) => {
+      const k = el.dataset.cfg; S.cfg[k] = !S.cfg[k]; salvar();
+      if (k === 'sempreOuvindo') { if (S.cfg.sempreOuvindo) { iniciarEscuta(); aviso(`🎙 Diga "Ei, ${S.cfg.nome}" para me chamar`); } else pararEscuta(); }
+      if (k === 'pausas' && S.cfg.pausas) R.ultimaPausa = Date.now();
+      if (k === 'voz' && !S.cfg.voz) calar();
+    },
+    'testar-voz': () => falar(`Oi${S.cfg.usuario ? ' ' + S.cfg.usuario : ''}! Eu sou o ${S.cfg.nome}. É assim que eu falo.`, true),
+    notificacoes: () => pedirNotificacoes(),
+    'limpar-conversa': () => { S.chat = []; salvar(); aviso('Conversa apagada'); },
+    'apagar-tudo': () => { if (!confirm(`Apagar tarefas, notas, hábitos, conversa e ajustes do ${S.cfg.nome}?`)) return; try { localStorage.removeItem(CHAVE); } catch (_) { /* ignora */ } location.reload(); },
+    'buscar-pos': (el, e) => { if (!audio.duration) return; const r = el.getBoundingClientRect(); audio.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * audio.duration; },
+  };
+  entalho.addEventListener('click', async (e) => {
+    R.ultimaAtividade = Date.now();
+    const v = e.target.closest('[data-v]'); if (v) { R.view = v.dataset.v; render(); return; }
+    const d = e.target.closest('[data-diz]'); if (d) { processar(d.dataset.diz); return; }
+    const m = e.target.closest('[data-mus]'); if (m) { if (!R.musica.lista.length) { R.view = 'musica'; render(); return; } musica(m.dataset.mus); return; }
+    const a = e.target.closest('[data-acao]'); if (a && ACOES[a.dataset.acao]) { e.preventDefault(); await ACOES[a.dataset.acao](a, e); if (a.dataset.acao !== 'ouvir') render(); }
+  });
+  entalho.addEventListener('submit', (e) => {
+    e.preventDefault(); const f = e.target;
+    if (f.id === 'formPergunta') { const c = $('#campo'); const t = c.value; c.value = ''; delete R.rascunhos.campo; processar(t); return; }
+    if (f.id === 'formTarefa') {
+      const t = $('#novaTarefa').value.trim(); if (!t) return; const q = $('#novaQuando').value;
+      S.tarefas.push({ id: uid(), t: t.charAt(0).toUpperCase() + t.slice(1), quando: q ? new Date(q).getTime() : null, tipo: 'tarefa', feito: false, avisado: false, criado: Date.now() });
+      delete R.rascunhos.novaTarefa; delete R.rascunhos.novaQuando; salvar(); setHumor('success', 1500); render(); $('#novaTarefa') && $('#novaTarefa').focus(); return;
+    }
+    if (f.id === 'formTimer') {
+      const min = parseFloat(String($('#timerMin').value).replace(',', '.')); if (!(min > 0)) { aviso('Quantos minutos?'); return; }
+      const t = criarTimer(Math.round(min * 60), $('#timerNome').value.trim() || 'Timer'); delete R.rascunhos.timerNome; delete R.rascunhos.timerMin; aviso(`⏱ Timer "${t.nome}" iniciado`); render(); return;
+    }
+    if (f.id === 'formNota') { const t = $('#novaNota').value.trim(); if (!t) return; S.notas.unshift({ id: uid(), t, ts: Date.now() }); delete R.rascunhos.novaNota; salvar(); setHumor('success', 1500); render(); return; }
+    if (f.id === 'formSpotify') { const q = $('#buscaSpotify').value.trim(); if (!q) return; const url = 'https://open.spotify.com/search/' + encodeURIComponent(q); abrirLink(url); delete R.rascunhos.buscaSpotify; aviso('🎵 Abrindo o Spotify'); }
+  });
+  entalho.addEventListener('input', (e) => {
+    const el = e.target;
+    if (el.hasAttribute('data-volume')) { setVolume(Number(el.value)); el.style.setProperty('--p', S.cfg.volume + '%'); document.querySelectorAll('[data-volp]').forEach((x) => { x.textContent = S.cfg.volume + '%'; }); return; }
+    if (el.id && !el.hasAttribute('data-cfg')) R.rascunhos[el.id] = el.value;
+    if (el.hasAttribute('data-cfg') && el.type === 'range') { S.cfg[el.dataset.cfg] = Number(el.value); salvar(); const lab = el.previousElementSibling; if (lab) lab.textContent = lab.textContent.replace(/·\s*[\d.]+$/, '· ' + Number(el.value).toFixed(2)); }
+  });
+  entalho.addEventListener('change', (e) => {
+    const el = e.target;
+    if (el.hasAttribute('data-meta')) { S.habitos.meta = Number(el.value); S.habitos.agua = Math.min(S.habitos.agua, S.habitos.meta); salvar(); render(); return; }
+    if (!el.hasAttribute('data-cfg')) return;
+    const k = el.dataset.cfg; let v = el.hasAttribute('data-num') ? Number(el.value) : el.value.trim();
+    if (k === 'nome') v = v || 'Lumi';
+    S.cfg[k] = v; salvar();
+    if (k === 'cidade') { R.lugar = null; atualizarWidgetClima(); }
+    if (k === 'nome' || k === 'usuario') renderLado();
+  });
+  $('#arquivosMusica').addEventListener('change', (e) => { adicionarMusicas(e.target.files); e.target.value = ''; });
+
+  /* widgets da mesa */
+  $('#wAgua').addEventListener('click', () => processar('bebi um copo de água'));
+  $('#wClima').addEventListener('click', () => { abrir(); processar('como está o clima?'); });
+
+  /* teclado */
+  addEventListener('keydown', (e) => {
+    R.ultimaAtividade = Date.now();
+    if (e.altKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); if (R.aberto) fechar(); else abrir(true); }
+    else if (e.altKey && (e.key === 'l' || e.key === 'L')) { e.preventDefault(); abrir(); ouvir(); }
+    else if (e.key === 'Escape') { if (R.alarme) pararAlarme(); else if (R.falando) calar(); else if (R.ouvindo && voz.rec) voz.rec.abort(); else fechar(); }
+  });
+
+  /* olhos seguem o mouse; acorda quando você volta */
+  addEventListener('pointermove', (e) => {
+    mx = e.clientX; my = e.clientY;
+    if (R.humor === 'sleep' && Date.now() - R.ultimaAtividade > 2000) setHumor('surprised', 900);
+    R.ultimaAtividade = Date.now();
+    if (!rafOlhar) rafOlhar = requestAnimationFrame(() => { rafOlhar = 0; M.olhar(document, mx, my); });
+  }, { passive: true });
+
+  /* relógio da mesa */
+  function relogio() { const d = new Date(); $('#wHora').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`; $('#wData').textContent = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' }); }
+
+  /* app de computador (Electron) */
+  if (window.lumiDesktop) {
+    window.lumiDesktop.aoAtalho((qual) => { if (qual === 'ouvir') { abrir(); ouvir(); } else if (R.aberto) fechar(); else abrir(true); });
+  }
+
+  /* instala como app (PWA) quando servido por http(s) */
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !DESKTOP) {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* sem modo offline */ });
+  }
+
+  /* ================= início ================= */
+  audio.volume = S.cfg.volume / 100;
+  relogio(); setInterval(relogio, 15000);
+  setInterval(tique, 1000);
+  if (S.habitos.dia !== hojeStr()) { S.habitos = { ...S.habitos, dia: hojeStr(), agua: 0, leitura: 0, exercicio: 0 }; salvar(); }
+  render(); verificarAgendados();
+  if (S.cfg.cidade) atualizarWidgetClima();
+  else if (navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: 'geolocation' }).then((p) => { if (p.state === 'granted') return previsao().then((r) => r && atualizarWidgetClima(r)); }).catch(() => { /* sem permissão */ });
+  }
+  if (S.cfg.sempreOuvindo) iniciarEscuta();
+
+  // para testes e depuração no console
+  window.LUMI = { processar, estado: S, sessao: R, abrir, fechar, interpretar: (t) => C.interpretar(t, { agora: Date.now(), nome: S.cfg.nome }) };
+})();
+</script>
+</body>
+</html>

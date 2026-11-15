@@ -1,0 +1,48 @@
+# Monta o Lumi para Windows (instalador + versão portátil) e publica na página de Releases do repositório.
+name: Lumi para Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, claude/kobi-virtual-assistant-8xc699]
+    paths: ['assistente/**', '.github/workflows/lumi-windows.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: assistente
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependências
+        run: npm ci
+      - name: Testes
+        run: node --test tests/cerebro.test.js
+      - name: Gerar instalador e versão portátil
+        run: npx electron-builder --win nsis portable --x64 --publish never
+      - name: Publicar em Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="lumi-v1.0.0-build${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" dist/Lumi-Instalador.exe dist/Lumi-Portatil.exe \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Lumi para Windows (build ${GITHUB_RUN_NUMBER})" \
+            --notes "Baixe **Lumi-Instalador.exe** (instala e cria atalho na área de trabalho e no menu Iniciar) ou **Lumi-Portatil.exe** (abre sem instalar). Windows 10/11, 64 bits. Se aparecer \"O Windows protegeu o computador\", clique em Mais informações e depois em Executar assim mesmo."
+      - name: Guardar arquivos também como artefato
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lumi-Windows
+          path: |
+            assistente/dist/Lumi-Instalador.exe
+            assistente/dist/Lumi-Portatil.exe
+          if-no-files-found: ignore
