@@ -48,7 +48,7 @@ Também tem: 13 expressões do mascote (dorme quando você some, acorda quando v
 ## Voz
 
 - **Falar com ele:** usa o reconhecimento de voz do navegador (Chrome/Edge, precisa de internet). O botão do microfone ouve uma frase; "sempre ouvindo" espera "Ei, Lumi" enquanto a janela estiver aberta.
-- **Ele falar:** usa as vozes do sistema (funciona offline). Velocidade e tom ficam em Ajustes.
+- **Ele falar:** por padrão usa as vozes do computador (funciona offline; velocidade e tom ficam em Ajustes). Em **Ajustes → Tipo de voz → Google AI Studio (Gemini)** dá para usar uma das vozes femininas do Gemini (Leda, Kore, Aoede, Zephyr, Despina, Sulafat…), bem mais naturais. Precisa de internet e de uma chave grátis criada em aistudio.google.com ("Get API key"); a chave fica só no navegador e o uso conta na cota da sua conta Google. O jeito de falar acompanha a personalidade escolhida. Se a voz do Google falhar (chave errada, limite de uso, sem internet), ele avisa e usa a voz do computador.
 - No app Electron, a resposta em voz funciona, mas o **reconhecimento de voz do Chromium não funciona dentro do Electron**; lá use texto ou o Lumi no Chrome/Edge. Reconhecimento offline (ex.: Vosk) é um próximo passo possível.
 
 ## IA para conversar (opcional)
@@ -57,7 +57,7 @@ Sem IA, ele entende os comandos acima localmente. Com uma chave da API do Claude
 
 ## Serviços externos (gratuitos, sem chave)
 
-Open-Meteo (clima), AwesomeAPI → ExchangeRate-API / CoinGecko como reserva (cotações), MyMemory (tradução), jsDelivr (SDK da Anthropic, só se a IA estiver ligada). Todos têm limite de uso por IP; quando falham, o Lumi avisa em vez de inventar.
+Open-Meteo (clima), Google AI Studio (voz Gemini, opcional, com sua chave), AwesomeAPI → ExchangeRate-API / CoinGecko como reserva (cotações), MyMemory (tradução), jsDelivr (SDK da Anthropic, só se a IA estiver ligada). Todos têm limite de uso por IP; quando falham, o Lumi avisa em vez de inventar.
 
 ## Limites honestos
 

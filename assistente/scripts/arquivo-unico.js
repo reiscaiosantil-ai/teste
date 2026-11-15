@@ -12,7 +12,7 @@ html = html
   .replace(/<link rel="manifest"[^>]*>\n?/, '')
   .replace(/<link rel="icon"[^>]*>/, `<link rel="icon" href="${icone}" type="image/svg+xml">`)
   .replace(/<link rel="stylesheet" href="css\/estilo\.css">/, () => `<style>\n${ler('css/estilo.css')}</style>`)
-  .replace(/<script src="(js\/[\w.]+)"><\/script>/g, (_m, f) => {
+  .replace(/<script src="(js\/[\w.-]+)"><\/script>/g, (_m, f) => {
     const js = ler(f);
     if (/<\/script/i.test(js)) throw new Error(`${f} contém "</script", não dá para embutir`);
     return `<script>\n${js}</script>`;

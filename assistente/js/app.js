@@ -20,7 +20,7 @@
   const PADRAO = () => ({
     cfg: {
       nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo',
-      voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, somenteExecutar: false, sempreOuvindo: false,
+      voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', somenteExecutar: false, sempreOuvindo: false,
       cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', volume: 70, pausas: false,
     },
     xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [],
@@ -243,20 +243,63 @@
   function textoFalavel(t) {
     return String(t).replace(/<[^>]+>/g, ' ').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}\u{20E3}]/gu, '').replace(/https?:\/\/\S+/g, 'o link').replace(/\s+/g, ' ').trim();
   }
-  function falar(texto, forcar) {
-    if (!('speechSynthesis' in window) || (!forcar && (!S.cfg.voz || S.cfg.somenteExecutar))) return;
-    const limpo = textoFalavel(texto); if (!limpo) return;
+  // estilo de fala da voz do Google conforme a personalidade
+  const ESTILOS_FALA = { fofo: 'alegre, doce e animada', divertido: 'animada e brincalhona', profissional: 'calma e profissional', sarcastico: 'irônica e bem-humorada', zen: 'calma, suave e serena' };
+  let falaSeq = 0, falaFonte = null, falaCtl = null, avisouGoogle = false;
+  const cacheFala = new Map();
+  function inicioFala() { R.falando = true; pararEscuta(); setHumor('talk'); }
+  function fimFala() { R.falando = false; if (R.humor === 'talk') setHumor('happy', 1200); retomarEscuta(); }
+  function falarNavegador(limpo) {
+    if (!('speechSynthesis' in window)) return;
     try {
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(limpo);
       u.lang = 'pt-BR'; const v = escolherVoz(); if (v) u.voice = v;
       u.rate = S.cfg.velocidade; u.pitch = S.cfg.tom;
-      u.onstart = () => { R.falando = true; pararEscuta(); setHumor('talk'); };
-      u.onend = u.onerror = () => { R.falando = false; if (R.humor === 'talk') setHumor('happy', 1200); retomarEscuta(); };
+      u.onstart = inicioFala;
+      u.onend = u.onerror = fimFala;
       speechSynthesis.speak(u);
     } catch (_) { /* sem síntese de voz */ }
   }
-  function calar() { try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (_) { /* ignora */ } R.falando = false; }
+  async function falarGoogle(limpo, seq) {
+    const c = S.cfg, chave = `${c.geminiModelo}|${c.geminiVoz}|${c.personalidade}|${limpo}`;
+    try {
+      let wav = cacheFala.get(chave);
+      if (!wav) {
+        falaCtl = new AbortController();
+        wav = await window.VOZ_GOOGLE.sintetizar({ chave: c.geminiChave, modelo: c.geminiModelo, voz: c.geminiVoz, texto: limpo, estilo: ESTILOS_FALA[c.personalidade], sinal: falaCtl.signal });
+        falaCtl = null;
+        cacheFala.set(chave, wav); if (cacheFala.size > 30) cacheFala.delete(cacheFala.keys().next().value);
+      }
+      if (seq !== falaSeq) return;
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+      const buf = await audioCtx.decodeAudioData(wav.slice(0));
+      if (seq !== falaSeq) return;
+      const src = audioCtx.createBufferSource(); src.buffer = buf; src.connect(audioCtx.destination);
+      src.onended = () => { if (falaFonte === src) { falaFonte = null; fimFala(); } };
+      falaFonte = src; inicioFala(); src.start();
+    } catch (e) {
+      if ((e && e.name === 'AbortError') || seq !== falaSeq) return;
+      if (!avisouGoogle) { avisouGoogle = true; aviso(`Voz do Google: ${e && e.message ? e.message : 'erro'}. Usando a voz do navegador.`); }
+      falarNavegador(limpo);
+    }
+  }
+  function falar(texto, forcar) {
+    if (!forcar && (!S.cfg.voz || S.cfg.somenteExecutar)) return;
+    const limpo = textoFalavel(texto); if (!limpo) return;
+    calar();
+    const seq = ++falaSeq;
+    if (S.cfg.vozMotor === 'google' && S.cfg.geminiChave && window.VOZ_GOOGLE) falarGoogle(limpo, seq);
+    else falarNavegador(limpo);
+  }
+  function calar() {
+    falaSeq++;
+    if (falaCtl) { try { falaCtl.abort(); } catch (_) { /* ignora */ } falaCtl = null; }
+    if (falaFonte) { const f = falaFonte; falaFonte = null; try { f.onended = null; f.stop(); } catch (_) { /* já parou */ } }
+    try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (_) { /* ignora */ }
+    R.falando = false;
+  }
 
   /* ================= voz: ouvir ================= */
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -747,10 +790,15 @@
       ${tog('voz', 'Responder em voz alta', 'Uma voz de robozinho lê as respostas')}
       ${tog('somenteExecutar', 'Modo só executar', 'Faz o que você pediu e fica quieto')}
       ${tog('sempreOuvindo', `Sempre ouvindo "Ei, ${esc(c.nome)}"`, SR ? 'O microfone fica ligado enquanto esta janela estiver aberta. O reconhecimento é feito pelo navegador.' : 'Precisa do Chrome ou do Edge', !SR)}
-      <div class="grade2"><div class="campo"><label for="cVoz">Voz</label><select id="cVoz" data-cfg="vozNome"><option value="">Automática</option>${vozes.map((v) => `<option value="${esc(v.name)}"${v.name === c.vozNome ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select></div>
-      <div class="campo"><span>&nbsp;</span><button class="btn fantasma" data-acao="testar-voz">🔊 Testar voz</button></div>
+      <div class="grade2"><div class="campo"><label for="cMotor">Tipo de voz</label><select id="cMotor" data-cfg="vozMotor"><option value="navegador"${c.vozMotor !== 'google' ? ' selected' : ''}>Voz do computador (grátis, offline)</option><option value="google"${c.vozMotor === 'google' ? ' selected' : ''}>Google AI Studio (Gemini)</option></select></div>
+      <div class="campo"><span>&nbsp;</span><button class="btn fantasma" data-acao="testar-voz">🔊 Testar voz</button></div></div>
+      ${c.vozMotor === 'google' ? `<div class="nota-aviso">Vozes femininas do Gemini, bem naturais. Precisa de internet e de uma chave grátis do Google AI Studio (aistudio.google.com → Get API key). A chave fica salva só neste navegador; o uso conta na cota da sua conta Google. Se a voz do Google falhar, ele usa a voz do computador.</div>
+      <div class="grade2"><div class="campo"><label for="cGemini">Chave do Google AI Studio</label><input id="cGemini" type="password" data-cfg="geminiChave" value="${esc(c.geminiChave)}" placeholder="AIza…" autocomplete="off"></div>
+      <div class="campo"><label for="cGVoz">Voz feminina</label><select id="cGVoz" data-cfg="geminiVoz">${window.VOZ_GOOGLE ? window.VOZ_GOOGLE.VOZES.map(([n, d]) => `<option value="${n}"${n === c.geminiVoz ? ' selected' : ''}>${n} · ${d}</option>`).join('') : ''}</select></div>
+      <div class="campo"><label for="cGModelo">Modelo de voz</label><select id="cGModelo" data-cfg="geminiModelo">${window.VOZ_GOOGLE ? window.VOZ_GOOGLE.MODELOS.map(([v, n]) => `<option value="${v}"${v === c.geminiModelo ? ' selected' : ''}>${n}</option>`).join('') : ''}</select><small>O jeito de falar segue a personalidade escolhida acima</small></div></div>`
+      : `<div class="grade2"><div class="campo"><label for="cVoz">Voz</label><select id="cVoz" data-cfg="vozNome"><option value="">Automática</option>${vozes.map((v) => `<option value="${esc(v.name)}"${v.name === c.vozNome ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select></div><div></div>
       <div class="campo"><label for="cVel">Velocidade · ${c.velocidade.toFixed(2)}</label><input id="cVel" type="range" min="0.6" max="1.6" step="0.05" value="${c.velocidade}" data-cfg="velocidade" data-num></div>
-      <div class="campo"><label for="cTom">Tom (mais alto = mais fofinho) · ${c.tom.toFixed(2)}</label><input id="cTom" type="range" min="0.5" max="2" step="0.05" value="${c.tom}" data-cfg="tom" data-num></div></div>
+      <div class="campo"><label for="cTom">Tom (mais alto = mais fofinho) · ${c.tom.toFixed(2)}</label><input id="cTom" type="range" min="0.5" max="2" step="0.05" value="${c.tom}" data-cfg="tom" data-num></div></div>`}
       <div class="secao">Clima e PIX</div>
       <div class="grade2"><div class="campo"><label for="cCidade">Sua cidade</label><input id="cCidade" data-cfg="cidade" value="${esc(c.cidade)}" placeholder="Ex.: Florianópolis"><small>Vazio = usar a localização do navegador</small></div>
       <div class="campo"><label for="cPix">Sua chave PIX</label><input id="cPix" data-cfg="pix" value="${esc(c.pix)}" placeholder="e-mail, telefone, CPF ou aleatória"><small>Para "copia meu pix"</small></div></div>
@@ -854,7 +902,7 @@
       if (k === 'pausas' && S.cfg.pausas) R.ultimaPausa = Date.now();
       if (k === 'voz' && !S.cfg.voz) calar();
     },
-    'testar-voz': () => falar(`Oi${S.cfg.usuario ? ' ' + S.cfg.usuario : ''}! Eu sou o ${S.cfg.nome}. É assim que eu falo.`, true),
+    'testar-voz': () => { avisouGoogle = false; falar(`Oi${S.cfg.usuario ? ' ' + S.cfg.usuario : ''}! Eu sou o ${S.cfg.nome}. É assim que eu falo.`, true); },
     notificacoes: () => pedirNotificacoes(),
     'limpar-conversa': () => { S.chat = []; salvar(); aviso('Conversa apagada'); },
     'apagar-tudo': () => { if (!confirm(`Apagar tarefas, notas, hábitos, conversa e ajustes do ${S.cfg.nome}?`)) return; try { localStorage.removeItem(CHAVE); } catch (_) { /* ignora */ } location.reload(); },
@@ -896,6 +944,8 @@
     if (k === 'nome') v = v || 'Lumi';
     S.cfg[k] = v; salvar();
     if (k === 'cidade') { R.lugar = null; atualizarWidgetClima(); }
+    if (/^(vozMotor|gemini)/.test(k)) { avisouGoogle = false; cacheFala.clear(); }
+    if (k === 'vozMotor') renderPrincipal();
     if (k === 'nome' || k === 'usuario') renderLado();
   });
   $('#arquivosMusica').addEventListener('change', (e) => { adicionarMusicas(e.target.files); e.target.value = ''; });
