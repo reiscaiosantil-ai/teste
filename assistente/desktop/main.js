@@ -2,9 +2,10 @@
    presa no alto da tela. Fora do entalho, os cliques passam para o que está atrás. */
 const { app, BrowserWindow, screen, ipcMain, globalShortcut, shell, session } = require('electron');
 const path = require('path');
+const spotify = require('./spotify');
 
 const LARGURA = 900, ALTURA = 580;
-let janela = null;
+let janela = null, olhoSpotify = null;
 
 function posicionar() {
   if (!janela) return;
@@ -39,6 +40,17 @@ app.whenReady().then(() => {
   globalShortcut.register('Alt+K', () => janela && janela.webContents.send('lumi:atalho', 'abrir'));
   globalShortcut.register('Alt+L', () => janela && janela.webContents.send('lumi:atalho', 'ouvir'));
   screen.on('display-metrics-changed', posicionar);
+  // Spotify do computador: avisa a página quando a música muda
+  olhoSpotify = spotify.iniciar((estado) => { if (janela && !janela.isDestroyed()) janela.webContents.send('lumi:spotify', estado); });
+});
+
+ipcMain.handle('lumi:spotify-estado', () => (olhoSpotify ? olhoSpotify.estado() : null));
+ipcMain.handle('lumi:spotify-comando', (_e, acao) => (olhoSpotify ? olhoSpotify.comando(String(acao)) : false));
+ipcMain.handle('lumi:spotify-buscar', async (_e, busca) => {
+  const q = String(busca || '').slice(0, 200);
+  try { await shell.openExternal('spotify:search:' + encodeURIComponent(q)); return 'app'; } catch (_) {
+    await shell.openExternal('https://open.spotify.com/search/' + encodeURIComponent(q)); return 'web';
+  }
 });
 
 ipcMain.on('lumi:mouse', (_e, dentro) => { if (janela) janela.setIgnoreMouseEvents(!dentro, { forward: true }); });
@@ -47,6 +59,6 @@ ipcMain.on('lumi:aberto', (_e, aberto) => {
   if (aberto) { janela.setIgnoreMouseEvents(false); janela.focus(); }
 });
 
-app.on('will-quit', () => globalShortcut.unregisterAll());
+app.on('will-quit', () => { globalShortcut.unregisterAll(); if (olhoSpotify) olhoSpotify.parar(); });
 app.on('window-all-closed', () => app.quit());
 if (!app.requestSingleInstanceLock()) app.quit();

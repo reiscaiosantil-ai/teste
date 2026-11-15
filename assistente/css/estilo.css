@@ -176,3 +176,12 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   .player .capa { width: 72px; height: 72px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* Spotify do computador */
+.player.spotify { background: linear-gradient(150deg, rgba(30, 215, 96, .16), var(--caixa) 65%); border: 1px solid rgba(30, 215, 96, .25); border-radius: 16px; padding: 12px 14px; }
+.player.spotify .capa, .mini.spotify .capa { background: #0d1a12; }
+.player.spotify .eq { height: 26px; } .player.spotify .eq b { width: 5px; background: #1ED760; } .player.spotify .ctl { margin-top: 8px; }
+.mini.spotify { background: linear-gradient(160deg, #0f3a22, #0e1326 72%); }
+.spot-rot { display: flex; align-items: center; gap: 6px; font: 700 11px var(--f-mono); color: #1ED760; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+.spot-rot svg { width: 14px; height: 14px; }
+.vivo.spot { color: #1ED760; } .vivo.spot .eq b { background: #1ED760; }

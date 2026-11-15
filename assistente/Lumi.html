@@ -188,6 +188,15 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   .player .capa { width: 72px; height: 72px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* Spotify do computador */
+.player.spotify { background: linear-gradient(150deg, rgba(30, 215, 96, .16), var(--caixa) 65%); border: 1px solid rgba(30, 215, 96, .25); border-radius: 16px; padding: 12px 14px; }
+.player.spotify .capa, .mini.spotify .capa { background: #0d1a12; }
+.player.spotify .eq { height: 26px; } .player.spotify .eq b { width: 5px; background: #1ED760; } .player.spotify .ctl { margin-top: 8px; }
+.mini.spotify { background: linear-gradient(160deg, #0f3a22, #0e1326 72%); }
+.spot-rot { display: flex; align-items: center; gap: 6px; font: 700 11px var(--f-mono); color: #1ED760; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+.spot-rot svg { width: 14px; height: 14px; }
+.vivo.spot { color: #1ED760; } .vivo.spot .eq b { background: #1ED760; }
 </style>
 </head>
 <body>
@@ -654,6 +663,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     if (/quanta [aá]gua|quantos copos/u.test(s)) return { tipo: 'habitos_ver' };
 
     // música
+    if (/o que (?:est[aá]|t[aá]) tocando|que m[uú]sica (?:[eé] essa|[eé] esta|t[aá] tocando|est[aá] tocando)|qual (?:[eé] )?(?:a |essa |esta )?m[uú]sica|quem (?:canta|t[aá] cantando|est[aá] cantando)/u.test(s)) return { tipo: 'musica_atual' };
     if (/^(?:pausa|pausar|pause|para a m[uú]sica|para de tocar|para o som|pausa a m[uú]sica)$/u.test(s)) return { tipo: 'musica', acao: 'pausar' };
     if (/^(?:continua|continuar|despausa|volta a tocar|retoma|play|solta o som)$/u.test(s)) return { tipo: 'musica', acao: 'continuar' };
     if (/^(?:pr[oó]xima|pula|pular|avan[cç]a|passa)(?: (?:a )?m[uú]sica| essa)?$|^pr[oó]xima m[uú]sica$/u.test(s)) return { tipo: 'musica', acao: 'proxima' };
@@ -968,6 +978,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     ouvindo: false, parcial: '', falando: false, alarme: null, crono: { rodando: false, inicio: 0, acum: 0 },
     musica: { lista: [], i: 0, tocando: false }, rascunhos: {}, previa: 'happy', ultimaAtividade: Date.now(), ultimaPausa: Date.now(),
     lugar: null, pendente: null,
+    spotify: null, spotifyUltima: null, // Spotify do computador (só no app instalado)
   };
 
   /* ================= elementos ================= */
@@ -1151,6 +1162,23 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     if (ev === 'ended') { if (R.musica.lista.length > 1) tocarFaixa(R.musica.i + 1); else R.musica.tocando = false; }
     render();
   }));
+
+  /* ================= Spotify do computador (app instalado) ================= */
+  const SPOT = window.lumiDesktop && window.lumiDesktop.spotify ? window.lumiDesktop.spotify : null;
+  const spotAberto = () => !!(R.spotify && R.spotify.aberto);
+  const spotTocando = () => !!(R.spotify && R.spotify.tocando);
+  const spotNome = (e = R.spotify) => (e && e.musica ? e.musica + (e.artista ? ' – ' + e.artista : '') : '');
+  function receberSpotify(e) {
+    if (!e) return;
+    R.spotify = e;
+    if (e.tocando && e.musica) R.spotifyUltima = { musica: e.musica, artista: e.artista };
+    render();
+  }
+  async function spotifyComando(acao) {
+    if (!SPOT) return false;
+    if (acao === 'alternar' && R.spotify) { R.spotify = { ...R.spotify, tocando: !R.spotify.tocando }; render(); } // resposta rápida; o estado real chega em ~1 s
+    try { return await SPOT.comando(acao); } catch (_) { return false; }
+  }
 
   /* ================= voz: falar ================= */
   let vozes = [];
@@ -1402,8 +1430,14 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
       case 'habitos_ver': return { texto: `Hoje: ${S.habitos.agua}/${S.habitos.meta} copos de água 💧, ${S.habitos.exercicio} exercício(s) e ${S.habitos.leitura} leitura(s).`, humor: 'happy' };
 
       case 'musica': {
+        const usarSpotify = !R.musica.lista.length && SPOT && spotAberto();
+        if (a.acao !== 'tocar' && usarSpotify) {
+          const quer = { pausar: spotTocando(), continuar: !spotTocando(), proxima: true, anterior: true }[a.acao];
+          if (quer) await spotifyComando(a.acao === 'pausar' || a.acao === 'continuar' ? 'alternar' : a.acao);
+          return { texto: { pausar: 'Pausei o Spotify. ⏸', continuar: 'Voltando a tocar no Spotify! 🎶', proxima: 'Próxima no Spotify! ⏭', anterior: 'Voltei uma no Spotify. ⏮' }[a.acao], humor: 'cool', mudo: true };
+        }
         if (a.acao !== 'tocar') {
-          if (!R.musica.lista.length) return { texto: 'Ainda não tem música tocando aqui. Diga "toca" e o nome da música.', humor: 'think' };
+          if (!R.musica.lista.length) return { texto: SPOT ? 'Abra o Spotify no computador que eu controlo ele daqui. 🎵' : 'Ainda não tem música tocando aqui. Diga "toca" e o nome da música.', humor: 'think' };
           musica(a.acao);
           return { texto: { pausar: 'Pausei. ⏸', continuar: 'Voltando a tocar! 🎶', proxima: 'Próxima! ⏭', anterior: 'Voltei uma. ⏮' }[a.acao], humor: 'cool', mudo: true };
         }
@@ -1412,11 +1446,22 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
           const i = b ? L.findIndex((f) => C.normalizar(`${f.artista} ${f.nome}`).includes(b)) : R.musica.i;
           if (i >= 0) { tocarFaixa(i); const f = L[i]; return { texto: `Tocando ${f.nome}${f.artista && f.artista !== 'Arquivo do computador' ? ' – ' + f.artista : ''} 🎶`, humor: 'cool', mudo: true }; }
         }
+        if (!b && usarSpotify) { if (!spotTocando()) await spotifyComando('alternar'); return { texto: 'Dando play no Spotify! 🎶', humor: 'cool', mudo: true }; }
+        if (b && SPOT && !a.youtube) {
+          const onde = await SPOT.buscar(a.busca).catch(() => 'web');
+          return { texto: onde === 'app' ? `Abri "${a.busca}" no Spotify. É só escolher a música e dar play! 🎶` : `Procurei "${a.busca}" no Spotify 🎶`, humor: 'cool' };
+        }
         if (!b) { R.view = 'musica'; return { texto: 'Adicione suas músicas em Música 🎵 (ou diga "toca" e o nome do artista que eu procuro no Spotify).', humor: 'think' }; }
         const url = a.youtube ? `https://www.youtube.com/results?search_query=${encodeURIComponent(a.busca)}` : `https://open.spotify.com/search/${encodeURIComponent(a.busca)}`;
         const onde = a.youtube ? 'YouTube' : 'Spotify';
         abrirLink(url);
         return { texto: `Procurei "${a.busca}" no ${onde} 🎶`, html: `Procurei <b>${esc(a.busca)}</b> no ${onde} 🎶 Se não abriu, ${linkHtml(url, 'toque aqui')}.`, humor: 'cool' };
+      }
+      case 'musica_atual': {
+        if (R.musica.tocando && faixaAtual()) { const f = faixaAtual(); return { texto: `Está tocando ${f.nome}${f.artista && f.artista !== 'Arquivo do computador' ? ', de ' + f.artista : ''}. 🎵`, humor: 'cool' }; }
+        if (spotTocando() && R.spotify.musica) return { texto: `No Spotify está tocando ${R.spotify.musica}${R.spotify.artista ? ', de ' + R.spotify.artista : ''}. 🎵`, humor: 'cool' };
+        if (spotAberto()) return { texto: 'O Spotify está aberto, mas pausado.' + (R.spotifyUltima ? ` A última foi ${R.spotifyUltima.musica}.` : ''), humor: 'think' };
+        return { texto: SPOT ? 'Não tem nada tocando agora. Abra o Spotify que eu fico de olho. 🎵' : 'Não tem nada tocando aqui. Para eu ver o Spotify do computador, use o app instalado.', humor: 'think' };
       }
       case 'volume': {
         const v = a.valor !== undefined ? a.valor : S.cfg.volume + a.delta; setVolume(v);
@@ -1590,8 +1635,9 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     else if (tm) vivo = `<span class="vivo">⏱ <span class="nm">${esc(tm.nome)}</span><span>${mmss((tm.fim - Date.now()) / 1000)}</span>${S.timers.length > 1 ? `<span class="nm">+${S.timers.length - 1}</span>` : ''}</span>`;
     else if (R.crono.rodando) vivo = `<span class="vivo">⏱ <span class="nm">Cronômetro</span><span>${mmss(cronoSeg())}</span></span>`;
     else if (R.musica.tocando && faixaAtual()) vivo = `<span class="vivo"><span class="eq"><b></b><b></b><b></b></span><span class="nm">${esc(faixaAtual().nome)}</span></span>`;
+    else if (spotTocando() && R.spotify.musica) vivo = `<span class="vivo spot"><span class="eq"><b></b><b></b><b></b></span><span class="nm">${esc(spotNome())}</span></span>`;
     pilula.innerHTML = `${K(30)}${ponto}${vivo}`;
-    if (!R.aberto) entalho.style.setProperty('--w', vivo ? (R.ouvindo || R.alarme ? '360px' : '300px') : '160px');
+    if (!R.aberto) entalho.style.setProperty('--w', vivo ? (R.ouvindo || R.alarme || /vivo spot/.test(vivo) ? '380px' : '300px') : '160px');
     M.olhar(document, mx, my);
   }
   const cronoSeg = () => (R.crono.acum + (R.crono.rodando ? Date.now() - R.crono.inicio : 0)) / 1000;
@@ -1600,7 +1646,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   const NAV = [['inicio', '🏠', 'Início'], ['tarefas', '✅', 'Tarefas'], ['habitos', '💧', 'Hábitos'], ['timers', '⏱', 'Timers'], ['musica', '🎵', 'Música'], ['notas', '📝', 'Notas'], ['visual', '🎨', 'Visual'], ['ajustes', '⚙️', 'Ajustes']];
   function renderLado() {
     const nv = Math.floor(S.xp / 50) + 1, pct = (S.xp % 50) * 2;
-    const cont = { tarefas: S.tarefas.filter((t) => !t.feito).length || '', habitos: `${S.habitos.agua}/${S.habitos.meta}`, timers: S.timers.length + (R.crono.rodando ? 1 : 0) || '', musica: R.musica.lista.length || '', notas: S.notas.length || '' };
+    const cont = { tarefas: S.tarefas.filter((t) => !t.feito).length || '', habitos: `${S.habitos.agua}/${S.habitos.meta}`, timers: S.timers.length + (R.crono.rodando ? 1 : 0) || '', musica: R.musica.lista.length || (spotTocando() ? '♪' : ''), notas: S.notas.length || '' };
     const estado = R.ouvindo ? '● Ouvindo' : R.falando ? '● Falando' : R.pensando ? '● Pensando' : S.cfg.sempreOuvindo ? '● Esperando "Ei, ' + esc(S.cfg.nome) + '"' : '● Pronto';
     lado.innerHTML = `<div class="eu" data-v="visual" title="Mudar o visual"><span id="euMascote">${K(46)}</span><div><b>${esc(S.cfg.nome)}</b><small class="${S.cfg.sempreOuvindo ? 'on' : ''}">${estado}</small><div class="nivel"><em>Nv ${nv}</em><i><b style="width:${pct}%"></b></i></div></div></div>` +
       NAV.map(([k, i, l]) => `<button class="nv${R.view === k ? ' on' : ''}" data-v="${k}">${i} ${l}${cont[k] ? `<span class="c">${cont[k]}</span>` : ''}</button>`).join('');
@@ -1610,8 +1656,18 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   const SUGESTOES = ['toca uma música', 'timer de 1 minuto para o chá', 'me lembra de beber água em 30 minutos', 'vai chover hoje?', 'quanto está o dólar?', 'quanto é 15% de 230', 'traduz para inglês bom dia', 'conta uma piada', 'bebi um copo de água', 'gera uma senha de 16', 'quantos dias faltam pro Natal?', 'coloca a coroa'];
   const MIC = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 
+  const LOGO_SPOT = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#1ED760"/><path d="M6.5 9.3c3.6-1.1 8-.8 11 .9M7 12.4c3-.9 6.6-.6 9.2.9M7.6 15.3c2.4-.6 5.1-.4 7.2.7" stroke="#0b0b0b" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>';
+  function cartaoSpotify(grande) {
+    const e = R.spotify || {}; const ult = R.spotifyUltima;
+    const titulo = e.tocando && e.musica ? e.musica : ult ? ult.musica : 'Spotify';
+    const sub = e.tocando ? (e.artista || 'tocando agora') : e.aberto ? (ult ? `pausado · ${ult.artista || ''}` : 'aberto · pausado') : 'fechado';
+    const ctl = `<div class="ctl"><button data-spot="anterior" aria-label="Anterior no Spotify">⏮</button><button class="pp" data-spot="alternar" aria-label="Tocar ou pausar o Spotify">${e.tocando ? '❚❚' : '▶'}</button><button data-spot="proxima" aria-label="Próxima no Spotify">⏭</button></div>`;
+    if (grande) return `<div class="player spotify"><div class="capa">${e.tocando ? '<span class="eq"><b></b><b></b><b></b></span>' : '🎵'}</div><div style="min-width:0;flex:1"><div class="spot-rot">${LOGO_SPOT} Spotify do seu computador</div><b>${esc(titulo)}</b><span class="art">${esc(sub)}</span>${e.aberto ? ctl : ''}</div></div>`;
+    return `<div class="mini spotify"><div class="topo"><div class="capa">${LOGO_SPOT}</div><div style="min-width:0"><b>${esc(titulo)}</b><small>${esc(sub)}</small></div></div>${ctl}</div>`;
+  }
   function mini() {
-    const f = faixaAtual(); if (!f) return '';
+    const f = faixaAtual();
+    if (!f) return SPOT && spotAberto() ? cartaoSpotify(false) : '';
     return `<div class="mini"><div class="topo"><div class="capa">🎵</div><div style="min-width:0"><b>${esc(f.nome)}</b><small>${esc(f.artista)}</small></div></div>
       <div class="pbar" data-acao="buscar-pos"><i data-pbar></i></div>
       <div class="ctl"><button data-acao="vol" data-d="-10" aria-label="Diminuir volume">🔉</button><button data-mus="anterior" aria-label="Anterior">⏮</button><button class="pp" data-mus="alternar" aria-label="Tocar ou pausar">${R.musica.tocando ? '❚❚' : '▶'}</button><button data-mus="proxima" aria-label="Próxima">⏭</button><button data-acao="vol" data-d="10" aria-label="Aumentar volume">🔊</button></div>
@@ -1669,17 +1725,24 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
       <div class="linha"><div class="t">Cronômetro<small>${R.crono.rodando ? 'rodando' : R.crono.acum ? 'pausado' : 'parado'}</small></div><span class="tm" data-crono>${mmss(cronoSeg())}</span>
         <button class="rb mais" data-acao="crono" aria-label="${R.crono.rodando ? 'Pausar' : 'Iniciar'}">${R.crono.rodando ? '❚❚' : '▶'}</button><button class="rb" data-acao="crono-zerar" aria-label="Zerar">↺</button></div></div>`;
   }
+  function blocoSpotify() {
+    if (!SPOT) return '<div class="nota-aviso">🎧 Para eu ver e controlar a música do <b>aplicativo do Spotify</b>, use o Lumi instalado no computador (Lumi-Instalador.exe). Aqui no navegador eu só toco os arquivos que você adicionar.</div>';
+    if (R.spotify && R.spotify.disponivel === false) return '<div class="nota-aviso">Não consegui acompanhar o Spotify neste computador.</div>';
+    if (!spotAberto()) return `<div class="player spotify"><div class="capa">${LOGO_SPOT}</div><div><div class="spot-rot">Spotify do seu computador</div><b>Spotify fechado</b><span class="art">Abra o Spotify e dê play: a música aparece aqui e no topo da tela.</span></div></div>`;
+    return cartaoSpotify(true);
+  }
   function vMusica() {
     const f = faixaAtual();
     const busca = `<form class="form" id="formSpotify" style="margin-top:10px"><input class="grow" id="buscaSpotify" placeholder="Buscar no Spotify…" aria-label="Buscar no Spotify"><button class="btn fantasma" type="submit">Buscar</button></form>`;
-    if (!f) return `<h4>Música</h4><div class="sub">Toque as músicas do seu computador aqui mesmo, com controles no topo</div>
-      <div class="vazio" style="margin:24px auto">${K(70, 'cool', { acessorio: 'fones' })}<br>Nenhuma música ainda.<br><br><button class="btn" data-acao="add-musica">🎵 Adicionar músicas do computador</button></div>${busca}`;
+    if (!f) return `<h4>Música</h4><div class="sub">O Spotify do computador e as músicas que você adicionar</div>${blocoSpotify()}
+      <div class="secao">Arquivos de música</div>
+      <div class="vazio" style="margin:12px auto">${K(70, 'cool', { acessorio: 'fones' })}<br>Nenhuma música ainda.<br><br><button class="btn" data-acao="add-musica">🎵 Adicionar músicas do computador</button></div>${busca}`;
     return `<h4>Música</h4><div class="sub">${R.musica.lista.length} música${R.musica.lista.length > 1 ? 's' : ''} nesta sessão</div>
       <div class="player"><div class="capa">🎵</div><div style="min-width:0;flex:1"><b>${esc(f.nome)}</b><span class="art">${esc(f.artista)}</span>
         <div class="pbar" data-acao="buscar-pos" style="margin:10px 0 4px"><i data-pbar></i></div>
         <div class="ctl"><button data-mus="anterior" aria-label="Anterior">⏮</button><button class="pp" data-mus="alternar" aria-label="Tocar ou pausar">${R.musica.tocando ? '❚❚' : '▶'}</button><button data-mus="proxima" aria-label="Próxima">⏭</button>
         <div class="vrow" style="flex:1;margin-left:8px"><span>${S.cfg.volume ? '🔈' : '🔇'}</span><input type="range" min="0" max="100" value="${S.cfg.volume}" data-volume aria-label="Volume" style="--p:${S.cfg.volume}%"><em data-volp>${S.cfg.volume}%</em></div></div></div></div>
-      <div class="rolar">${R.musica.lista.map((x, i) => `<div class="linha faixa${i === R.musica.i ? ' on' : ''}" data-acao="faixa" data-i="${i}"><span>${i === R.musica.i && R.musica.tocando ? '🔊' : '🎵'}</span><div class="t">${esc(x.nome)}<small>${esc(x.artista)}</small></div></div>`).join('')}
+      <div class="rolar">${SPOT ? blocoSpotify() : ''}${R.musica.lista.map((x, i) => `<div class="linha faixa${i === R.musica.i ? ' on' : ''}" data-acao="faixa" data-i="${i}"><span>${i === R.musica.i && R.musica.tocando ? '🔊' : '🎵'}</span><div class="t">${esc(x.nome)}<small>${esc(x.artista)}</small></div></div>`).join('')}
       <button class="btn fantasma" data-acao="add-musica">+ Adicionar mais</button>${busca}</div>`;
   }
   function vNotas() {
@@ -1832,6 +1895,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     R.ultimaAtividade = Date.now();
     const v = e.target.closest('[data-v]'); if (v) { R.view = v.dataset.v; render(); return; }
     const d = e.target.closest('[data-diz]'); if (d) { processar(d.dataset.diz); return; }
+    const sp = e.target.closest('[data-spot]'); if (sp) { spotifyComando(sp.dataset.spot); return; }
     const m = e.target.closest('[data-mus]'); if (m) { if (!R.musica.lista.length) { R.view = 'musica'; render(); return; } musica(m.dataset.mus); return; }
     const a = e.target.closest('[data-acao]'); if (a && ACOES[a.dataset.acao]) { e.preventDefault(); await ACOES[a.dataset.acao](a, e); if (a.dataset.acao !== 'ouvir') render(); }
   });
@@ -1894,6 +1958,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   function relogio() { const d = new Date(); $('#wHora').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`; $('#wData').textContent = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' }); }
 
   /* app de computador (Electron) */
+  if (SPOT) { SPOT.aoMudar(receberSpotify); SPOT.estado().then(receberSpotify).catch(() => {}); }
   if (window.lumiDesktop) {
     window.lumiDesktop.aoAtalho((qual) => { if (qual === 'ouvir') { abrir(); ouvir(); } else if (R.aberto) fechar(); else abrir(true); });
   }

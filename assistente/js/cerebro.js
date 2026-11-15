@@ -284,6 +284,7 @@
     if (/quanta [aá]gua|quantos copos/u.test(s)) return { tipo: 'habitos_ver' };
 
     // música
+    if (/o que (?:est[aá]|t[aá]) tocando|que m[uú]sica (?:[eé] essa|[eé] esta|t[aá] tocando|est[aá] tocando)|qual (?:[eé] )?(?:a |essa |esta )?m[uú]sica|quem (?:canta|t[aá] cantando|est[aá] cantando)/u.test(s)) return { tipo: 'musica_atual' };
     if (/^(?:pausa|pausar|pause|para a m[uú]sica|para de tocar|para o som|pausa a m[uú]sica)$/u.test(s)) return { tipo: 'musica', acao: 'pausar' };
     if (/^(?:continua|continuar|despausa|volta a tocar|retoma|play|solta o som)$/u.test(s)) return { tipo: 'musica', acao: 'continuar' };
     if (/^(?:pr[oó]xima|pula|pular|avan[cç]a|passa)(?: (?:a )?m[uú]sica| essa)?$|^pr[oó]xima m[uú]sica$/u.test(s)) return { tipo: 'musica', acao: 'proxima' };
