@@ -21,9 +21,9 @@
     cfg: {
       nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo', cilios: true, blush: true, batom: false, cabelo: 'nenhum', corCabelo: 0,
       voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', cloudChave: '', usarChirp: true, reconhecimento: 'whisper', whisperModelo: 'small', piperVoz: '', piperExpr: 0.65, somenteExecutar: false, sempreOuvindo: false,
-      cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', ccChave: '', ccContaPropria: false, tratamento: 'o senhor', volume: 70, pausas: false,
+      cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', ccChave: '', ccContaPropria: false, tratamento: 'o senhor', gravador: 'xbox', discordMutar: 'ctrl+shift+m', discordSurdo: 'ctrl+shift+d', vozCall: '', vozCallModo: 'jogo', horaDormir: '', resumoManha: true, volume: 70, pausas: false,
     },
-    xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [], aprendido: [],
+    xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [], aprendido: [], memoria: [], rotinas: [], placar: { dia: '', v: 0, d: 0, e: 0, seq: [] }, modoJogo: false, ultimosNomes: [], resumoDia: '', dormir: { dia: '', proximo: 0 },
     habitos: { dia: hojeStr(), agua: 0, meta: 8, leitura: 0, exercicio: 0 },
   });
   function carregar() {
@@ -53,6 +53,7 @@
     cc: null, // estado do Claude Code no computador (só no app instalado)
     spotify: null, spotifyUltima: null, // Spotify do computador (só no app instalado)
     sis: { mem: null, prot: null, verif: null, forcar: {}, energia: null, carregando: {}, senhaPadrao: null }, // computador (app instalado)
+    jogos: null, saidas: null, quiz: null, avisouDiscord: false,
     ultimo: null, escutarDepois: false, arrastando: false, pos: { v: 'cima', h: 'centro' }, telas: null,
   };
 
@@ -288,7 +289,7 @@
     return trabalhar('💭', 'Pensando', async () => {
       const lento = setTimeout(() => { if (R.trabalho) falar('Só um instante, estou pensando.'); }, 9000); // o Claude Code leva alguns segundos
       try {
-        const r = await CC.pensar({ pedido, nome: S.cfg.nome, usuario: S.cfg.usuario, personalidade: S.cfg.personalidade, modelo: S.cfg.ccModelo, ...ccOp() });
+        const r = await CC.pensar({ pedido, nome: S.cfg.nome, usuario: S.cfg.usuario, personalidade: S.cfg.personalidade, modelo: S.cfg.ccModelo, memoria: S.memoria.map((x) => x.t), ...ccOp() });
         if (r && r.erro === 'ausente' && R.cc) R.cc = { ...R.cc, instalado: false };
         return { texto: (r && r.texto) || 'Sem resposta do Claude Code.', humor: r && r.erro ? 'cry' : 'happy', erro: !!(r && r.erro) };
       } catch (e) {
@@ -387,6 +388,99 @@
     if (SR && !window.lumiDesktop && !R.ouvindo) { abrir(); ouvir(); }
   }
 
+  /* ================= jogos, zoeira, rotinas e resumo ================= */
+  const JOGO = window.lumiDesktop && window.lumiDesktop.jogos ? window.lumiDesktop.jogos : null;
+  const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
+  function embaralhar(a) { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; }
+  const MAPAS = {
+    valorant: ['Ascent', 'Bind', 'Haven', 'Split', 'Icebox', 'Breeze', 'Fracture', 'Pearl', 'Lotus', 'Sunset', 'Abyss', 'Corrode'],
+    valo: ['Ascent', 'Bind', 'Haven', 'Split', 'Icebox', 'Breeze', 'Fracture', 'Pearl', 'Lotus', 'Sunset', 'Abyss', 'Corrode'],
+    cs: ['Mirage', 'Inferno', 'Nuke', 'Ancient', 'Anubis', 'Dust II', 'Train', 'Overpass', 'Vertigo'],
+    counter: ['Mirage', 'Inferno', 'Nuke', 'Ancient', 'Anubis', 'Dust II', 'Train', 'Overpass', 'Vertigo'],
+    rainbow: ['Clubhouse', 'Oregon', 'Bank', 'Border', 'Chalet', 'Kafe Dostoyevsky', 'Consulate', 'Coastline', 'Villa', 'Skyscraper', 'Theme Park'],
+    r6: ['Clubhouse', 'Oregon', 'Bank', 'Border', 'Chalet', 'Kafe Dostoyevsky', 'Consulate', 'Coastline', 'Villa', 'Skyscraper', 'Theme Park'],
+  };
+  const NARRACAO = ['QUE JOGADA! O estádio tá de pé! 🔥', 'Isso foi CINEMA! Alguém clipa isso!', 'Não acredito no que eu acabei de ver! Que mira!', 'Calma, calma… ele tá jogando de olho fechado?', 'Essa vai pro replay da semana! 🏆',
+    'Olha a frieza! Nem suou!', 'Que isso, meu Deus! Joga muito!', 'Ele veio, ele viu, ele amassou! 💥', 'Isso aí é treino ou é dom?', 'A torcida enlouquece! Que lance!', 'Meus circuitos até esquentaram com essa! ⚡'];
+  const PROVOCACOES = ['{n}, até eu, que sou uma assistente, miro melhor que isso. 😏', '{n}, o mouse tá ligado ou você tá jogando no touchpad?', 'Alô, {n}! Tá jogando ou fazendo turismo no mapa?', '{n}, quer que eu chame o tutorial pra você?',
+    '{n} joga tão bem que o time adversário manda agradecimento. 😂', 'Calma, {n}, um dia a bala vai acertar. Confia.', '{n}, seu rank é tipo elevador quebrado: só desce.', 'Respeita o {n}, galera… ele tá aquecendo há três anos. 😅'];
+  const QUIZ = [
+    ['Qual é o planeta mais próximo do Sol?', ['mercurio']], ['Em que ano o homem pisou na Lua pela primeira vez?', ['1969']], ['Qual é o maior oceano do mundo?', ['pacifico']],
+    ['Quantos jogadores tem um time de futebol em campo?', ['11', 'onze']], ['Qual é a capital da Austrália?', ['canberra']], ['Qual é o símbolo químico do ouro?', ['au']],
+    ['Quem pintou a Mona Lisa?', ['leonardo', 'da vinci', 'davinci']], ['Qual é o maior país do mundo em área?', ['russia']], ['Quantos lados tem um hexágono?', ['6', 'seis']],
+    ['Qual é o personagem principal da série The Legend of Zelda?', ['link']], ['Em Minecraft, qual mob explode quando chega perto?', ['creeper']], ['Qual é o nome do encanador mais famoso dos games?', ['mario']],
+    ['Em que jogo existe o mapa Dust II?', ['counter', 'cs']], ['Qual empresa criou o PlayStation?', ['sony']], ['Qual é o nome do ouriço azul da Sega?', ['sonic']],
+    ['Em Valorant, qual agente é um robô que usa um alarme e uma torreta?', ['killjoy']], ['Qual é o maior animal do mundo?', ['baleia azul', 'baleia']], ['Quantos minutos tem um dia?', ['1440']],
+    ['Qual é o rio mais extenso do Brasil?', ['amazonas']], ['Em qual país nasceu o Pelé?', ['brasil']], ['Qual é a moeda do Japão?', ['iene', 'yen']], ['Quantas cores tem o arco-íris?', ['7', 'sete']],
+    ['Qual jogo tem o Battle Bus?', ['fortnite']], ['Em League of Legends, como se chama o monstro grande que dá buff de time no rio superior?', ['barao', 'baron', 'nashor']], ['Qual é o osso mais longo do corpo humano?', ['femur']],
+  ];
+  function perguntarQuiz() {
+    const [p, r] = pick(QUIZ);
+    R.pendente = { tipo: 'quiz', resposta: r, pergunta: p, ate: Date.now() + 90e3 };
+    return { texto: `Valendo! ${p}`, humor: 'surprised', escutar: true };
+  }
+  function responderQuiz(pend, t) {
+    const n = basePalavra(t);
+    if (/^(?:nao sei|desisto|passo|pula|sei la)/.test(n)) return { texto: `A resposta era: ${cap(pend.resposta[0])}. Quer outra? Diga "quiz".`, humor: 'think' };
+    if (pend.resposta.some((r) => n.includes(basePalavra(r)))) return { texto: pick(['Acertou! 🎉', 'Na mosca! 🎯', 'Isso aí! Mandou bem! 🏆']) + ' Quer outra? Diga "quiz".', humor: 'love' };
+    if (n.length > 40) return null; // parece outro pedido, não uma resposta
+    return { texto: `Errou! Era ${cap(pend.resposta[0])}. 😅 Quer outra? Diga "quiz".`, humor: 'laugh' };
+  }
+  function placarHoje() { if (!S.placar || S.placar.dia !== hojeStr()) S.placar = { dia: hojeStr(), v: 0, d: 0, e: 0, seq: [] }; return S.placar; }
+  function acharRotina(t) {
+    const n = basePalavra(t).replace(/^(?:ativa|ativar|liga|ligar|inicia|iniciar|roda|rodar|executa|executar|comeca|começa)\s+/, '').replace(/^(?:a\s+)?rotina\s+/, '');
+    return S.rotinas.find((r) => { const b = basePalavra(r.nome); return b && (n === b || n === 'modo ' + b || 'modo ' + n === b); }) || null;
+  }
+  async function rodarRotina(rot, porVoz) {
+    const passos = String(rot.comandos || '').split(/\n+/).map((x) => x.trim()).filter(Boolean).slice(0, 15);
+    const feitos = [];
+    for (const cmd of passos) {
+      const a = C.interpretar(cmd, { agora: Date.now(), nome: S.cfg.nome, jogo: S.modoJogo });
+      if (a.tipo === 'desconhecido' || a.tipo === 'pergunta') { feitos.push(`⚠️ não entendi "${cmd}"`); continue; }
+      try { const r = await executar(a, cmd, porVoz); feitos.push(r && r.texto ? r.texto : cmd); } catch (e) { feitos.push(`⚠️ ${cmd}: ${e && e.message ? e.message : e}`); }
+      R.pendente = null; // rotinas não deixam perguntas no ar
+    }
+    return { texto: `Rotina ${rot.nome} pronta! ${passos.length} passo${passos.length === 1 ? '' : 's'}.`, html: `Rotina <b>${esc(rot.nome)}</b> pronta!<br>${feitos.map((f) => '• ' + esc(f)).join('<br>')}`, humor: 'cool' };
+  }
+  async function montarResumo() {
+    const d = new Date(), h = d.getHours();
+    const partes = [`${h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'}${voc() ? ', ' + voc() : ''}! Hoje é ${d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}.`];
+    const [cl, cot, man] = await Promise.all([
+      previsao().catch(() => null), cotacao('USD').catch(() => null), window.lumiDesktop && window.lumiDesktop.manchetes ? window.lumiDesktop.manchetes().catch(() => []) : Promise.resolve([]),
+    ]);
+    if (cl && cl.d) { const dd = cl.d.daily; partes.push(`${cl.lugar && cl.lugar.nome ? 'Em ' + cl.lugar.nome + ', ' : ''}${descTempo(dd.weather_code[0])[0]}, máxima de ${Math.round(dd.temperature_2m_max[0])}° e ${dd.precipitation_probability_max[0] ?? 0}% de chance de chuva.`); }
+    const fim = new Date(); fim.setHours(23, 59, 59, 999);
+    const hoje = S.tarefas.filter((t) => !t.feito && t.quando && t.quando <= fim.getTime());
+    const semData = S.tarefas.filter((t) => !t.feito && !t.quando).length;
+    partes.push(hoje.length ? `Você tem ${hoje.length} compromisso${hoje.length > 1 ? 's' : ''} hoje: ${listaE(hoje.slice(0, 3).map((t) => t.t))}.` : semData ? `Nada marcado com horário hoje, e ${semData} tarefa${semData > 1 ? 's' : ''} na lista.` : 'Nada marcado para hoje.');
+    if (cot) partes.push(`O dólar está em ${brl(cot.v)}.`);
+    if (man && man[0]) partes.push(`Manchete: ${man[0]}.`);
+    return { texto: partes.join(' '), humor: 'happy' };
+  }
+  // hora de dormir (avisa e cobra a cada 20 min) e resumo da manhã (uma vez por dia, quando você chega)
+  let resumindo = false;
+  function verificarRotinaDoDia(agora) {
+    const d = new Date(agora);
+    if (S.cfg.horaDormir) {
+      const [hh, mm] = S.cfg.horaDormir.split(':').map(Number);
+      const alvo = new Date(d); alvo.setHours(hh, mm, 0, 0);
+      if (alvo - d > 12 * 3600e3) alvo.setDate(alvo.getDate() - 1); // ex.: 01:00 vista às 23h é a de "hoje à noite"; vista às 00:30 também
+      if (alvo > d && alvo - d > 6 * 3600e3) alvo.setDate(alvo.getDate() - 1);
+      const passou = d - alvo;
+      const chave = alvo.toDateString();
+      if (passou >= 0 && passou < 4 * 3600e3 && agora >= (S.dormir.proximo || 0) && (S.dormir.dia !== chave || S.dormir.proximo)) {
+        const primeira = S.dormir.dia !== chave;
+        S.dormir = { dia: chave, proximo: agora + 20 * 60e3 }; salvar();
+        const t = primeira ? `Já ${hh === 1 ? 'é' : 'são'} ${S.cfg.horaDormir.replace(/^0/, '')}${voc() ? ', ' + voc() : ''}. Hora de dormir! 🌙 Se quiser, diga "só mais uma".` : pick(['Ainda acordado? Amanhã você agradece se for dormir agora. 😴', 'Ó o horário… cama! 🌙', 'Última partida, hein? Depois é cama.']);
+        addChat('k', t); aviso('🌙 ' + t); notificar('Hora de dormir', t); falar(t); render();
+      }
+    }
+    if (S.cfg.resumoManha && !S.modoJogo && !resumindo && S.resumoDia !== hojeStr() && d.getHours() >= 5 && d.getHours() < 14 && agora - R.ultimaAtividade < 60e3) {
+      resumindo = true; S.resumoDia = hojeStr(); salvar();
+      montarResumo().then((r) => { addChat('k', r.texto); setHumor('happy', 3000); render(); falar(r.texto); }).catch(() => {}).finally(() => { resumindo = false; });
+    }
+  }
+
   /* ================= aprender com as correções ================= */
   function similar(a, b) { if (!a || !b) return 0; return 1 - distancia(a, b) / Math.max(a.length, b.length); }
   function acharAprendido(texto) {
@@ -476,7 +570,17 @@
     const src = audioCtx.createBufferSource(); src.buffer = buf; src.connect(audioCtx.destination);
     src.onended = () => { if (falaFonte === src) { falaFonte = null; fimFala(); } };
     falaFonte = src; inicioFala(); src.start();
+    falarNaCall(buf);
     return true;
+  }
+  // a mesma fala também sai num cabo de áudio virtual (VB-Cable), para os amigos ouvirem na call do Discord
+  let ctxCall = null, ctxCallId = '', fonteCall = null;
+  function falarNaCall(buf) {
+    const id = S.cfg.vozCall; if (!id || (S.cfg.vozCallModo !== 'sempre' && !S.modoJogo)) return;
+    try {
+      if (!ctxCall || ctxCallId !== id) { if (ctxCall) ctxCall.close().catch(() => {}); ctxCall = new AudioContext({ sinkId: id }); ctxCallId = id; }
+      const f = ctxCall.createBufferSource(); f.buffer = buf; f.connect(ctxCall.destination); fonteCall = f; f.start();
+    } catch (_) { /* dispositivo sumiu: segue só no alto-falante */ }
   }
   const PIPER = window.lumiDesktop && window.lumiDesktop.piper ? window.lumiDesktop.piper : null;
   const temPiper = () => !!(PIPER && R.piperVozes && R.piperVozes.length);
@@ -539,6 +643,7 @@
     falaSeq++;
     if (falaCtl) { try { falaCtl.abort(); } catch (_) { /* ignora */ } falaCtl = null; }
     if (falaFonte) { const f = falaFonte; falaFonte = null; try { f.onended = null; f.stop(); } catch (_) { /* já parou */ } }
+    if (fonteCall) { try { fonteCall.stop(); } catch (_) { /* já parou */ } fonteCall = null; }
     try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (_) { /* ignora */ }
     R.falando = false;
   }
@@ -783,6 +888,14 @@
       S.aprendido = S.aprendido.filter((a) => a.id !== R.ultimoAprendido); R.ultimoAprendido = null; salvar();
       return { acao: { tipo: 'correcao' }, r: { texto: 'Pronto, esqueci essa.', humor: 'idle' } };
     }
+    if (pend && pend.tipo === 'quiz') { const r = responderQuiz(pend, t); if (r) return { acao: { tipo: 'pendente' }, r }; }
+    if (pend && pend.tipo === 'fechar_lista') {
+      if (SIM.test(n)) { const feitos = []; for (const pr of pend.processos) { const x = await SIS.fechar('', { processo: pr }).catch(() => ({})); if (x.fechados) feitos.push(...x.fechados); } setTimeout(carregarMemoria, 1500); return { acao: { tipo: 'pendente' }, r: { texto: feitos.length ? `Fechei ${listaE(feitos)}. Bom jogo! 🎮` : 'Não consegui fechar. Bom jogo mesmo assim! 🎮', humor: 'cool' } }; }
+      if (NAO.test(n)) return { acao: { tipo: 'pendente' }, r: { texto: 'Beleza, deixei tudo aberto. Bom jogo! 🎮', humor: 'cool' } };
+    }
+    // rotinas criadas em Ajustes ("modo trabalho", "rotina estudo")
+    const rot = acharRotina(t);
+    if (rot) return { acao: { tipo: 'rotina' }, r: await rodarRotina(rot, porVoz) };
     // 3) frases que ela já aprendeu
     const achou = acharAprendido(t);
     if (achou && achou.exato) {
@@ -798,7 +911,7 @@
   }
   // `adiar`: só interpreta (para checar antes se é uma frase parecida com uma aprendida)
   async function decidirTexto(texto, porVoz, pend, adiar) {
-    let acao = C.interpretar(texto, { agora: Date.now(), nome: S.cfg.nome });
+    let acao = C.interpretar(texto, { agora: Date.now(), nome: S.cfg.nome, jogo: S.modoJogo });
     // completa a pergunta anterior ("quando eu te lembro?" → "em 10 minutos")
     if (pend && pend.tipo === 'lembrete' && ['desconhecido', 'pergunta'].includes(acao.tipo)) {
       const junto = C.interpretar(`me lembra de ${pend.texto} ${texto}`, { agora: Date.now(), nome: S.cfg.nome });
@@ -843,7 +956,7 @@
       case 'parar': calar(); pararAlarme(); return { texto: 'Ok, fiquei quietinho. 🤫', humor: 'idle', mudo: true };
       case 'ajuda': return {
         texto: 'Eu sei fazer um monte de coisa!', humor: 'happy',
-        html: `Eu sei fazer um monte de coisa! Experimente:<br>⏱ <b>timer de 10 minutos para a pizza</b><br>⏰ <b>me lembra de ligar pro cliente em 30 minutos</b> · <b>alarme às 7h</b><br>✅ <b>cria uma tarefa comprar pão</b> · <b>minhas tarefas</b><br>🎵 <b>toca uma música</b> · <b>próxima</b> · <b>volume 50</b><br>🌤️ <b>vai chover hoje?</b> · 💵 <b>quanto está o dólar?</b><br>🧮 <b>quanto é 15% de 230</b> · 🌍 <b>traduz para inglês bom dia</b><br>📝 <b>anota que preciso comprar café</b> · 💧 <b>bebi um copo de água</b><br>🔐 <b>gera uma senha de 20</b> · 📋 <b>copia meu pix</b> · 🪙 <b>cara ou coroa</b><br>🎄 <b>quantos dias faltam pro Natal?</b> · 😂 <b>conta uma piada</b><br>🎨 <b>coloca a coroa</b> · <b>muda sua cor para rosa</b>${SIS ? '<br>💻 <b>o que está gastando memória?</b> · <b>verifica se tem vírus</b><br>🪟 <b>abre o Word</b> · <b>fecha o Chrome</b> · <b>abre a conversa com o Bernardo</b><br>📞 <b>sai da ligação</b> · ⏻ <b>desliga o computador</b> (pede a senha)' : ''}`,
+        html: `Eu sei fazer um monte de coisa! Experimente:<br>⏱ <b>timer de 10 minutos para a pizza</b><br>⏰ <b>me lembra de ligar pro cliente em 30 minutos</b> · <b>alarme às 7h</b><br>✅ <b>cria uma tarefa comprar pão</b> · <b>minhas tarefas</b><br>🎵 <b>toca uma música</b> · <b>próxima</b> · <b>volume 50</b><br>🌤️ <b>vai chover hoje?</b> · 💵 <b>quanto está o dólar?</b><br>🧮 <b>quanto é 15% de 230</b> · 🌍 <b>traduz para inglês bom dia</b><br>📝 <b>anota que preciso comprar café</b> · 💧 <b>bebi um copo de água</b><br>🔐 <b>gera uma senha de 20</b> · 📋 <b>copia meu pix</b> · 🪙 <b>cara ou coroa</b><br>🎄 <b>quantos dias faltam pro Natal?</b> · 😂 <b>conta uma piada</b><br>🎨 <b>coloca a coroa</b> · <b>muda sua cor para rosa</b>${SIS ? '<br>💻 <b>o que está gastando memória?</b> · <b>verifica se tem vírus</b><br>🪟 <b>abre o Word</b> · <b>fecha o Chrome</b> · <b>abre a conversa com o Bernardo</b><br>📞 <b>sai da ligação</b> · ⏻ <b>desliga o computador</b> (pede a senha)<br>🎮 <b>modo jogo</b> · <b>clipa isso</b> · <b>abre o Valorant</b> · <b>qual meu ping?</b> · <b>muta</b><br>🎲 <b>sorteia dois times com …</b> · <b>escolhe um mapa do Valorant</b> · <b>quem paga o lanche entre …</b><br>🏆 <b>ganhei</b> / <b>perdi</b> · <b>como tá meu placar?</b> · 🎁 <b>tem jogo de graça na Epic?</b> · <b>quanto tá o Elden Ring na Steam?</b><br>🧠 <b>lembra que …</b> · 🌙 <b>minha hora de dormir é 1h</b> · ☀️ <b>resumo do dia</b>' : ''}`,
         fala: 'Eu marco timers, lembretes, alarmes e tarefas, toco música, vejo o clima e o dólar, faço contas, traduzo, anoto coisas e conto piadas. Os exemplos estão na tela.',
       };
       case 'desktop': if (motorCerebro() === 'cc') return perguntarClaudeCode(original); return { texto: 'Isso mexe direto nos arquivos e programas do seu PC, e por segurança eu ainda não faço. Posso criar uma tarefa ou um lembrete pra você não esquecer?', humor: 'think' };
@@ -995,6 +1108,13 @@
       case 'hora': { const d = new Date(); return { texto: `Agora são ${pad(d.getHours())}:${pad(d.getMinutes())}. 🕐`, humor: 'cool' }; }
       case 'data': return { texto: `Hoje é ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}. 📅`, humor: 'cool' };
       case 'pc': {
+        if (JOGO) return trabalhar('📊', 'Vendo o PC', async () => {
+          const x = await JOGO.status().catch(() => null);
+          if (!x) return { texto: 'Não consegui ler o PC agora.', humor: 'cry', erro: true };
+          const p = [x.cpu !== null ? `processador em ${x.cpu}%` : '', `memória em ${x.ram}%`, x.gpu ? `${x.gpu.nome.replace(/^NVIDIA (?:GeForce )?/, '')} a ${x.gpu.temp}°C com ${x.gpu.uso}% de uso` : '', x.ping !== null ? `ping de ${x.ping} ms` : 'sem resposta de ping'].filter(Boolean);
+          const alerta = x.gpu && x.gpu.temp >= 85 ? ' A placa está bem quente!' : x.ping !== null && x.ping > 120 ? ' O ping está alto: pode ser a internet.' : x.ram >= 90 ? ' A memória está quase cheia.' : '';
+          return { texto: `${cap(listaE(p))}.${alerta}`, humor: alerta ? 'surprised' : 'cool' };
+        });
         const partes = [];
         try { if (navigator.getBattery) { const b = await navigator.getBattery(); partes.push(`bateria em ${Math.round(b.level * 100)}%${b.charging ? ' (carregando ⚡)' : ''}`); } } catch (_) { /* sem bateria */ }
         if (navigator.hardwareConcurrency) partes.push(`${navigator.hardwareConcurrency} núcleos de processador`);
@@ -1044,6 +1164,120 @@
         const quando = (a.segundos || 30) > 60 ? ` daqui a ${durTxt(a.segundos)}` : '';
         return { texto: `Tem certeza que quer ${a.acao === 'desligar' ? 'desligar' : 'reiniciar'} o computador${quando}? Para confirmar, diga a senha.`, humor: 'think', escutar: true };
       }
+      case 'modo_jogo': {
+        S.modoJogo = !!a.ligar; salvar(); render();
+        if (!JOGO) return { texto: a.ligar ? 'Modo jogo ligado! Fico quietinha e só falo se você chamar. 🎮' : 'Modo jogo desligado.', humor: 'cool' };
+        const x = await JOGO.modo(a.ligar).catch(() => ({}));
+        const feito = x.feito && x.feito.length ? ` (${listaE(x.feito)})` : '';
+        if (!a.ligar) return { texto: `Modo normal de volta${feito}. GG! 👋`, humor: 'happy' };
+        const sug = x.sugestoes || [];
+        if (sug.length) {
+          R.pendente = { tipo: 'fechar_lista', processos: sug.map((p) => p.nome), ate: Date.now() + 60e3 };
+          return { texto: `Modo jogo ligado${feito}! 🎮 ${listaE(sug.map((p) => `${p.rotulo} (${tamanho(p.mb)})`))} ${sug.length > 1 ? 'estão' : 'está'} gastando memória. Quer que eu feche? Diga sim ou não.`, humor: 'cool', escutar: true };
+        }
+        return { texto: `Modo jogo ligado${feito}! 🎮 Bom jogo, ${voc() || 'chefe'}.`, humor: 'cool' };
+      }
+      case 'clipe': case 'print': {
+        if (!JOGO) return { texto: 'Clipe e print pelo atalho só funcionam no app instalado.', humor: 'think' };
+        const x = await JOGO.clipe(S.cfg.gravador || 'xbox', a.tipo);
+        if (x.erro) return { texto: 'Não consegui apertar o atalho: ' + x.erro, humor: 'cry', erro: true };
+        if (x.indisponivel) return { texto: 'Isso só funciona no Windows.', humor: 'think' };
+        return { texto: a.tipo === 'clipe' ? pick(['Clipado! 🎬', 'Salvei o clipe! 🎬', 'Tá no clipe! 🎬']) : 'Print tirado! 📸', humor: 'cool' };
+      }
+      case 'discord': {
+        if (!JOGO) return { texto: 'Mutar no Discord só funciona no app instalado.', humor: 'think' };
+        const combo = a.acao === 'mutar' ? S.cfg.discordMutar : S.cfg.discordSurdo;
+        const x = await JOGO.teclas(combo || (a.acao === 'mutar' ? 'ctrl+shift+m' : 'ctrl+shift+d'));
+        if (x.erro) return { texto: x.erro, humor: 'cry', erro: true };
+        if (x.indisponivel) return { texto: 'Os atalhos do Discord só funcionam no Windows.', humor: 'think' };
+        const dica = R.avisouDiscord ? '' : ` (Se não funcionar com o jogo aberto, cadastre ${combo.toUpperCase()} em Discord → Configurações → Atalhos de teclado, que aí vale em qualquer janela.)`;
+        R.avisouDiscord = true;
+        return { texto: (a.acao === 'mutar' ? 'Alternei o microfone no Discord. 🎙' : 'Alternei o som do Discord. 🎧') + dica, fala: a.acao === 'mutar' ? 'Microfone alternado.' : 'Som alternado.', humor: 'cool' };
+      }
+      case 'jogos_listar': {
+        if (!JOGO) return { texto: 'Só consigo ver os jogos instalados no app instalado.', humor: 'think' };
+        const l = R.jogos = await JOGO.listar().catch(() => []);
+        if (!l.length) return { texto: 'Não achei jogos da Steam, Epic ou Riot neste computador.', humor: 'think' };
+        return { texto: `Achei ${l.length} jogo${l.length > 1 ? 's' : ''}: ${listaE(l.slice(0, 12).map((j) => j.nome))}${l.length > 12 ? ' e mais alguns' : ''}. É só dizer "abre o …".`, humor: 'happy' };
+      }
+      case 'times': {
+        const nomes = a.nomes.length ? a.nomes : S.ultimosNomes;
+        if (nomes.length < a.n) return { texto: 'Me diga os nomes: "sorteia dois times com Caio, Bernardo, João e Pedro".', humor: 'think' };
+        S.ultimosNomes = nomes; salvar();
+        const emb = embaralhar(nomes), times = Array.from({ length: a.n }, () => []);
+        emb.forEach((x, i) => times[i % a.n].push(x));
+        return { texto: times.map((t, i) => `Time ${i + 1}: ${listaE(t)}`).join('. ') + '. Bom jogo! ⚔️', html: times.map((t, i) => `<b>Time ${i + 1}:</b> ${esc(listaE(t))}`).join('<br>') + '<br>Bom jogo! ⚔️', humor: 'cool' };
+      }
+      case 'mapa': {
+        const j = C.normalizar(a.jogo || '');
+        const lista = Object.entries(MAPAS).find(([k]) => j.includes(k));
+        if (!lista) return { texto: a.jogo ? `Não conheço os mapas de ${a.jogo}. Diga "escolhe entre …" com as opções.` : 'De qual jogo? Valorant, CS ou Rainbow Six.', humor: 'think' };
+        return { texto: `Mapa: ${pick(lista[1])}! 🗺️`, humor: 'surprised' };
+      }
+      case 'escolher_jogo': {
+        if (JOGO && !R.jogos) R.jogos = await JOGO.listar().catch(() => []);
+        const l = R.jogos && R.jogos.length ? R.jogos.map((x) => x.nome) : ['Valorant', 'CS 2', 'Minecraft', 'Fortnite', 'League of Legends', 'Rocket League'];
+        return { texto: `Hoje é dia de ${pick(l)}! 🎮`, humor: 'surprised' };
+      }
+      case 'quem': {
+        const nomes = a.nomes.length ? a.nomes : S.ultimosNomes;
+        if (nomes.length < 2) return { texto: 'Entre quem? Diga, por exemplo: "quem paga o lanche entre Caio, Bernardo e João".', humor: 'think' };
+        if (!a.escolha) { S.ultimosNomes = nomes; salvar(); }
+        const x = pick(nomes);
+        return { texto: a.escolha ? `Escolhi: ${x}! 🎲` : a.coisa ? `Quem ${a.coisa.replace(/^(?:paga|pagar)/, 'paga')}: ${x}! 😂` : `Sorteei: ${x}! 🎲`, humor: 'laugh' };
+      }
+      case 'narrar': return { texto: pick(NARRACAO), humor: 'surprised' };
+      case 'provocar': return { texto: pick(PROVOCACOES).replace(/\{n\}/g, a.nome), humor: 'laugh' };
+      case 'quiz': return perguntarQuiz();
+      case 'placar': {
+        const pl = placarHoje(); pl[a.resultado]++; pl.seq.push(a.resultado); pl.seq = pl.seq.slice(-10); salvar();
+        const ult3 = pl.seq.slice(-3), resumo = `Hoje: ${pl.v} vitória${pl.v === 1 ? '' : 's'}, ${pl.d} derrota${pl.d === 1 ? '' : 's'}${pl.e ? ' e ' + pl.e + ' empate' + (pl.e > 1 ? 's' : '') : ''}.`;
+        if (a.resultado === 'd' && ult3.length === 3 && ult3.every((r) => r === 'd')) return { texto: `${resumo} Três derrotas seguidas… que tal uma pausa de 5 minutos, uma água e voltar com a cabeça fria? Tilt não ganha partida. 🧊`, humor: 'cry' };
+        if (a.resultado === 'v') return { texto: `${pick(['GG! 🏆', 'Boa! Mandou bem! 🏆', 'Amassou! 🏆'])} ${resumo}`, humor: 'love' };
+        if (a.resultado === 'd') return { texto: `Faz parte, a próxima é nossa. ${resumo}`, humor: 'think' };
+        return { texto: `Empate anotado. ${resumo}`, humor: 'cool' };
+      }
+      case 'placar_ver': { const pl = placarHoje(); const tot = pl.v + pl.d + pl.e; return { texto: tot ? `Hoje: ${pl.v} vitória${pl.v === 1 ? '' : 's'} e ${pl.d} derrota${pl.d === 1 ? '' : 's'}${pl.e ? ', ' + pl.e + ' empate' + (pl.e > 1 ? 's' : '') : ''}. Aproveitamento de ${Math.round(pl.v / tot * 100)}%.` : 'Ainda não registrei nenhuma partida hoje. Diga "ganhei" ou "perdi" depois de cada uma.', humor: 'cool' }; }
+      case 'placar_zerar': S.placar = { dia: hojeStr(), v: 0, d: 0, e: 0, seq: [] }; salvar(); return { texto: 'Placar zerado. Vamos do zero! 🔄', humor: 'cool' };
+      case 'epic': {
+        if (!JOGO) { abrirLink('https://store.epicgames.com/pt-BR/free-games'); return { texto: 'Abri a página de jogos grátis da Epic.', humor: 'cool' }; }
+        return trabalhar('🎁', 'Vendo a Epic', async () => {
+          const x = await JOGO.epic();
+          if (x.erro || !x.agora) return { texto: 'Não consegui ver a Epic agora.', humor: 'cry', erro: true };
+          const data = (iso) => new Date(iso).toLocaleDateString('pt-BR', { day: 'numeric', month: 'numeric' });
+          if (!x.agora.length && !x.depois.length) return { texto: 'Não tem jogo de graça na Epic agora.', humor: 'think' };
+          const t = (x.agora.length ? `De graça agora na Epic: ${listaE(x.agora.map((g) => `${g.nome} (até ${data(g.ate)})`))}.` : 'Agora não tem jogo de graça na Epic.') + (x.depois.length ? ` Em breve: ${listaE(x.depois.map((g) => `${g.nome} (a partir de ${data(g.de)})`))}.` : '');
+          const h = x.agora.map((g) => `🎁 ${linkHtml(g.url, g.nome)} · até ${data(g.ate)}`).concat(x.depois.map((g) => `⏳ ${esc(g.nome)} · a partir de ${data(g.de)}`)).join('<br>');
+          return { texto: t, html: h, humor: 'love' };
+        });
+      }
+      case 'steam_preco': {
+        if (!JOGO) { abrirLink('https://store.steampowered.com/search/?term=' + encodeURIComponent(a.jogo)); return { texto: `Abri a busca de ${a.jogo} na Steam.`, humor: 'cool' }; }
+        return trabalhar('💲', 'Vendo a Steam', async () => {
+          const x = await JOGO.steam(a.jogo);
+          if (x.erro) return { texto: 'Não consegui ver a Steam agora.', humor: 'cry', erro: true };
+          if (x.naoAchei) return { texto: `Não achei "${a.jogo}" na Steam.`, humor: 'think', erro: true };
+          if (x.gratis) return { texto: `${x.nome} é de graça na Steam! 🎉`, humor: 'love' };
+          const t = x.desconto ? `${x.nome} está com ${x.desconto}% de desconto na Steam: de ${brl(x.original)} por ${brl(x.preco)}! 🔥` : `${x.nome} está ${brl(x.preco)} na Steam, sem desconto agora.`;
+          return { texto: t, html: `${esc(t)} ${linkHtml(x.url, 'ver na Steam')}`, humor: x.desconto ? 'love' : 'cool' };
+        });
+      }
+      case 'memoria_add':
+        S.memoria = S.memoria.filter((x) => basePalavra(x.t) !== basePalavra(a.texto));
+        S.memoria.unshift({ id: uid(), t: a.texto, quando: Date.now() }); S.memoria = S.memoria.slice(0, 60); salvar();
+        return { texto: `Guardado: "${a.texto}". Vou lembrar disso. 🧠`, humor: 'love' };
+      case 'memoria_ver': return { texto: S.memoria.length ? `Eu sei que: ${S.memoria.slice(0, 8).map((x) => x.t).join('; ')}.` : `Ainda não guardei nada sobre ${trat()}. Diga "lembra que …".`, humor: 'happy' };
+      case 'memoria_del': {
+        const alvo = basePalavra(a.texto); const antes = S.memoria.length;
+        S.memoria = S.memoria.filter((x) => { const b = basePalavra(x.t); return !(b === alvo || similar(b, alvo) > 0.8 || b.includes(alvo)); }); salvar();
+        return { texto: S.memoria.length < antes ? 'Pronto, esqueci isso.' : 'Não achei isso na minha memória.', humor: 'idle' };
+      }
+      case 'hora_dormir': S.cfg.horaDormir = a.hora; S.dormir = { dia: '', proximo: 0 }; salvar(); return { texto: `Combinado: às ${a.hora} eu aviso que é hora de dormir. 🌙`, humor: 'love' };
+      case 'so_mais_uma':
+        if (!S.cfg.horaDormir) return { texto: 'Mais uma! Boa sorte. 🎮', humor: 'happy' };
+        S.dormir.proximo = Date.now() + 30 * 60e3; salvar();
+        return { texto: 'Tá bom, só mais uma! Daqui a 30 minutos eu cobro. 😏', humor: 'laugh' };
+      case 'resumo': return trabalhar('☀️', 'Montando o resumo', () => montarResumo());
       case 'memoria':
         if (!SIS) return { texto: 'A análise de memória só funciona no app instalado: no navegador eu não enxergo os programas do PC.', humor: 'think' };
         return trabalhar('🧠', 'Analisando a memória', async () => {
@@ -1095,7 +1329,8 @@
             const sistema = `Você é ${nome}, uma assistente virtual (mulher, fale no feminino) que mora no topo da tela do computador${S.cfg.usuario ? ' de ' + S.cfg.usuario : ''}. Personalidade: ${p.desc}. ` +
               'Responda sempre em português do Brasil, com no máximo 3 frases curtas, porque a resposta pode ser lida em voz alta. Não use markdown, listas nem títulos. ' +
               'Se pedirem algo que você não consegue fazer no computador, diga isso com honestidade e sugira um comando simples como "me lembra de…", "timer de…" ou "cria uma tarefa…". ' +
-              `Hoje é ${d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${pad(d.getHours())}:${pad(d.getMinutes())}.`;
+              `Hoje é ${d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${pad(d.getHours())}:${pad(d.getMinutes())}.` +
+              (S.memoria.length ? ` O que você já sabe sobre ${S.cfg.usuario || 'o usuário'}: ${S.memoria.map((x) => x.t).join('; ')}.` : '');
             const r = await window.IA.perguntar({ chave: S.cfg.iaChave, modelo: S.cfg.iaModelo, sistema, historico: hist });
             return { texto: r.texto, humor: r.erro ? 'cry' : r.recusa ? 'think' : 'happy', erro: !!r.erro };
           });
@@ -1144,7 +1379,7 @@
       }
     }
     if (S.habitos.dia !== hojeStr()) { S.habitos = { ...S.habitos, dia: hojeStr(), agua: 0, leitura: 0, exercicio: 0 }; mudou = true; }
-    if (S.cfg.pausas && agora - R.ultimaPausa > 50 * 60e3 && agora - R.ultimaAtividade < 10 * 60e3) {
+    if (S.cfg.pausas && !S.modoJogo && agora - R.ultimaPausa > 50 * 60e3 && agora - R.ultimaAtividade < 10 * 60e3) {
       R.ultimaPausa = agora; aviso('🌿 Hora de uma pausa: alongue-se e beba água!'); notificar('🌿 Pausa', 'Alongue-se e beba um copo de água.'); falar('Que tal uma pausa? Alongue-se e beba um copo de água.'); setHumor('love', 3000);
     }
     if (mudou) { salvar(); render(); }
@@ -1162,7 +1397,7 @@
     else if (R.crono.rodando) vivo = `<span class="vivo">⏱ <span class="nm">Cronômetro</span><span>${mmss(cronoSeg())}</span></span>`;
     else if (R.musica.tocando && faixaAtual()) vivo = `<span class="vivo">${faixaAtual().capa ? `<img class="capinha" src="${esc(faixaAtual().capa)}" alt="" onerror="this.remove()">` : ''}<span class="eq"><b></b><b></b><b></b></span><span class="nm">${esc(faixaAtual().nome)}</span></span>`;
     else if (spotTocando() && R.spotify.musica) vivo = `<span class="vivo spot">${R.spotify.capa ? `<img class="capinha" src="${esc(R.spotify.capa)}" alt="" onerror="this.remove()">` : ''}<span class="eq"><b></b><b></b><b></b></span><span class="nm">${esc(spotNome())}</span></span>`;
-    pilula.innerHTML = `${K(30)}${ponto}${vivo}`;
+    pilula.innerHTML = `${K(30)}${ponto}${S.modoJogo && !vivo ? '<span class="vivo"><span class="nm">🎮</span></span>' : ''}${vivo}`;
     if (!R.aberto) entalho.style.setProperty('--w', vivo ? (R.ouvindo || R.alarme || /vivo spot/.test(vivo) ? '380px' : '300px') : '160px');
     M.olhar(document, mx, my);
   }
@@ -1364,6 +1599,22 @@
       ${(c.cerebro || 'auto') === 'api' || ((c.cerebro || 'auto') === 'auto' && !(CC && R.cc && R.cc.instalado)) ? `<div class="nota-aviso">API do Claude: cobrada à parte pela Anthropic na sua conta do Console. A chave fica salva só neste computador.</div>
       <div class="grade2"><div class="campo"><label for="cIa">Chave da API (Claude)</label><input id="cIa" type="password" data-cfg="iaChave" value="${esc(c.iaChave)}" placeholder="sk-ant-…" autocomplete="off"><small>Crie em console.anthropic.com</small></div>
       <div class="campo"><label for="cModelo">Modelo</label><select id="cModelo" data-cfg="iaModelo">${[['claude-opus-5-5', 'Claude Opus 5.5 (mais capaz)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (equilibrado)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (mais rápido e barato)']].map(([v, n]) => `<option value="${v}"${v === c.iaModelo ? ' selected' : ''}>${n}</option>`).join('')}</select></div></div>` : ''}
+      ${JOGO ? `<div class="secao">Jogos e Discord</div>
+      <div class="grade2"><div class="campo"><label for="cGrav">Gravador de clipes</label><select id="cGrav" data-cfg="gravador">${[['xbox', 'Xbox Game Bar (Win+Alt+G)'], ['nvidia', 'NVIDIA ShadowPlay (Alt+F10)'], ['amd', 'AMD ReLive (Ctrl+Shift+S)']].map(([v, n]) => `<option value="${v}"${v === (c.gravador || 'xbox') ? ' selected' : ''}>${n}</option>`).join('')}</select><small>"Clipa isso" salva os últimos segundos. No Xbox Game Bar, ative "Gravar o que aconteceu" nas configurações de captura.</small></div>
+      <div class="campo"><label for="cDorm">Hora de dormir</label><input id="cDorm" type="time" data-cfg="horaDormir" value="${esc(c.horaDormir || '')}"><small>Eu aviso e cobro a cada 20 minutos. Vazio = desligado.</small></div>
+      <div class="campo"><label for="cDm">Atalho de mutar no Discord</label><input id="cDm" data-cfg="discordMutar" value="${esc(c.discordMutar || 'ctrl+shift+m')}"></div>
+      <div class="campo"><label for="cDs">Atalho de ensurdecer no Discord</label><input id="cDs" data-cfg="discordSurdo" value="${esc(c.discordSurdo || 'ctrl+shift+d')}"><small>Cadastre os mesmos atalhos em Discord → Configurações → Atalhos de teclado para valerem com o jogo aberto.</small></div></div>
+      <div class="nota-aviso">🎧 <b>Minha voz na call:</b> instale o VB-Cable (grátis, vb-audio.com/Cable) e escolha "CABLE Input" abaixo. No Windows, em Som → Gravação → seu microfone → Propriedades → Escutar, marque "Escutar este dispositivo" com saída "CABLE Input"; no Discord, escolha "CABLE Output" como entrada. Assim seus amigos ouvem você e eu. Funciona com as vozes Piper e Google.</div>
+      <div class="grade2"><div class="campo"><label for="cCall">Também falar em</label><select id="cCall" data-cfg="vozCall"><option value="">Não (só no alto-falante)</option>${(R.saidas || []).map((d) => `<option value="${esc(d.deviceId)}"${d.deviceId === c.vozCall ? ' selected' : ''}>${esc(d.label || 'Saída de áudio')}</option>`).join('')}</select></div>
+      <div class="campo"><label for="cCallM">Quando</label><select id="cCallM" data-cfg="vozCallModo"><option value="jogo"${c.vozCallModo !== 'sempre' ? ' selected' : ''}>Só no modo jogo</option><option value="sempre"${c.vozCallModo === 'sempre' ? ' selected' : ''}>Sempre</option></select></div></div>` : ''}
+      ${tog('resumoManha', 'Resumo da manhã', 'Na primeira vez que você usa o PC no dia: clima, compromissos, dólar e a manchete principal')}
+      <div class="secao">Rotinas (uma frase faz várias coisas)</div>
+      <div class="nota-aviso">Dê um nome e escreva um pedido por linha, do jeito que você falaria. Depois é só dizer o nome (ex.: "modo trabalho" ou "rotina estudo").</div>
+      ${S.rotinas.map((r) => `<div class="proc"><div class="pn"><b>${esc(r.nome)}</b><small>${esc(String(r.comandos).split(/\n+/).filter(Boolean).join(' · '))}</small></div><button class="btn fantasma pq" data-acao="rotina-testar" data-id="${r.id}">▶</button><button class="btn fantasma pq" data-acao="rotina-del" data-id="${r.id}">Apagar</button></div>`).join('')}
+      <form class="form rotina-form" id="formRotina"><input id="rotNome" placeholder="Nome (ex.: modo trabalho)" maxlength="40" required><textarea id="rotCmds" rows="3" placeholder="abre o whatsapp&#10;abre o excel&#10;timer de 25 minutos para foco" required></textarea><button class="btn" type="submit">Salvar rotina</button></form>
+      <div class="secao">O que eu sei sobre ${esc(trat())}</div>
+      <div class="nota-aviso">Diga "lembra que …" (ex.: "lembra que o Bernardo é meu sócio"). Eu uso isso nas conversas pelo cérebro.</div>
+      ${S.memoria.length ? `<div class="procs">${S.memoria.map((x) => `<div class="proc"><div class="pn"><b>${esc(x.t)}</b><small>${esc(quandoTxt(x.quando))}</small></div><button class="btn fantasma pq" data-acao="memoria-del" data-id="${x.id}">Esquecer</button></div>`).join('')}</div>` : '<div class="vazio">Nada guardado ainda.</div>'}
       <div class="secao">O que eu aprendi</div>
       <div class="nota-aviso">Quando eu entender errado, diga "não, eu quis dizer …" (ou "errou" e depois o certo). Eu guardo a correção e, da próxima vez, digo "${esc(Trat())} quis dizer …".</div>
       ${S.aprendido.length ? `<div class="procs">${S.aprendido.slice(0, 40).map((a) => `<div class="proc"><div class="pn"><b>"${esc(a.original || a.de)}" → "${esc(a.para)}"</b><small>${a.usos ? 'usado ' + a.usos + 'x · ' : ''}${esc(quandoTxt(a.quando))}</small></div><button class="btn fantasma pq" data-acao="aprendido-del" data-id="${a.id}">Esquecer</button></div>`).join('')}</div><div class="form"><button class="btn fantasma" data-acao="aprendido-limpar">Esquecer tudo</button></div>` : '<div class="vazio">Ainda não aprendi nenhuma correção.</div>'}
@@ -1524,6 +1775,7 @@
     const cr = document.querySelector('[data-crono]'); if (cr) cr.textContent = mmss(cronoSeg());
     atualizarProgresso();
     verificarAgendados();
+    if (agora % 15000 < 1000) verificarRotinaDoDia(agora);
     if (S.timers.length || R.crono.rodando || R.trabalho || R.sis.verif) renderPilula();
     if (R.sis.verif && R.aberto && R.view === 'sistema') { const el = document.querySelector('[data-verif]'); if (el) el.textContent = mmss((agora - R.sis.verif.inicio) / 1000); }
     if (!R.aberto && R.humor === 'idle' && !R.ouvindo && !R.falando && agora - R.ultimaAtividade > 120e3) setHumor('sleep');
@@ -1633,6 +1885,9 @@
       R.sis.energia = a; setTimeout(() => { const c = $('#senhaEnergia'); if (c) c.focus(); }, 50);
     },
     'sis-energia-nao': () => { R.sis.energia = null; },
+    'rotina-del': (el) => { S.rotinas = S.rotinas.filter((r) => r.id !== el.dataset.id); salvar(); },
+    'rotina-testar': (el) => { const r = S.rotinas.find((x) => x.id === el.dataset.id); if (r) processar(r.nome); },
+    'memoria-del': (el) => { S.memoria = S.memoria.filter((x) => x.id !== el.dataset.id); salvar(); },
     'aprendido-del': (el) => { S.aprendido = S.aprendido.filter((a) => a.id !== el.dataset.id); salvar(); },
     'aprendido-limpar': () => { if (confirm('Esquecer todas as correções que eu aprendi?')) { S.aprendido = []; salvar(); } },
     pos: async (el) => { if (!TELA) return; R.pos = { v: el.dataset.pv, h: el.dataset.ph }; await TELA.posicionar(R.pos); },
@@ -1642,7 +1897,8 @@
   };
   entalho.addEventListener('click', async (e) => {
     R.ultimaAtividade = Date.now();
-    const v = e.target.closest('[data-v]'); if (v) { R.view = v.dataset.v; if (R.view === 'sistema') carregarSistema(); if (R.view === 'ajustes' && TELA) TELA.listar().then((t) => { R.telas = t; if (R.view === 'ajustes') renderPrincipal(); }).catch(() => {}); render(); return; }
+    const v = e.target.closest('[data-v]'); if (v) { R.view = v.dataset.v; if (R.view === 'sistema') carregarSistema(); if (R.view === 'ajustes' && TELA) TELA.listar().then((t) => { R.telas = t; if (R.view === 'ajustes') renderPrincipal(); }).catch(() => {});
+      if (R.view === 'ajustes' && JOGO && navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) navigator.mediaDevices.enumerateDevices().then((l) => { R.saidas = l.filter((d) => d.kind === 'audiooutput' && d.deviceId !== 'default' && d.deviceId !== 'communications'); if (R.view === 'ajustes') renderPrincipal(); }).catch(() => {}); render(); return; }
     const d = e.target.closest('[data-diz]'); if (d) { processar(d.dataset.diz); return; }
     const sp = e.target.closest('[data-spot]'); if (sp) { spotifyComando(sp.dataset.spot); return; }
     const m = e.target.closest('[data-mus]'); if (m) { if (!R.musica.lista.length) { R.view = 'musica'; render(); return; } musica(m.dataset.mus); return; }
@@ -1668,6 +1924,11 @@
     if (f.id === 'formSenha' && SIS) {
       SIS.trocarSenha($('#senhaAtual').value, $('#senhaNova').value).then((x) => { aviso(x.ok ? '🔐 Senha trocada' : x.erro); if (x.ok) { R.sis.senhaPadrao = false; render(); } });
       return;
+    }
+    if (f.id === 'formRotina') {
+      const nome = $('#rotNome').value.trim(), comandos = $('#rotCmds').value.trim(); if (!nome || !comandos) return;
+      S.rotinas = S.rotinas.filter((r) => basePalavra(r.nome) !== basePalavra(nome)); S.rotinas.push({ id: uid(), nome, comandos }); salvar();
+      aviso(`✅ Rotina "${nome}" salva. É só dizer "${nome}"`); delete R.rascunhos.rotNome; delete R.rascunhos.rotCmds; render(); return;
     }
     if (f.id === 'formNota') { const t = $('#novaNota').value.trim(); if (!t) return; S.notas.unshift({ id: uid(), t, ts: Date.now() }); delete R.rascunhos.novaNota; salvar(); setHumor('success', 1500); render(); return; }
     if (f.id === 'formSpotify') { const q = $('#buscaSpotify').value.trim(); if (!q) return; const url = 'https://open.spotify.com/search/' + encodeURIComponent(q); abrirLink(url); delete R.rascunhos.buscaSpotify; aviso('🎵 Abrindo o Spotify'); }

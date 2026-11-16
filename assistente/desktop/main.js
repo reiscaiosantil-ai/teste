@@ -8,6 +8,7 @@ const claudeCode = require('./claude-code');
 const whisper = require('./whisper');
 const piper = require('./piper');
 const sistema = require('./sistema');
+const jogos = require('./jogos');
 
 const LARGURA = 900, ALTURA = 580;
 let janela = null, olhoSpotify = null;
@@ -147,6 +148,7 @@ ipcMain.handle('lumi:cc-status', (_e, op) => claudeCode.status(opConta(op)));
 ipcMain.handle('lumi:cc-pensar', (_e, p) => claudeCode.pensar({
   pedido: String((p && p.pedido) || ''), nome: String((p && p.nome) || 'Lumi').slice(0, 30),
   usuario: String((p && p.usuario) || '').slice(0, 40), personalidade: String((p && p.personalidade) || 'fofo'), modelo: String((p && p.modelo) || 'sonnet'),
+  memoria: Array.isArray(p && p.memoria) ? p.memoria.slice(0, 40).map((x) => String(x).slice(0, 200)) : [],
   ...opConta(p),
 }));
 ipcMain.handle('lumi:cc-nova', () => { claudeCode.novaConversa(); return true; });
@@ -158,7 +160,10 @@ const abrirUrl = (u) => shell.openExternal(u);
 const txt = (t, n = 200) => String(t || '').slice(0, n);
 ipcMain.handle('lumi:sis-memoria', () => sistema.memoria());
 ipcMain.handle('lumi:sis-fechar', (_e, alvo, op) => sistema.fechar(txt(alvo, 120), { forcar: !!(op && op.forcar), processo: txt(op && op.processo, 80) }));
-ipcMain.handle('lumi:sis-abrir', (_e, alvo) => sistema.abrir(txt(alvo, 120), abrirUrl));
+ipcMain.handle('lumi:sis-abrir', async (_e, alvo) => { // jogo instalado (Steam, Epic, Riot) primeiro, se o nome bater bem; senão o menu Iniciar
+  const j = await jogos.abrirJogo(txt(alvo, 120), abrirUrl, 55).catch(() => ({}));
+  return j.ok ? { ok: true, nome: j.nome, jogo: true } : sistema.abrir(txt(alvo, 120), abrirUrl);
+});
 ipcMain.handle('lumi:sis-conversa', (_e, contato) => sistema.conversa(txt(contato, 80), abrirUrl));
 ipcMain.handle('lumi:sis-ligacao', () => sistema.sairLigacao());
 ipcMain.handle('lumi:sis-energia', (_e, acao, senha, nome, segundos) => sistema.energia(txt(acao, 20), txt(senha, 200), app.getPath('userData'), txt(nome, 30) || 'A assistente', Number(segundos) || 30));
@@ -169,6 +174,21 @@ ipcMain.handle('lumi:sis-verificar', (_e, tipo) => sistema.verificar(txt(tipo, 2
 ipcMain.handle('lumi:sis-verificando', () => sistema.estadoVerificacao());
 ipcMain.handle('lumi:sis-atualizar', () => sistema.atualizarProtecao());
 ipcMain.handle('lumi:sis-seguranca-windows', () => shell.openExternal('windowsdefender://threat/').then(() => true).catch(() => false));
+
+// jogos: atalhos (clipe, print, Discord), modo jogo, status, lojas e manchetes
+ipcMain.handle('lumi:jogo-teclas', (_e, combo) => jogos.teclas(txt(combo, 40)));
+ipcMain.handle('lumi:jogo-clipe', (_e, gravador, tipo) => jogos.teclas((tipo === 'print' ? jogos.ATALHOS_PRINT : jogos.ATALHOS_CLIPE)[gravador] || (tipo === 'print' ? jogos.ATALHOS_PRINT.xbox : jogos.ATALHOS_CLIPE.xbox)));
+ipcMain.handle('lumi:jogo-listar', () => jogos.listar().map((j) => ({ nome: j.nome, loja: j.loja })));
+ipcMain.handle('lumi:jogo-abrir', (_e, alvo) => jogos.abrirJogo(txt(alvo, 80), abrirUrl));
+ipcMain.handle('lumi:jogo-modo', async (_e, ligar) => {
+  const r = await jogos.modoJogo(!!ligar, app.getPath('userData'));
+  if (ligar) { const m = await sistema.memoria().catch(() => null); r.sugestoes = m ? jogos.sugerirFechar(m.apps).map((a) => ({ nome: a.nome, rotulo: a.rotulo, mb: a.mb })) : []; }
+  return r;
+});
+ipcMain.handle('lumi:jogo-status', () => jogos.status());
+ipcMain.handle('lumi:jogo-epic', () => jogos.epicGratis());
+ipcMain.handle('lumi:jogo-steam', (_e, busca) => jogos.precoSteam(txt(busca, 80)));
+ipcMain.handle('lumi:manchetes', () => jogos.manchetes());
 
 // posição na tela
 ipcMain.on('lumi:arrastar', (_e, fase) => { if (fase === 'inicio') comecarArrasto(); else terminarArrasto(); });

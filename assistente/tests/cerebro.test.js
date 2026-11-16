@@ -184,3 +184,39 @@ test('pedidos para o computador', () => {
   assert.equal(diz('desliga o alarme').tipo, 'alarme_cancelar');
   assert.equal(diz('desliga a música').tipo, 'musica');
 });
+
+test('jogos, Discord, sorteios e zoeira', () => {
+  assert.deepEqual(diz('modo jogo'), { tipo: 'modo_jogo', ligar: true });
+  assert.deepEqual(diz('modo normal'), { tipo: 'modo_jogo', ligar: false });
+  assert.equal(diz('clipa isso').tipo, 'clipe');
+  assert.equal(diz('tira um print').tipo, 'print');
+  assert.equal(diz('qual meu ping').tipo, 'pc');
+  assert.equal(C.interpretar('muta', { jogo: true }).tipo, 'discord');
+  assert.equal(C.interpretar('muta', {}).tipo, 'volume'); // fora do modo jogo, "muta" continua sendo o som da música
+  assert.deepEqual(diz('muta o mic'), { tipo: 'discord', acao: 'mutar' });
+  assert.deepEqual(diz('ensurdece'), { tipo: 'discord', acao: 'ensurdecer' });
+  assert.deepEqual(diz('sorteia dois times com Caio, Bernardo, João e Pedro'), { tipo: 'times', n: 2, nomes: ['Caio', 'Bernardo', 'João', 'Pedro'] });
+  assert.deepEqual(diz('escolhe um mapa do valorant'), { tipo: 'mapa', jogo: 'valorant' });
+  assert.equal(diz('escolhe um jogo pra gente jogar').tipo, 'escolher_jogo');
+  assert.deepEqual(diz('quem paga o lanche entre Caio e João'), { tipo: 'quem', coisa: 'paga o lanche', nomes: ['Caio', 'João'] });
+  assert.equal(diz('escolhe entre pizza, hambúrguer e açaí').escolha, true);
+  assert.equal(diz('comenta essa').tipo, 'narrar');
+  assert.deepEqual(diz('provoca o Bernardo'), { tipo: 'provocar', nome: 'Bernardo' });
+  assert.equal(diz('faz um quiz').tipo, 'quiz');
+  assert.deepEqual(diz('ganhei'), { tipo: 'placar', resultado: 'v' });
+  assert.deepEqual(diz('perdi essa partida'), { tipo: 'placar', resultado: 'd' });
+  assert.equal(diz('como tá meu placar').tipo, 'placar_ver');
+  assert.equal(diz('tem jogo de graça na epic?').tipo, 'epic');
+  assert.deepEqual(diz('quanto tá o elden ring na steam'), { tipo: 'steam_preco', jogo: 'elden ring' });
+  assert.equal(diz('abre o valorant').tipo, 'abrir_app');
+});
+
+test('memória, hora de dormir e resumo', () => {
+  assert.deepEqual(diz('lembra que o Bernardo é meu sócio'), { tipo: 'memoria_add', texto: 'O Bernardo é meu sócio' });
+  assert.equal(diz('o que você sabe sobre mim').tipo, 'memoria_ver');
+  assert.equal(diz('esquece que o Bernardo é meu sócio').tipo, 'memoria_del');
+  assert.equal(diz('me lembra de beber água em 10 minutos').tipo, 'lembrete'); // "me lembra" continua sendo lembrete
+  assert.deepEqual(diz('minha hora de dormir é à 1h'), { tipo: 'hora_dormir', hora: '01:00' });
+  assert.equal(diz('só mais uma').tipo, 'so_mais_uma');
+  assert.equal(diz('resumo do dia').tipo, 'resumo');
+});

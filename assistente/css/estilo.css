@@ -246,3 +246,8 @@ body.arrastando .gota { display: grid; place-items: center; position: fixed; ins
   66% { border-radius: 44% 56% 58% 42% / 52% 48% 40% 60%; }
 }
 @media (prefers-reduced-motion: reduce) { .gota i { animation: none; border-radius: 50%; } }
+
+/* ===== rotinas ===== */
+.rotina-form { flex-wrap: wrap; }
+.rotina-form textarea { flex: 1 1 100%; min-height: 64px; resize: vertical; font: inherit; color: var(--tinta); background: rgba(255, 255, 255, .06); border: 1px solid var(--linha); border-radius: 11px; padding: 8px 10px; }
+.rotina-form input { flex: 1 1 200px; }

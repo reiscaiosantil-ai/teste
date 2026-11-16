@@ -211,8 +211,73 @@
     // ajuda
     if (/^(?:ajuda|socorro|comandos)$|o que (?:voc[eê] |vc )?(?:faz|sabe fazer|pode fazer|consegue fazer)|como (?:eu )?(?:te )?uso/u.test(s)) return { tipo: 'ajuda' };
 
-    // computador: ligação, energia, memória, antivírus, fechar apps e conversas
     let m;
+    const nomesLista = (t) => String(t || '').replace(/[.!?]+$/, '').split(/\s*,\s*|\s+e\s+/u).map((x) => x.trim().replace(/^(?:o|a)\s+/u, '')).filter(Boolean).map(cap);
+
+    // jogos e Discord
+    if (/^(?:ativa |ativar |liga |ligar |entra no |entrar no |coloca no |bota no )?modo (?:jogo|gamer|game|gameplay)$|^(?:vou|bora|vamos) jogar$|^hora (?:de|do) jogo$/u.test(s)) return { tipo: 'modo_jogo', ligar: true };
+    if (/^(?:desliga |desligar |sai do |sair do |desativa |desativar )(?:o )?modo (?:jogo|gamer|game|gameplay)$|^modo normal$|^(?:parei|cansei) de jogar$/u.test(s)) return { tipo: 'modo_jogo', ligar: false };
+    if (/^(?:clipa|clipar|clip|clipe|grava|salva)\s*(?:isso|essa|esse|a[ií]|o clipe|um clipe|esse lance|essa jogada|essa a[ií])?$|^(?:faz|faca|faça) (?:um )?clipe/u.test(s)) return { tipo: 'clipe' };
+    if (/^(?:tira|tirar|bate|bater)\s+(?:um |uma )?(?:print|foto da tela|captura(?: de tela)?|screenshot)/u.test(s)) return { tipo: 'print' };
+    if (/(?:qual|como) (?:[eé] |t[aá] |est[aá] )?(?:o )?(?:meu )?ping|(?:t[aá]|est[aá]) lagando|como (?:t[aá]|est[aá]) a internet|temperatura (?:da|do) (?:placa|gpu|pc|processador)|como (?:t[aá]|est[aá]) (?:o )?(?:pc|computador) (?:agora|no jogo)/u.test(s)) return { tipo: 'pc' };
+    if (/^(?:me )?(?:muta|mutar|desmuta|desmutar|silencia)(?:[- ]me)?(?:\s+(?:o\s+)?(?:meu\s+)?(?:mic|microfone))?(?:\s+(?:no|do) discord)?$/u.test(s) && (ctx.jogo || /mic|microfone|discord|^me |desmut|-me/u.test(s))) return { tipo: 'discord', acao: 'mutar' };
+    if (/^(?:ensurdece|ensurdecer|desensurdece|desensurdecer|deafen|surdo)(?:[- ]me)?(?:\s+(?:no|do) discord)?$|(?:tira|volta|liga|desliga) o (?:som|[aá]udio) do discord/u.test(s)) return { tipo: 'discord', acao: 'ensurdecer' };
+    if (/^(?:quais|que) jogos (?:eu )?tenho|^(?:meus|lista (?:os |meus )?) ?jogos(?: instalados)?$|jogos (?:que )?(?:eu )?tenho instalados/u.test(s)) return { tipo: 'jogos_listar' };
+
+    // sorteios para jogar com os amigos
+    m = /^(?:sorteia|sortear|separa|separar|divide|dividir|monta|montar|faz|faça|faca)\s+(?:os\s+)?(\d+)?\s*times?\s*(?:com|entre|para|pra|de|:)?\s*(.*)$/u.exec(n);
+    if (m) return { tipo: 'times', n: Math.max(2, Math.min(6, parseInt(m[1] || '2', 10))), nomes: nomesLista(m[2]) };
+    m = /(?:escolhe|escolher|sorteia|sortear|qual)\s+(?:um\s+|o\s+)?mapa(?:\s+(?:do|de|no|pro|pra)\s+(.+))?$/u.exec(s);
+    if (m) return { tipo: 'mapa', jogo: (m[1] || '').trim() };
+    if (/^(?:escolhe|escolher|sorteia|sortear)\s+(?:um\s+|o\s+)?jogo|o que (?:a gente|n[oó]s|eu) (?:vai|vamos|vou|joga|jogamos|jogo) (?:jogar )?hoje|qual jogo (?:a gente|n[oó]s|eu) (?:joga|jogo|jogamos)/u.test(s)) return { tipo: 'escolher_jogo' };
+    m = /^(?:quem|qual de n[oó]s)\s+((?:vai\s+)?(?:paga|pagar|compra|comprar|lava|lavar|faz|fazer|busca|buscar|escolhe|escolher|come[cç]a|come[cç]ar|joga|jogar)\b.*?)(?:\s+entre\s+(.+))?$/u.exec(s);
+    if (m) return { tipo: 'quem', coisa: m[1].replace(/^vai\s+/u, ''), nomes: nomesLista(m[2]) };
+    m = /^(?:sorteia|sortear|escolhe|escolher)\s+(?:um nome|algu[eé]m|uma pessoa|um de n[oó]s)\s+(?:entre|com|de)\s+(.+)$/u.exec(s);
+    if (m) return { tipo: 'quem', coisa: '', nomes: nomesLista(m[1]) };
+    m = /^(?:escolhe|escolha|sorteia|decide)\s+(?:um\s+|uma\s+)?(?:entre|dentre)\s+(.+)$/u.exec(s);
+    if (m && nomesLista(m[1]).length > 1) return { tipo: 'quem', coisa: '', nomes: nomesLista(m[1]), escolha: true };
+
+    // zoeira
+    if (/^(?:comenta|comente|narra|narre|narrar)\s*(?:essa|isso|a jogada|essa jogada|essa partida|essa a[ií])?$|^(?:viu|olha|olhou) (?:essa|isso)(?: jogada| a[ií])?$/u.test(s)) return { tipo: 'narrar' };
+    m = /^(?:provoca|provocar|zoa|zoar|zoe|tira onda com|tira uma com|humilha|humilhar)\s+(?:o\s+|a\s+)?(.+)$/u.exec(s);
+    if (m) return { tipo: 'provocar', nome: cap(m[1]) };
+    if (/quiz|^faz uma pergunta|^me (?:faz|faça) uma pergunta|^me testa|trivia|pergunta de conhecimento/u.test(s)) return { tipo: 'quiz' };
+
+    // placar do dia (controle de tilt)
+    m = /^(?:registra|registrar|marca|marcar|anota|anotar)\s+(?:uma\s+|mais uma\s+)?(vit[oó]ria|derrota|empate)/u.exec(s);
+    if (m) return { tipo: 'placar', resultado: /^v/.test(m[1]) ? 'v' : /^d/.test(m[1]) ? 'd' : 'e' };
+    m = /^(ganhei|ganhamos|vencemos|venci|perdi|perdemos|empatamos|empatei)(?:\s+(?:a|essa|mais uma|uma|o|esse|outra)?\s*(?:partida|jogo|game|rodada|ranked|md\d|x\d|de novo)?)?$/u.exec(s);
+    if (m) return { tipo: 'placar', resultado: /^(?:ganh|venc)/.test(m[1]) ? 'v' : /^perd/.test(m[1]) ? 'd' : 'e' };
+    if (/^(?:zera|zerar|reseta|resetar|limpa|limpar)\s+(?:o\s+)?placar/u.test(s)) return { tipo: 'placar_zerar' };
+    if (/meu (?:placar|winrate|desempenho)|como (?:t[aá]|est[aá]) (?:o\s+)?meu dia (?:nos jogos|jogando|no jogo)|quantas (?:eu )?(?:ganhei|perdi)|como (?:t[aá]|est[aá]) o placar/u.test(s)) return { tipo: 'placar_ver' };
+
+    // promoções e jogos de graça
+    if (/(?:jogos?|game)\s+(?:de\s+)?gr[aá]tis|de gra[cç]a na epic|epic (?:de |t[aá] )?(?:gr[aá]tis|de gra[cç]a)|tem jogo de gra[cç]a|jogos? de gra[cç]a/u.test(s)) return { tipo: 'epic' };
+    m = /quanto\s+(?:t[aá]|est[aá]|custa|sai|t[aá] custando|est[aá] custando)\s+(?:o\s+|a\s+)?(.+?)\s+na steam$|pre[cç]o d[oae]\s+(.+?)\s+na steam$|(.+?)\s+t[aá] em promo[cç][aã]o(?: na steam)?$/u.exec(s);
+    if (m) return { tipo: 'steam_preco', jogo: (m[1] || m[2] || m[3]).trim() };
+
+    // memória de longo prazo
+    m = /^(?:lembra|lembre|lembre-se|guarda|grava|memoriza|memorize|salva na mem[oó]ria|anota na mem[oó]ria|aprende|aprenda)\s+(?:que|disso:?|isso:?)\s+(.+)$/u.exec(s);
+    if (m) { const o = /(?:lembra|lembre|lembre-se|guarda|grava|memoriza|memorize|mem[oó]ria|aprende|aprenda)\s+(?:que|disso:?|isso:?)\s+(.+)$/iu.exec(String(texto).trim().replace(/[.!]+$/, '')); return { tipo: 'memoria_add', texto: cap(o ? o[1] : m[1]) }; }
+    if (/o que voc[eê] (?:sabe|lembra|guardou) (?:sobre|de) mim|o que voc[eê] sabe de mim/u.test(s)) return { tipo: 'memoria_ver' };
+    m = /^(?:esquece|esque[cç]a)\s+que\s+(.+)$/u.exec(s);
+    if (m) return { tipo: 'memoria_del', texto: m[1] };
+
+    // hora de dormir e resumo do dia
+    m = /minha hora de dormir [eé]\s+(.+)$|me (?:avisa|manda|lembra de) (?:ir )?(?:dormir|parar de jogar)\s+(.+)$/u.exec(nt);
+    if (m) { // hora de dormir: 1 a 6 é madrugada; 7 a 11 sem "da manhã" é da noite
+      const t = m[1] || m[2], meia = /meia[- ]noite/u.test(t), q = /(\d{1,2})(?:\s*(?:h|:|horas?)\s*(\d{2})?)?/u.exec(t);
+      if (meia || q) {
+        let h = meia ? 0 : parseInt(q[1], 10); const mi = meia || !q[2] ? (/e meia/u.test(t) ? 30 : 0) : parseInt(q[2], 10);
+        if (h >= 7 && h <= 11 && !/manh[aã]/u.test(t)) h += 12;
+        if (h === 12 && /noite/u.test(t)) h = 0;
+        if (h <= 23 && mi <= 59) return { tipo: 'hora_dormir', hora: `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}` };
+      }
+    }
+    if (/^(?:s[oó] )?mais uma(?: partida| rodada)?$|^deixa eu jogar mais uma/u.test(s)) return { tipo: 'so_mais_uma' };
+    if (/^(?:resumo do dia|resumo da manh[aã]|me d[aá] (?:o )?resumo(?: do dia)?|como (?:t[aá]|est[aá]) (?:o )?meu dia|o que tem (?:pra|para) hoje)$/u.test(s)) return { tipo: 'resumo' };
+
+    // computador: ligação, energia, memória, antivírus, fechar apps e conversas
     if (/(?:sai|sair|saia|saio|desliga|desligar|desligue|encerra|encerrar|termina|terminar|finaliza|fecha|fechar|larga)\s+(?:d[aeo]s?\s+|a\s+|o\s+|essa\s+|esta\s+)?(?:liga[cç](?:[aã]o|ões)|chamada|reuni[aã]o|call|meet|videochamada|v[ií]deo ?chamada)|sai(?:r)? d[ao] (?:call|meet|zoom|teams)/u.test(s)) return { tipo: 'sair_ligacao' };
     if (/cancel\w*\s+(?:o\s+|a\s+)?(?:desligamento|rein[ií]cio|reinicializa[cç][aã]o|desligar|reiniciar)|n[aã]o (?:desliga|desligue|reinicia)/u.test(s)) return { tipo: 'energia', acao: 'cancelar' };
     m = /(?:^|\s)(desliga|desligar|desligue|reinicia|reiniciar|reinicie|bloqueia|bloquear|bloqueie|trava|travar)\s+(?:o\s+|a\s+|meu\s+|minha\s+)?(pc|computador|notebook|m[aá]quina|sistema|windows|tela)(?:$|\s)/u.exec(s);

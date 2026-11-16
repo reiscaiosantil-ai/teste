@@ -43,6 +43,17 @@ contextBridge.exposeInMainWorld('lumiDesktop', {
     atualizar: () => ipcRenderer.invoke('lumi:sis-atualizar'),
     segurancaWindows: () => ipcRenderer.invoke('lumi:sis-seguranca-windows'),
   },
+  jogos: {
+    teclas: (combo) => ipcRenderer.invoke('lumi:jogo-teclas', combo),
+    clipe: (gravador, tipo) => ipcRenderer.invoke('lumi:jogo-clipe', gravador, tipo),
+    listar: () => ipcRenderer.invoke('lumi:jogo-listar'),
+    abrir: (alvo) => ipcRenderer.invoke('lumi:jogo-abrir', alvo),
+    modo: (ligar) => ipcRenderer.invoke('lumi:jogo-modo', ligar),
+    status: () => ipcRenderer.invoke('lumi:jogo-status'),
+    epic: () => ipcRenderer.invoke('lumi:jogo-epic'),
+    steam: (busca) => ipcRenderer.invoke('lumi:jogo-steam', busca),
+  },
+  manchetes: () => ipcRenderer.invoke('lumi:manchetes'),
   tela: {
     arrastar: (fase) => ipcRenderer.send('lumi:arrastar', fase),
     listar: () => ipcRenderer.invoke('lumi:telas'),

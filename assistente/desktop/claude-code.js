@@ -142,7 +142,8 @@ async function pensar(p) {
   const base = ['-p', '--output-format', 'json', '--model', modelo, '--allowedTools', ...FERRAMENTAS];
   const dirs = pastasDoUsuario(); if (dirs.length) base.push('--add-dir', ...dirs);
   const agora = new Date().toLocaleString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
-  const entrada = `[agora: ${agora}] ${String(p.pedido || '').slice(0, 4000)}`;
+  const sabe = (p.memoria || []).filter(Boolean);
+  const entrada = `[agora: ${agora}]${sabe.length ? ` [o que você já sabe sobre ${p.usuario || 'o usuário'}: ${sabe.join('; ')}]` : ''} ${String(p.pedido || '').slice(0, 4000)}`;
 
   let r = await executar(exe, sessao ? base.concat(['--resume', sessao]) : base, entrada, 240000, env);
   let res = r.tempoEsgotado ? null : interpretarSaida(r.saida, r.erro);

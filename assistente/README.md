@@ -62,6 +62,34 @@ Aba **🛡️ Sistema** e pedidos por voz. Tudo roda pelo PowerShell do próprio
 
 Testado no app Electron real no Linux (memória, fechar programa, senha certa e errada, aprendizado, arrastar e posição). As partes só de Windows (Defender, abrir pelo menu Iniciar, WhatsApp, ligações, desligar) foram escritas e testadas na lógica, mas não num Windows real: o atalho de busca do WhatsApp e os atalhos de ligação podem mudar com novas versões desses apps.
 
+## Jogos, Discord e diversão (app instalado)
+
+| Pedido | O que ela faz |
+|---|---|
+| "modo jogo" / "modo normal" | Põe o Windows em alto desempenho, silencia as notificações do Windows e oferece fechar o que pesa (navegador, Teams, Office…; Discord, Spotify e OBS ficam). "Modo normal" desfaz. Enquanto isso, os lembretes de pausa não interrompem. |
+| "clipa isso" / "tira um print" | Aperta o atalho do gravador escolhido em Ajustes: Xbox Game Bar (Win+Alt+G, precisa de "Gravar o que aconteceu" ligado), NVIDIA (Alt+F10) ou AMD (Ctrl+Shift+S). |
+| "qual meu ping?" / "como tá o PC?" | Processador, memória, placa de vídeo NVIDIA (temperatura e uso, pelo nvidia-smi) e ping. |
+| "abre o Valorant" / "quais jogos eu tenho?" | Acha os jogos instalados na Steam, na Epic e na Riot (Valorant, LoL) e abre pelo launcher. Apelidos: "lol", "cs", "gta", "valo". |
+| "muta" / "ensurdece" (Discord) | Aperta os atalhos de mutar e ensurdecer do Discord. Cadastre os mesmos atalhos em Discord → Configurações → Atalhos de teclado para valerem com o jogo aberto. Fora do modo jogo, "muta" sozinho continua sendo o som da música. |
+| "sorteia dois times com Caio, Bernardo, João e Pedro" | Times aleatórios (até 6). "sorteia 3 times" usa os últimos nomes. |
+| "escolhe um mapa do Valorant" / "…do CS" / "…do Rainbow" · "escolhe um jogo pra gente jogar" · "quem paga o lanche entre …" · "escolhe entre pizza, hambúrguer e açaí" | Sorteios. |
+| "comenta essa" · "provoca o Bernardo" · "faz um quiz" | Narração empolgada, provocação leve e quiz de conhecimentos e games (responde pela voz; "não sei" mostra a resposta). |
+| "ganhei" / "perdi" · "como tá meu placar?" · "zera o placar" | Placar do dia. Depois de 3 derrotas seguidas ela sugere uma pausa (controle de tilt). |
+| "tem jogo de graça na Epic?" · "quanto tá o Elden Ring na Steam?" | Jogos grátis da semana e os próximos (loja da Epic) e preço em reais com desconto (loja da Steam). |
+
+**A voz dela na call do Discord:** com o VB-Cable (grátis), em Ajustes → Jogos e Discord escolha "CABLE Input" em "Também falar em". No Windows, nas propriedades do seu microfone, marque "Escutar este dispositivo" com saída "CABLE Input"; no Discord, use "CABLE Output" como entrada. Assim os amigos ouvem você e ela. Funciona com as vozes Piper e Google (a voz do computador não dá para redirecionar). Dá para deixar só no modo jogo ou sempre.
+
+Ela nunca mexe dentro dos jogos (memória, mira, automação), para não esbarrar em anti-cheat. Em jogos em tela cheia exclusiva o painel dela não aparece por cima; a voz funciona igual, e em "janela sem bordas" ela aparece.
+
+## Rotinas, resumo da manhã, memória e hora de dormir
+
+- **Rotinas:** em Ajustes, dê um nome e escreva um pedido por linha ("abre o whatsapp", "timer de 25 minutos para foco"…). Dizer o nome ("modo trabalho", "rotina estudo") faz tudo de uma vez.
+- **Resumo da manhã:** na primeira vez que você usa o PC no dia (entre 5h e 14h), ela dá bom dia com a data, o clima, os compromissos de hoje, o dólar e a manchete principal (Google Notícias). Também a qualquer hora: "resumo do dia". Dá para desligar em Ajustes.
+- **Memória:** "lembra que o Bernardo é meu sócio" fica guardado e vai junto para o cérebro (Claude Code ou API) em toda conversa. "o que você sabe sobre mim", "esquece que …" e a lista em Ajustes.
+- **Hora de dormir:** "minha hora de dormir é 1h" (ou em Ajustes). Ela avisa na hora e cobra a cada 20 minutos; "só mais uma" adia 30 minutos.
+
+Testado no app Electron real no Linux: sorteios, quiz, placar com aviso de tilt, Epic e Steam ao vivo, memória, rotina, hora de dormir, resumo e o modo jogo (só a parte que não depende do Windows). Os atalhos (clipe, Discord), o modo de energia e as notificações, a leitura das bibliotecas da Steam/Epic/Riot num PC real e a voz na call não puderam ser testados aqui.
+
 ## Aprender com as correções
 
 Se ela entender errado, diga **"não, eu quis dizer …"** (ou "errou" e depois o certo). Ela guarda a correção e, quando ouvir aquilo de novo, responde **"O senhor quis dizer …"** e faz o certo; se ouvir algo só parecido, pergunta antes ("O senhor quis dizer …?"). "Esquece isso" apaga a última correção; a lista fica em **Ajustes → O que eu aprendi**. O tratamento (o senhor, a senhora ou você) também fica em Ajustes.
