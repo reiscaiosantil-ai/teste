@@ -28,6 +28,7 @@ jobs:
       - name: Baixar o modelo de voz offline (Vosk, português)
         run: node scripts/baixar-voz.js
       - name: Gerar instalador e versão portátil
+        timeout-minutes: 25
         run: npx electron-builder --win nsis portable --x64 --publish never
       - name: Publicar em Releases
         shell: bash
