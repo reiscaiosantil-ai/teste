@@ -42,10 +42,29 @@ Atalhos: `Alt+K` abre/fecha · `Alt+L` fala com ela · `Esc` fecha, cala ou para
 | Diversão | "conta uma piada", "cara ou coroa", "joga um dado", "quantos dias faltam pro Natal?" |
 | Navegação | "pesquisa receita de bolo", "abre o youtube", "notícias de hoje" |
 | Visual | "coloca a coroa", "muda sua cor para rosa", "tira o chapéu" |
+| Computador (app instalado, Windows) | "o que está gastando tanta memória?", "verifica se tem vírus", "verifica a pasta Downloads", "abre o Word", "fecha o Chrome", "abre a conversa com o Bernardo", "sai da ligação", "bloqueia a tela", "desliga o computador" (pede a senha), "cancela o desligamento" |
 
 Personalização feminina: cílios, blush e batom (liga e desliga), 12 cores de corpo (incluindo Rosé, Lilás e Framboesa), 9 cores de olho, acessórios como tiara, coroa de flores, brincos, presilha de coração e lação, cabelo (franjinha, franja de lado, longo, chanel, rabo de cavalo, maria-chiquinha, coque e cacheado, em 8 cores) e 8 looks prontos (Princesa, Primavera, Romântica, Anjinha, Estilosa, Docinho, Sexta-feira, Natalina). Pela voz: "coloca a tiara", "passa batom", "muda sua cor para rosé", "faz um coque", "cabelo ruivo", "solta o cabelo".
 
 Também tem: 13 expressões do mascote (dorme quando você some, acorda quando volta, olhos seguem o mouse), 9 cores de corpo, 7 de olhos, 5 estilos de olho, 12 acessórios, 5 personalidades, XP e níveis, voz de robozinho ajustável, "modo só executar" e "sempre ouvindo — Ei, Lumi".
+
+## Computador (app instalado, Windows)
+
+Aba **🛡️ Sistema** e pedidos por voz. Tudo roda pelo PowerShell do próprio Windows; o que você fala nunca vira comando: vai como dado (variável de ambiente).
+
+- **Memória RAM:** quanto está em uso e quais programas mais gastam (memória e processador), com botão **Fechar** (pede para o programa fechar, e ele pode perguntar se quer salvar) e, se não fechar, **Forçar**. Partes do Windows (Explorer, serviços, antivírus) e a própria assistente nunca são fechadas.
+- **Antivírus:** usa o **Microsoft Defender**, que já vem no Windows: mostra se está ligado, a proteção em tempo real, a idade das definições de vírus, as últimas verificações, ameaças encontradas, firewall e espaço no disco. Botões para verificação rápida, da pasta Downloads ou completa, atualizar as definições e abrir a Segurança do Windows. Ela avisa (com voz e notificação) quando a verificação termina. Se outro antivírus estiver instalado, o Defender fica em modo passivo e ela diz isso.
+- **Apps:** "abre …" procura o app no menu Iniciar (WhatsApp e Spotify abrem o app instalado; se não tiver, o site). "fecha …" aceita o nome do app, um apelido ("navegador") ou parte do título da janela.
+- **Conversas:** "abre a conversa com …" abre o WhatsApp do computador e procura o contato (confira se é a conversa certa); com um número de telefone, abre direto. Nada é enviado sozinho.
+- **Ligações:** "sai da ligação" fecha a aba do Google Meet (precisa ser a aba aberta no navegador), usa Alt+Q no Zoom e Ctrl+Shift+H no Teams.
+- **Desligar e reiniciar:** sempre pedem a senha (padrão **Sabado**, sem diferença de acento ou maiúscula; dá para trocar na aba Sistema). Ela pergunta "Tem certeza? Para confirmar, diga a senha" e já fica ouvindo a resposta. O Windows desliga em 30 segundos (ou no tempo pedido: "desliga o PC em 30 minutos"); "cancela o desligamento" desfaz. A senha não aparece na conversa, e depois de 5 erros ela para de aceitar por 10 minutos.
+- **Onde ela fica:** segure o botão esquerdo num espaço vazio do painel: ela vira uma gotinha preta que se mexe e vai com o mouse. Solte num canto, num lado, embaixo ou em outra tela; a posição fica salva. Em Ajustes também dá para escolher a posição e a tela.
+
+Testado no app Electron real no Linux (memória, fechar programa, senha certa e errada, aprendizado, arrastar e posição). As partes só de Windows (Defender, abrir pelo menu Iniciar, WhatsApp, ligações, desligar) foram escritas e testadas na lógica, mas não num Windows real: o atalho de busca do WhatsApp e os atalhos de ligação podem mudar com novas versões desses apps.
+
+## Aprender com as correções
+
+Se ela entender errado, diga **"não, eu quis dizer …"** (ou "errou" e depois o certo). Ela guarda a correção e, quando ouvir aquilo de novo, responde **"O senhor quis dizer …"** e faz o certo; se ouvir algo só parecido, pergunta antes ("O senhor quis dizer …?"). "Esquece isso" apaga a última correção; a lista fica em **Ajustes → O que eu aprendi**. O tratamento (o senhor, a senhora ou você) também fica em Ajustes.
 
 ## Voz
 
@@ -60,7 +79,7 @@ Também tem: 13 expressões do mascote (dorme quando você some, acorda quando v
 
 Os comandos acima funcionam sempre, sem cérebro. Para o resto (perguntas, pesquisas, textos, procurar arquivos), escolha em **Ajustes → Cérebro**:
 
-- **Claude Code (sua assinatura)** — só no app instalado. Usa o Claude Code do computador, logado com a sua conta do Claude, sem pagar API (conta nos limites do seu plano). Mesmo esquema do Jarvis: `claude -p` com resposta em JSON e `--resume` para continuar a conversa; o pedido vai pela entrada padrão, nunca pela linha de comando. Ferramentas liberadas: ler arquivos (Área de Trabalho, Documentos, Downloads), pesquisar na web e escrever notas em `Documentos/Lumi/cerebro/Notas`. Ela não apaga, move nem altera seus arquivos. Cada resposta leva alguns segundos (cerca de 8 s no teste). Modelo padrão: Sonnet.
+- **Claude Code (assinatura de quem usa)** — só no app instalado. Usa o Claude Code do computador, logado com a conta do Claude de quem está usando, sem pagar API (conta nos limites do plano dessa pessoa). Em **Ajustes → Cérebro** dá para **instalar o Claude Code** (abre o instalador oficial `irm https://claude.ai/install.ps1 | iex` numa janela do PowerShell), **entrar com a conta do Claude** ou **com o Console**, **trocar de conta** e **sair**, e ver com qual conta está conectado (`claude auth status`). Para usar no computador de outra pessoa, ela entra com a conta dela: a opção **Conta separada só da assistente** guarda esse login à parte (`CLAUDE_CONFIG_DIR` próprio), sem mexer no Claude Code que já estiver logado no PC. Também aceita uma **chave de API do Console** (`ANTHROPIC_API_KEY`, cobrada no Console de quem criou). Não compartilhe a sua assinatura com outras pessoas. Mesmo esquema do Jarvis: `claude -p` com resposta em JSON e `--resume` para continuar a conversa; o pedido vai pela entrada padrão, nunca pela linha de comando. Ferramentas liberadas: ler arquivos (Área de Trabalho, Documentos, Downloads), pesquisar na web e escrever notas em `Documentos/Lumi/cerebro/Notas`. Ela não apaga, move nem altera seus arquivos. Cada resposta leva alguns segundos (cerca de 8 s no teste). Modelo padrão: Sonnet.
 - **API do Claude (chave)** — funciona também no navegador; cobrada à parte na conta do Console (padrão `claude-opus-5-5`, com fallback automático do servidor se o modelo recusar). A chave fica só no armazenamento local.
 - **Automático** (padrão) — usa o Claude Code se estiver instalado; senão a API, se houver chave; senão só os comandos.
 
@@ -70,7 +89,7 @@ Open-Meteo (clima), Google AI Studio (voz Gemini, opcional, com sua chave), Awes
 
 ## Limites honestos
 
-- Pedidos que mexem no sistema ("organiza minha área de trabalho", "desliga o PC", "procura o arquivo …", "cria uma pasta") são recusados com explicação: exigiriam permissões de sistema que esta versão não tem.
+- Pedidos como "organiza minha área de trabalho", "procura o arquivo …" e "cria uma pasta" vão para o Claude Code (se conectado), que só lê arquivos e escreve notas; sem ele, são recusados com explicação.
 - Timers, lembretes e alarmes só tocam com a janela/aba aberta (o app Electron fica sempre aberto). Notificações do sistema precisam de permissão.
 - Spotify do computador (só no app instalado): no Windows a Lumi lê o título da janela do Spotify e usa as teclas de mídia; no Mac usa o AppleScript. Não precisa de login. A capa do álbum vem do próprio Spotify no Mac; no Windows é buscada pelo nome da música e do artista no Deezer e, se não achar, na Apple (iTunes) — grátis e sem chave; sem resultado confiável, fica o ícone. Arquivos MP3 adicionados mostram a capa gravada no arquivo. Limites: com o Spotify minimizado na bandeja do sistema o título some e a Lumi o vê como fechado; as teclas de mídia vão para o último app que tocou mídia; "toca …" abre a busca no Spotify, mas não escolhe a música sozinho. No navegador a Lumi não enxerga o Spotify.
 - Arquivos de música adicionados na Lumi valem só para a sessão (não ficam salvos).

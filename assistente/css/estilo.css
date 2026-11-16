@@ -197,3 +197,52 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
 .estudio-frase { font: 700 22px/1.35 var(--f-titulo); text-align: center; padding: 22px 18px; margin: 6px 0 8px; background: var(--caixa); border: 1px solid var(--linha); border-radius: 16px; }
 .estudio-frase.feita { border-color: rgba(70, 227, 200, .45); }
 .btn[disabled] { opacity: .4; cursor: not-allowed; }
+
+/* ===== aba Sistema: memória, antivírus e energia ===== */
+.btn.pq { padding: 4px 10px; font-size: 11.5px; border-radius: 9px; margin-left: 6px; text-transform: none; letter-spacing: 0; font-family: var(--f-texto, inherit); }
+.secao .btn.pq { vertical-align: middle; }
+.memtopo { margin: 2px 2px 10px; } .memtopo small { color: var(--nevoa); font-size: 12px; }
+.barra-mem { height: 10px; border-radius: 6px; background: rgba(255, 255, 255, .08); overflow: hidden; margin-bottom: 5px; }
+.barra-mem b { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #46E3C8, #7AA8FF); transition: width .5s; }
+.barra-mem.alta b { background: linear-gradient(90deg, #FFB340, #FF5A6E); }
+.procs { display: flex; flex-direction: column; gap: 5px; margin-bottom: 6px; }
+.proc { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 11px; background: rgba(255, 255, 255, .04); }
+.proc .pn { flex: 1; min-width: 0; } .proc .pn b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proc .pn small { display: block; color: var(--nevoa); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proc .mb { font: 600 12.5px var(--f-mono); color: var(--tinta); white-space: nowrap; }
+.tag { font: 700 10.5px var(--f-mono); padding: 3px 8px; border-radius: 8px; background: rgba(255, 255, 255, .08); color: var(--nevoa); white-space: nowrap; }
+.tag.ruim { background: rgba(255, 90, 110, .18); color: var(--perigo); }
+.linhas-sis { display: flex; flex-direction: column; gap: 4px; font-size: 13px; margin: 0 2px 10px; }
+.dica-sis { display: block; color: var(--nevoa); font-size: 11.5px; margin: 4px 2px 10px; }
+.grade-pos { display: grid; grid-template-columns: repeat(3, 34px); gap: 5px; }
+.grade-pos button { height: 24px; border-radius: 7px; background: rgba(255, 255, 255, .08); border: 1px solid transparent; }
+.grade-pos button.on { background: var(--brilho); } .grade-pos button:hover:not([disabled]) { border-color: var(--brilho); }
+.grade-pos button[disabled] { opacity: .2; }
+
+/* ===== onde ela fica na tela (app instalado) ===== */
+body.desktop.ph-esq .entalho { left: 10px; transform: none; }
+body.desktop.ph-dir .entalho { left: auto; right: 10px; transform: none; }
+body.desktop.pv-baixo .entalho { top: auto; bottom: 0; border-radius: 20px 20px 0 0; }
+body.desktop.pv-baixo .entalho.aberto { border-radius: 30px 30px 0 0; }
+body.desktop.pv-baixo .pilula { inset: auto 0 0; }
+body.desktop.pv-meio .entalho { top: 10px; border-radius: 22px; }
+body.desktop.pv-meio .entalho.aberto { border-radius: 30px; }
+body.desktop.pv-baixo .aviso { top: auto; bottom: 54px; }
+body.desktop.pv-baixo .entalho.aberto ~ .aviso { top: 8px; bottom: auto; }
+body.desktop.ph-esq .aviso, body.desktop.ph-esq .aviso.on { left: 10px; transform: none; }
+body.desktop.ph-dir .aviso, body.desktop.ph-dir .aviso.on { left: auto; right: 10px; transform: none; }
+
+/* ===== arrastando: vira uma gotinha preta que se mexe ===== */
+.gota { display: none; }
+body.arrastando .mesa { visibility: hidden; }
+body.arrastando { cursor: grabbing; }
+body.arrastando .gota { display: grid; place-items: center; position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+.gota i { position: relative; width: 56px; height: 56px; background: radial-gradient(circle at 35% 30%, #2a2a2e 0, #000 55%); box-shadow: 0 8px 22px rgba(0, 0, 0, .5);
+  transform: rotate(var(--ang, 0deg)) scale(var(--estica, 1), calc(2 - var(--estica, 1))); transition: transform .14s ease-out; animation: gotaMexe 1.3s ease-in-out infinite; }
+.gota i::after { content: ""; position: absolute; width: 13px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, .32); top: 13px; left: 15px; transform: rotate(-35deg); }
+@keyframes gotaMexe {
+  0%, 100% { border-radius: 48% 52% 45% 55% / 55% 45% 55% 45%; }
+  33% { border-radius: 56% 44% 52% 48% / 44% 56% 46% 54%; }
+  66% { border-radius: 44% 56% 58% 42% / 52% 48% 40% 60%; }
+}
+@media (prefers-reduced-motion: reduce) { .gota i { animation: none; border-radius: 50%; } }

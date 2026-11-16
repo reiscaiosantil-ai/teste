@@ -21,9 +21,9 @@
     cfg: {
       nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo', cilios: true, blush: true, batom: false, cabelo: 'nenhum', corCabelo: 0,
       voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', cloudChave: '', usarChirp: true, reconhecimento: 'whisper', whisperModelo: 'small', piperVoz: '', piperExpr: 0.65, somenteExecutar: false, sempreOuvindo: false,
-      cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', volume: 70, pausas: false,
+      cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', ccChave: '', ccContaPropria: false, tratamento: 'o senhor', volume: 70, pausas: false,
     },
-    xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [],
+    xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [], aprendido: [],
     habitos: { dia: hojeStr(), agua: 0, meta: 8, leitura: 0, exercicio: 0 },
   });
   function carregar() {
@@ -52,6 +52,8 @@
     vozOff: null, vozCarregada: false, // voz offline do app instalado
     cc: null, // estado do Claude Code no computador (só no app instalado)
     spotify: null, spotifyUltima: null, // Spotify do computador (só no app instalado)
+    sis: { mem: null, prot: null, verif: null, forcar: {}, energia: null, carregando: {}, senhaPadrao: null }, // computador (app instalado)
+    ultimo: null, escutarDepois: false, arrastando: false, pos: { v: 'cima', h: 'centro' }, telas: null,
   };
 
   /* ================= elementos ================= */
@@ -286,13 +288,120 @@
     return trabalhar('💭', 'Pensando', async () => {
       const lento = setTimeout(() => { if (R.trabalho) falar('Só um instante, estou pensando.'); }, 9000); // o Claude Code leva alguns segundos
       try {
-        const r = await CC.pensar({ pedido, nome: S.cfg.nome, usuario: S.cfg.usuario, personalidade: S.cfg.personalidade, modelo: S.cfg.ccModelo });
+        const r = await CC.pensar({ pedido, nome: S.cfg.nome, usuario: S.cfg.usuario, personalidade: S.cfg.personalidade, modelo: S.cfg.ccModelo, ...ccOp() });
         if (r && r.erro === 'ausente' && R.cc) R.cc = { ...R.cc, instalado: false };
         return { texto: (r && r.texto) || 'Sem resposta do Claude Code.', humor: r && r.erro ? 'cry' : 'happy', erro: !!(r && r.erro) };
       } catch (e) {
         return { texto: 'Não consegui falar com o Claude Code: ' + (e && e.message ? e.message : e), humor: 'cry', erro: true };
       } finally { clearTimeout(lento); }
     });
+  }
+
+  // conta usada pelo Claude Code: a do PC, uma conta separada só da assistente, ou uma chave de API do Console
+  const ccOp = () => ({ chave: S.cfg.ccChave || '', contaPropria: !!S.cfg.ccContaPropria });
+  function verificarCC() {
+    if (!CC) return Promise.resolve();
+    R.cc = null; if (R.aberto && R.view === 'ajustes') renderPrincipal();
+    return CC.status(ccOp()).then((st) => { R.cc = st; }).catch(() => { R.cc = { instalado: false }; }).finally(() => render());
+  }
+
+  /* ================= computador (app instalado): memória, antivírus, apps, ligações, energia ================= */
+  const SIS = window.lumiDesktop && window.lumiDesktop.sistema ? window.lumiDesktop.sistema : null;
+  const TELA = window.lumiDesktop && window.lumiDesktop.tela ? window.lumiDesktop.tela : null;
+  const trat = () => S.cfg.tratamento || 'o senhor';
+  const Trat = () => trat().charAt(0).toUpperCase() + trat().slice(1);
+  const voc = () => ({ 'o senhor': 'senhor', 'a senhora': 'senhora' }[trat()] || S.cfg.usuario || ''); // vocativo: "Desculpa, senhor!"
+  const comVoc = (t, fim) => (voc() ? `${t}, ${voc()}${fim}` : t + fim);
+  const tamanho = (mb) => (mb >= 1024 ? `${(mb / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} GB` : `${mb} MB`);
+  const listaE = (a) => a.length > 1 ? a.slice(0, -1).join(', ') + ' e ' + a[a.length - 1] : (a[0] || '');
+  async function carregarMemoria() {
+    if (!SIS || R.sis.carregando.mem) return R.sis.mem;
+    R.sis.carregando.mem = true; if (R.view === 'sistema') render();
+    try { R.sis.mem = { ...(await SIS.memoria()), quando: Date.now() }; } catch (e) { R.sis.mem = { erro: String(e && e.message || e), apps: [], quando: Date.now() }; }
+    R.sis.carregando.mem = false; if (R.view === 'sistema') render();
+    return R.sis.mem;
+  }
+  async function carregarProtecao() {
+    if (!SIS || R.sis.carregando.prot) return R.sis.prot;
+    R.sis.carregando.prot = true; if (R.view === 'sistema') render();
+    try { R.sis.prot = { ...(await SIS.protecao()), quando: Date.now() }; } catch (e) { R.sis.prot = { erroDefender: String(e && e.message || e), quando: Date.now() }; }
+    R.sis.carregando.prot = false; if (R.view === 'sistema') render();
+    return R.sis.prot;
+  }
+  function carregarSistema() {
+    if (!SIS) return;
+    if (!R.sis.mem || Date.now() - R.sis.mem.quando > 30e3) carregarMemoria();
+    if (!R.sis.prot || Date.now() - R.sis.prot.quando > 5 * 60e3) carregarProtecao();
+    SIS.senhaPadrao().then((v) => { R.sis.senhaPadrao = v; }).catch(() => {});
+    SIS.verificando().then((v) => { if (v && !R.sis.verif) R.sis.verif = v; }).catch(() => {});
+  }
+  const NOME_VERIF = { rapida: 'verificação rápida', pasta: 'verificação da pasta Downloads', completa: 'verificação completa' };
+  function iniciarVerificacao(tipo) {
+    if (!SIS) return { texto: 'A verificação de vírus só funciona no app instalado.', humor: 'think' };
+    if (R.sis.verif) return { texto: 'Já estou verificando o computador. Te aviso quando terminar.', humor: 'think' };
+    const nomeT = NOME_VERIF[tipo] || NOME_VERIF.rapida;
+    R.sis.verif = { tipo, inicio: Date.now() };
+    SIS.verificar(tipo).then((x) => {
+      R.sis.verif = null;
+      let t, h = 'happy';
+      if (x.jaRodando) t = 'Já tinha uma verificação rodando no Windows.';
+      else if (x.indisponivel) t = 'A verificação de vírus só funciona no Windows.';
+      else if (x.erro) { t = `Não consegui fazer a ${nomeT}: ${x.erro}. Se outro antivírus estiver instalado, o Defender pode estar desligado.`; h = 'cry'; }
+      else {
+        const am = x.ameacas || [];
+        if (am.length) { t = `Terminei a ${nomeT}: encontrei ${am.length} ameaça${am.length > 1 ? 's' : ''}: ${listaE(am.slice(0, 3).map((a) => a.nome))}. ${am.every((a) => a.resolvida) ? 'O Defender já resolveu.' : 'Abra a Segurança do Windows para resolver.'}`; h = 'surprised'; }
+        else t = `Terminei a ${nomeT}${x.segundos ? ' em ' + durTxt(x.segundos) : ''}: nenhuma ameaça encontrada. Tudo limpo!`;
+      }
+      addChat('k', t); setHumor(h, 3200); notificar('Verificação do computador', t); falar(t); render();
+      carregarProtecao();
+    }).catch(() => { R.sis.verif = null; render(); });
+    render();
+    return { texto: `Comecei a ${nomeT} com o Microsoft Defender. ${tipo === 'completa' ? 'Ela pode levar mais de uma hora' : 'Leva alguns minutos'}; te aviso quando terminar.`, humor: 'cool' };
+  }
+  async function fecharApp(alvo, op = {}) {
+    const x = await SIS.fechar(alvo, op);
+    if (x.protegido) return { texto: `${x.protegido} é parte do Windows; fechar pode travar o computador, então não vou mexer.`, humor: 'think' };
+    if (x.naoAchei) return { texto: `Não achei "${alvo || op.processo}" aberto.`, humor: 'think', erro: true };
+    if (R.sis.mem) setTimeout(carregarMemoria, 1500);
+    if (x.restantes && x.restantes.length) {
+      R.pendente = { tipo: 'forcar', alvo, processo: x.processo, ate: Date.now() + 60e3 };
+      return { texto: `${x.fechados.length ? 'Fechei ' + listaE(x.fechados) + '. ' : ''}${listaE(x.restantes)} não fechou: pode ter algo sem salvar ou estar escondido na bandeja. Quer que eu force? Diga sim ou não.`, humor: 'think', escutar: true };
+    }
+    delete R.sis.forcar[op.processo || ''];
+    return { texto: `Fechei ${listaE(x.fechados)}. 👋`, humor: 'cool' };
+  }
+  async function confirmarEnergia(pend, texto) {
+    const n = basePalavra(texto);
+    if (/^(?:nao|cancela|esquece|deixa)(?:\s|$)/.test(n)) return { texto: 'Tudo bem, não vou mexer.', humor: 'idle' };
+    const x = await SIS.energia(pend.acao, texto, S.cfg.nome, pend.segundos || 30);
+    const verbo = pend.acao === 'desligar' ? 'Desligando' : 'Reiniciando';
+    if (x.bloqueado) return { texto: 'Foram muitas senhas erradas. Por segurança, só aceito de novo daqui a alguns minutos.', humor: 'think', erro: true };
+    if (x.senhaErrada) return { texto: comVoc(`Senha incorreta. Não vou ${pend.acao === 'desligar' ? 'desligar' : 'reiniciar'}`, '.'), humor: 'think', erro: true };
+    if (x.ok) return { texto: `Senha correta. ${verbo} em ${durTxt(x.segundos)}. Se mudar de ideia, diga "cancela o desligamento".`, humor: 'cool' };
+    if (x.indisponivel) return { texto: 'Senha correta, mas aqui não é Windows: não consigo desligar este computador.', humor: 'think' };
+    return { texto: x.erro || 'O Windows não aceitou o pedido.', humor: 'cry', erro: true };
+  }
+  // depois de uma pergunta (senha, "quer que eu force?"), ouve a resposta sem precisar chamar o nome de novo
+  function escutarDeNovo() {
+    if (usarOffline()) { abrir(); esperarComando(10000); ligarMicOffline().catch(() => encerrarComando()); return; }
+    if (SR && !window.lumiDesktop && !R.ouvindo) { abrir(); ouvir(); }
+  }
+
+  /* ================= aprender com as correções ================= */
+  function similar(a, b) { if (!a || !b) return 0; return 1 - distancia(a, b) / Math.max(a.length, b.length); }
+  function acharAprendido(texto) {
+    const n = basePalavra(texto); if (!n) return null;
+    let melhor = null, nota = 0;
+    for (const ap of S.aprendido) { const v = ap.de === n ? 1 : (Math.abs(ap.de.length - n.length) > 8 ? 0 : similar(ap.de, n)); if (v > nota) { nota = v; melhor = ap; } }
+    return nota >= 0.82 ? { ap: melhor, exato: nota === 1 } : null;
+  }
+  function aprender(de, para) {
+    const d = basePalavra(de), p = String(para || '').trim();
+    if (!d || !p || d === basePalavra(p)) return;
+    const ex = S.aprendido.find((a) => a.de === d);
+    if (ex) { ex.para = p; ex.quando = Date.now(); R.ultimoAprendido = ex.id; }
+    else { const id = uid(); S.aprendido.unshift({ id, de: d, original: String(de).trim().slice(0, 120), para: p.slice(0, 160), usos: 0, quando: Date.now() }); R.ultimoAprendido = id; }
+    S.aprendido = S.aprendido.slice(0, 300); salvar();
   }
 
   /* ================= Spotify do computador (app instalado) ================= */
@@ -333,7 +442,7 @@
   let falaSeq = 0, falaFonte = null, falaCtl = null, avisouGoogle = false;
   const cacheFala = new Map();
   function inicioFala() { R.falando = true; pararEscuta(); setHumor('talk'); }
-  function fimFala() { R.falando = false; if (R.humor === 'talk') setHumor('happy', 1200); retomarEscuta(); }
+  function fimFala() { R.falando = false; if (R.humor === 'talk') setHumor('happy', 1200); retomarEscuta(); if (R.escutarDepois) { R.escutarDepois = false; setTimeout(escutarDeNovo, 250); } }
   function falarNavegador(limpo) {
     if (!('speechSynthesis' in window)) return;
     try {
@@ -606,28 +715,98 @@
     texto = String(texto || '').trim(); if (!texto) return;
     R.ultimaAtividade = Date.now(); mesa.classList.add('usada');
     if (R.alarme) pararAlarme();
-    addChat('u', texto);
-    let acao = C.interpretar(texto, { agora: Date.now(), nome: S.cfg.nome });
-    // completa a pergunta anterior ("quando eu te lembro?" → "em 10 minutos")
-    if (R.pendente && ['desconhecido', 'pergunta'].includes(acao.tipo)) {
-      const junto = C.interpretar(`me lembra de ${R.pendente.texto} ${texto}`, { agora: Date.now(), nome: S.cfg.nome });
-      if (junto.tipo === 'lembrete') acao = junto;
-    }
+    const pend = R.pendente && (!R.pendente.ate || R.pendente.ate > Date.now()) ? R.pendente : null;
     R.pendente = null;
+    addChat('u', pend && pend.tipo === 'senha' ? '•••••• (senha)' : texto);
     R.pensando = true; setHumor('think'); render();
-    let r;
+    let r, acao = { tipo: 'erro' };
     try {
-      await espera(acao.tipo === 'desconhecido' ? 0 : 350);
-      r = await executar(acao, texto, porVoz);
+      const x = await decidir(texto, pend, porVoz);
+      r = x.r; acao = x.acao;
     } catch (e) {
-      r = { texto: 'Ops, algo deu errado: ' + (e && e.message ? e.message : e), humor: 'cry' };
+      r = { texto: 'Ops, algo deu errado: ' + (e && e.message ? e.message : e), humor: 'cry', erro: true };
     }
     R.pensando = false;
+    if (!['pendente', 'correcao', 'erro_avisado'].includes(acao.tipo)) R.ultimo = { texto, tipo: acao.tipo, erro: !!(r && r.erro), quando: Date.now() };
     if (r && r.texto) addChat('k', r.texto, r.html);
     setHumor((r && r.humor) || 'happy', 3200);
     if (acao.tipo !== 'desconhecido' || (r && !r.erro)) ganharXp(5);
     render();
+    if (r && r.escutar && porVoz) {
+      if (r.texto && !r.mudo && S.cfg.voz && !S.cfg.somenteExecutar) { R.escutarDepois = true; setTimeout(() => { R.escutarDepois = false; }, 25000); }
+      else setTimeout(escutarDeNovo, 300);
+    }
     if (r && r.texto && !r.mudo) falar(r.fala || r.texto);
+  }
+  const comPrefixo = (pre, x) => (x && x.r ? { ...x, r: { ...x.r, texto: pre + (x.r.texto || ''), html: x.r.html ? esc(pre) + x.r.html : undefined, fala: x.r.fala ? pre + x.r.fala : undefined } } : x);
+  const SIM = /^(?:sim|isso|isso mesmo|exato|exatamente|pode|pode sim|pode ir|confirma|confirmo|claro|com certeza|positivo|uhum|aham|e isso|forca|pode forcar|manda ver)(?:\s|$)/;
+  const NAO = /^(?:nao|negativo|cancela|deixa|deixa pra la|esquece|melhor nao)(?:\s|$)/;
+  async function decidir(texto, pend, porVoz) {
+    const semNome = tirarChamado(texto);
+    const t = semNome !== null && semNome.length > 1 ? semNome : texto;
+    const n = basePalavra(t), s = C.normalizar(t);
+    // 1) respostas a perguntas que ela fez
+    if (pend) {
+      if (pend.tipo === 'senha') return { acao: { tipo: 'pendente' }, r: await confirmarEnergia(pend, t) };
+      if (pend.tipo === 'forcar') {
+        if (SIM.test(n)) return { acao: { tipo: 'pendente' }, r: await fecharApp(pend.alvo, { forcar: true, processo: pend.processo }) };
+        if (NAO.test(n)) return { acao: { tipo: 'pendente' }, r: { texto: 'Tudo bem, deixei aberto.', humor: 'idle' } };
+      }
+      if (pend.tipo === 'confirmar') {
+        if (SIM.test(n)) { aprender(pend.de, pend.texto); return comPrefixo('Combinado! ', await decidirTexto(pend.texto, porVoz)); }
+        if (NAO.test(n)) { R.pendente = { tipo: 'corrigir', de: pend.de, ate: Date.now() + 90e3 }; return { acao: { tipo: 'pendente' }, r: { texto: `Desculpa! O que ${trat()} quis dizer?`, humor: 'think', escutar: true } }; }
+      }
+      if (pend.tipo === 'corrigir') {
+        if (NAO.test(n) && n.length < 14) return { acao: { tipo: 'pendente' }, r: { texto: 'Tudo bem, deixa pra lá.', humor: 'idle' } };
+        const m = /^(?:(?:eu\s+)?(?:quis dizer|queria dizer|falei|disse|pedi)\s+(?:pra\s+|para\s+)?)?(.+)$/u.exec(s);
+        aprender(pend.de, m[1]);
+        const x = await decidirTexto(m[1], porVoz);
+        return { ...comPrefixo(`Entendi! ${Trat()} quis dizer "${m[1]}". Da próxima vez eu já sei. `, x), acao: { tipo: 'correcao' } };
+      }
+    }
+    // 2) correções do pedido anterior ("não, eu quis dizer…", "errou")
+    const ult = R.ultimo && Date.now() - R.ultimo.quando < 180e3 ? R.ultimo : null;
+    if (ult) {
+      let m = /^(?:(?:n[aã]o|errado|errou|t[aá] errado|est[aá] errado|na verdade)[\s,!.]+)?(?:eu\s+)?(?:quis dizer|queria dizer|falei|disse|pedi)\s+(?:pra\s+|para\s+)?(.{3,})$/u.exec(s);
+      if (!m && (ult.erro || ult.tipo === 'desconhecido')) m = /^(?:n[aã]o|na verdade|errado)[\s,!.]+(?:[eé]\s+)?(.{4,})$/u.exec(s);
+      if (m) {
+        aprender(ult.texto, m[1]);
+        const x = await decidirTexto(m[1], porVoz);
+        return { ...comPrefixo(`Entendi! ${Trat()} quis dizer "${m[1]}". Vou lembrar. `, x), acao: { tipo: 'correcao' } };
+      }
+      if (/^(?:n[aã]o (?:era|foi) (?:isso|esse|essa)|(?:voc[eê] )?errou|t[aá] errado|est[aá] errado|entendeu errado|n[aã]o (?:[eé]|foi) (?:isso|o que eu (?:pedi|falei|disse))|n[aã]o foi isso que eu (?:pedi|falei|disse))(?:[\s,!.]|$)/u.test(s)) {
+        R.pendente = { tipo: 'corrigir', de: ult.texto, ate: Date.now() + 90e3 };
+        return { acao: { tipo: 'erro_avisado' }, r: { texto: comVoc('Desculpa', `! O que ${trat()} quis dizer?`), humor: 'cry', escutar: true } };
+      }
+    }
+    if (/^(?:esquece|esque[cç]a)\s+(?:isso|essa|o que (?:voc[eê] )?aprendeu)$/u.test(s) && R.ultimoAprendido) {
+      S.aprendido = S.aprendido.filter((a) => a.id !== R.ultimoAprendido); R.ultimoAprendido = null; salvar();
+      return { acao: { tipo: 'correcao' }, r: { texto: 'Pronto, esqueci essa.', humor: 'idle' } };
+    }
+    // 3) frases que ela já aprendeu
+    const achou = acharAprendido(t);
+    if (achou && achou.exato) {
+      achou.ap.usos = (achou.ap.usos || 0) + 1; salvar();
+      return comPrefixo(`${Trat()} quis dizer "${achou.ap.para}". `, await decidirTexto(achou.ap.para, porVoz, pend));
+    }
+    const x = await decidirTexto(t, porVoz, pend, true);
+    if (achou && C.interpretar(achou.ap.para, { agora: Date.now(), nome: S.cfg.nome }).tipo !== x.acao.tipo) {
+      R.pendente = { tipo: 'confirmar', texto: achou.ap.para, de: t, ate: Date.now() + 60e3 };
+      return { acao: { tipo: 'pendente' }, r: { texto: `${Trat()} quis dizer "${achou.ap.para}"?`, humor: 'think', escutar: true } };
+    }
+    return x.adiado ? { acao: x.acao, r: await executar(x.acao, t, porVoz) } : x;
+  }
+  // `adiar`: só interpreta (para checar antes se é uma frase parecida com uma aprendida)
+  async function decidirTexto(texto, porVoz, pend, adiar) {
+    let acao = C.interpretar(texto, { agora: Date.now(), nome: S.cfg.nome });
+    // completa a pergunta anterior ("quando eu te lembro?" → "em 10 minutos")
+    if (pend && pend.tipo === 'lembrete' && ['desconhecido', 'pergunta'].includes(acao.tipo)) {
+      const junto = C.interpretar(`me lembra de ${pend.texto} ${texto}`, { agora: Date.now(), nome: S.cfg.nome });
+      if (junto.tipo === 'lembrete') acao = junto;
+    }
+    if (adiar) return { acao, adiado: true };
+    await espera(acao.tipo === 'desconhecido' ? 0 : 350);
+    return { acao, r: await executar(acao, texto, porVoz) };
   }
 
   const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -664,7 +843,7 @@
       case 'parar': calar(); pararAlarme(); return { texto: 'Ok, fiquei quietinho. 🤫', humor: 'idle', mudo: true };
       case 'ajuda': return {
         texto: 'Eu sei fazer um monte de coisa!', humor: 'happy',
-        html: `Eu sei fazer um monte de coisa! Experimente:<br>⏱ <b>timer de 10 minutos para a pizza</b><br>⏰ <b>me lembra de ligar pro cliente em 30 minutos</b> · <b>alarme às 7h</b><br>✅ <b>cria uma tarefa comprar pão</b> · <b>minhas tarefas</b><br>🎵 <b>toca uma música</b> · <b>próxima</b> · <b>volume 50</b><br>🌤️ <b>vai chover hoje?</b> · 💵 <b>quanto está o dólar?</b><br>🧮 <b>quanto é 15% de 230</b> · 🌍 <b>traduz para inglês bom dia</b><br>📝 <b>anota que preciso comprar café</b> · 💧 <b>bebi um copo de água</b><br>🔐 <b>gera uma senha de 20</b> · 📋 <b>copia meu pix</b> · 🪙 <b>cara ou coroa</b><br>🎄 <b>quantos dias faltam pro Natal?</b> · 😂 <b>conta uma piada</b><br>🎨 <b>coloca a coroa</b> · <b>muda sua cor para rosa</b>`,
+        html: `Eu sei fazer um monte de coisa! Experimente:<br>⏱ <b>timer de 10 minutos para a pizza</b><br>⏰ <b>me lembra de ligar pro cliente em 30 minutos</b> · <b>alarme às 7h</b><br>✅ <b>cria uma tarefa comprar pão</b> · <b>minhas tarefas</b><br>🎵 <b>toca uma música</b> · <b>próxima</b> · <b>volume 50</b><br>🌤️ <b>vai chover hoje?</b> · 💵 <b>quanto está o dólar?</b><br>🧮 <b>quanto é 15% de 230</b> · 🌍 <b>traduz para inglês bom dia</b><br>📝 <b>anota que preciso comprar café</b> · 💧 <b>bebi um copo de água</b><br>🔐 <b>gera uma senha de 20</b> · 📋 <b>copia meu pix</b> · 🪙 <b>cara ou coroa</b><br>🎄 <b>quantos dias faltam pro Natal?</b> · 😂 <b>conta uma piada</b><br>🎨 <b>coloca a coroa</b> · <b>muda sua cor para rosa</b>${SIS ? '<br>💻 <b>o que está gastando memória?</b> · <b>verifica se tem vírus</b><br>🪟 <b>abre o Word</b> · <b>fecha o Chrome</b> · <b>abre a conversa com o Bernardo</b><br>📞 <b>sai da ligação</b> · ⏻ <b>desliga o computador</b> (pede a senha)' : ''}`,
         fala: 'Eu marco timers, lembretes, alarmes e tarefas, toco música, vejo o clima e o dólar, faço contas, traduzo, anoto coisas e conto piadas. Os exemplos estão na tela.',
       };
       case 'desktop': if (motorCerebro() === 'cc') return perguntarClaudeCode(original); return { texto: 'Isso mexe direto nos arquivos e programas do seu PC, e por segurança eu ainda não faço. Posso criar uma tarefa ou um lembrete pra você não esquecer?', humor: 'think' };
@@ -825,7 +1004,59 @@
         return { texto: `Seu PC: ${partes.join(', ')}. Tudo certo por aqui! 💻`, humor: 'cool' };
       }
       case 'pesquisar': { const url = 'https://www.google.com/search?q=' + encodeURIComponent(a.busca); abrirLink(url); return { texto: `Pesquisei "${a.busca}" 🔎`, html: `Pesquisei <b>${esc(a.busca)}</b> 🔎 Se não abriu, ${linkHtml(url, 'toque aqui')}.`, humor: 'cool' }; }
-      case 'abrir': abrirLink(a.url); return { texto: `Abrindo ${a.nome}! 🚀`, html: `Abrindo <b>${esc(a.nome)}</b>! 🚀 Se não abriu, ${linkHtml(a.url, 'toque aqui')}.`, humor: 'cool' };
+      case 'abrir': {
+        if (SIS && a.app) { const x = await SIS.abrir(a.nome).catch(() => null); if (x && x.ok) return { texto: `Abrindo ${x.nome}! 🚀`, humor: 'cool' }; }
+        abrirLink(a.url); return { texto: `Abrindo ${a.nome}! 🚀`, html: `Abrindo <b>${esc(a.nome)}</b>! 🚀 Se não abriu, ${linkHtml(a.url, 'toque aqui')}.`, humor: 'cool' };
+      }
+      case 'abrir_app':
+        if (!SIS) return executar({ tipo: 'desktop', pedido: original }, original, porVoz);
+        return trabalhar('🚀', 'Abrindo', async () => {
+          const x = await SIS.abrir(a.alvo);
+          if (x.ok) return { texto: `Abrindo ${x.nome}! 🚀`, humor: 'cool' };
+          if (x.indisponivel) return { texto: 'Abrir programas só funciona no Windows.', humor: 'think' };
+          return { texto: `Não achei "${a.alvo}" entre os apps instalados. Diga o nome como aparece no menu Iniciar.`, humor: 'think', erro: true };
+        });
+      case 'fechar_app':
+        if (!SIS) return { texto: 'Fechar programas só funciona no app instalado.', humor: 'think' };
+        if (a.alvo === 'tudo') return { texto: `Prefiro fechar um de cada vez, pra ${trat()} não perder nada. Qual eu fecho?`, humor: 'think' };
+        return trabalhar('✖️', 'Fechando', () => fecharApp(a.alvo));
+      case 'conversa':
+        if (!SIS) { abrirLink('https://web.whatsapp.com'); return { texto: `Abri o WhatsApp Web. Procure a conversa com ${a.contato} na busca.`, humor: 'cool' }; }
+        return trabalhar('💬', 'Abrindo a conversa', async () => {
+          const x = await SIS.conversa(a.contato);
+          if (x.ok) return { texto: x.por === 'numero' ? `Abri a conversa com ${a.contato}.` : `Abri o WhatsApp e procurei "${a.contato}". Confere se é a conversa certa.`, humor: 'cool' };
+          if (x.semWhatsapp) { abrirLink('https://web.whatsapp.com'); return { texto: `Não achei o WhatsApp instalado; abri o WhatsApp Web. Procure ${a.contato} na busca.`, humor: 'think' }; }
+          return { texto: 'Abrir conversas só funciona no Windows.', humor: 'think' };
+        });
+      case 'sair_ligacao':
+        if (!SIS) return { texto: 'Sair de ligações só funciona no app instalado.', humor: 'think' };
+        return trabalhar('📞', 'Saindo da ligação', async () => {
+          const x = await SIS.sairLigacao();
+          if (x.app) return { texto: `Saí da ligação no ${x.app}.`, humor: 'cool' };
+          if (x.indisponivel) return { texto: 'Sair de ligações só funciona no Windows.', humor: 'think' };
+          return { texto: 'Não achei nenhuma ligação aberta no Teams, no Zoom ou no Google Meet. No Meet, a aba da chamada precisa ser a que está aberta no navegador.', humor: 'think', erro: true };
+        });
+      case 'energia': {
+        if (!SIS) return { texto: 'Desligar, reiniciar e bloquear o computador só funciona no app instalado.', humor: 'think' };
+        if (a.acao === 'cancelar') { const x = await SIS.energia('cancelar'); return { texto: x.ok ? 'Cancelei o desligamento. Pode continuar.' : 'Não tinha nenhum desligamento marcado.', humor: 'happy' }; }
+        if (a.acao === 'bloquear') { await SIS.energia('bloquear'); return { texto: 'Bloqueei a tela. Até daqui a pouco!', humor: 'cool' }; }
+        R.pendente = { tipo: 'senha', acao: a.acao, segundos: a.segundos || 30, ate: Date.now() + 60e3 };
+        const quando = (a.segundos || 30) > 60 ? ` daqui a ${durTxt(a.segundos)}` : '';
+        return { texto: `Tem certeza que quer ${a.acao === 'desligar' ? 'desligar' : 'reiniciar'} o computador${quando}? Para confirmar, diga a senha.`, humor: 'think', escutar: true };
+      }
+      case 'memoria':
+        if (!SIS) return { texto: 'A análise de memória só funciona no app instalado: no navegador eu não enxergo os programas do PC.', humor: 'think' };
+        return trabalhar('🧠', 'Analisando a memória', async () => {
+          const m = await carregarMemoria(); R.view = 'sistema';
+          return m && m.texto ? { texto: m.texto, humor: m.pct >= 85 ? 'surprised' : 'cool' } : { texto: 'Não consegui ler a memória agora.', humor: 'cry', erro: true };
+        });
+      case 'antivirus':
+        if (!SIS) return { texto: 'A verificação do antivírus só funciona no app instalado.', humor: 'think' };
+        if (a.acao === 'verificar') { R.view = 'sistema'; return iniciarVerificacao(a.alvo); }
+        return trabalhar('🛡️', 'Vendo a proteção', async () => {
+          const pr = await carregarProtecao(); R.view = 'sistema';
+          return { texto: (pr && pr.resumo) || 'Não consegui ler o antivírus agora.', humor: pr && pr.ativo ? 'cool' : 'think' };
+        });
 
       case 'visual':
         if (a.cabelo || a.corCabelo !== undefined) {
@@ -925,6 +1156,7 @@
     const tm = S.timers.slice().sort((a, b) => a.fim - b.fim)[0];
     if (R.alarme) vivo = `<span class="vivo alarme">⏰ <span class="nm">${esc(R.alarme.t)}</span><span>· toque para parar</span></span>`;
     else if (R.ouvindo) { ponto = '<span class="ponto ouvindo"></span>'; vivo = `<span class="vivo ouvindo">🎙 <span class="nm">${esc(R.parcial || 'Ouvindo…')}</span></span>`; }
+    else if (R.sis.verif) vivo = `<span class="vivo trabalho"><span class="ic">🛡️</span><span class="nm">Verificando vírus…</span><span>${mmss((Date.now() - R.sis.verif.inicio) / 1000)}</span></span>`;
     else if (R.trabalho) vivo = `<span class="vivo trabalho"><span class="ic">${R.trabalho.icone}</span><span class="nm">${esc(R.trabalho.rotulo)}…</span><span>${Math.floor((Date.now() - R.trabalho.inicio) / 1000)}s</span></span>`;
     else if (tm) vivo = `<span class="vivo">⏱ <span class="nm">${esc(tm.nome)}</span><span>${mmss((tm.fim - Date.now()) / 1000)}</span>${S.timers.length > 1 ? `<span class="nm">+${S.timers.length - 1}</span>` : ''}</span>`;
     else if (R.crono.rodando) vivo = `<span class="vivo">⏱ <span class="nm">Cronômetro</span><span>${mmss(cronoSeg())}</span></span>`;
@@ -938,6 +1170,7 @@
 
   /* ================= desenho: lateral ================= */
   const NAV = [['inicio', '🏠', 'Início'], ['tarefas', '✅', 'Tarefas'], ['habitos', '💧', 'Hábitos'], ['timers', '⏱', 'Timers'], ['musica', '🎵', 'Música'], ['notas', '📝', 'Notas'], ['visual', '🎨', 'Visual'], ['ajustes', '⚙️', 'Ajustes']];
+  if (SIS) NAV.splice(NAV.length - 1, 0, ['sistema', '🛡️', 'Sistema']);
   function renderLado() {
     const nv = Math.floor(S.xp / 50) + 1, pct = (S.xp % 50) * 2;
     const cont = { tarefas: S.tarefas.filter((t) => !t.feito).length || '', habitos: `${S.habitos.agua}/${S.habitos.meta}`, timers: S.timers.length + (R.crono.rodando ? 1 : 0) || '', musica: R.musica.lista.length || (spotTocando() ? '♪' : ''), notas: S.notas.length || '' };
@@ -1078,6 +1311,7 @@
     return `<h4>Ajustes</h4><div class="sub">Tudo fica salvo só neste navegador</div><div class="rolar">
       <div class="grade2"><div class="campo"><label for="cNome">Nome da assistente</label><input id="cNome" data-cfg="nome" value="${esc(c.nome)}" maxlength="20"></div>
       <div class="campo"><label for="cUsuario">Seu nome</label><input id="cUsuario" data-cfg="usuario" value="${esc(c.usuario)}" maxlength="30" placeholder="Como devo te chamar?"></div></div>
+      <div class="grade2"><div class="campo"><label for="cTrat">Como ela te chama</label><select id="cTrat" data-cfg="tratamento">${[['o senhor', 'O senhor'], ['a senhora', 'A senhora'], ['você', 'Você']].map(([v, n]) => `<option value="${v}"${v === trat() ? ' selected' : ''}>${n}</option>`).join('')}</select><small>Ex.: "${esc(Trat())} quis dizer…?"</small></div><div></div></div>
       <div class="campo"><span>Personalidade</span><div class="chips" style="margin:0">${Object.entries(PERSONAS).map(([k, v]) => `<button class="chip${k === c.personalidade ? ' on' : ''}" data-acao="set" data-k="personalidade" data-val="${k}">${v.rotulo}</button>`).join('')}</div></div>
       <div class="secao">Voz</div>
       ${tog('voz', 'Responder em voz alta', 'Uma voz de robozinho lê as respostas')}
@@ -1114,16 +1348,76 @@
       <div class="grade2"><div class="campo"><label for="cCerebro">Cérebro</label><select id="cCerebro" data-cfg="cerebro">${[['auto', 'Automático'], ['claudecode', 'Claude Code (sua assinatura)'], ['api', 'API do Claude (chave paga à parte)'], ['local', 'Só os comandos da ' + esc(c.nome)]].map(([v, n]) => `<option value="${v}"${v === (c.cerebro || 'auto') ? ' selected' : ''}>${n}</option>`).join('')}</select>
         <small>${(() => { const m = motorCerebro(); return m === 'cc' ? '✅ Usando o Claude Code' : m === 'api' ? '✅ Usando a API do Claude' : 'Sem cérebro: só os comandos'; })()}</small></div>
       <div class="campo"><span>&nbsp;</span><button class="btn fantasma" data-acao="cc-nova">🧹 Nova conversa</button></div></div>
-      ${(c.cerebro || 'auto') !== 'api' && (c.cerebro || 'auto') !== 'local' ? (CC
-        ? `<div class="chave"><div>Claude Code neste computador<small>${R.cc === null ? 'Procurando…' : R.cc.instalado ? `Encontrado${R.cc.versao ? ' (versão ' + esc(R.cc.versao) + ')' : ''}. Usa a sua assinatura do Claude, sem pagar API. Cada resposta leva alguns segundos. Notas ficam em Documentos/Lumi/cerebro.` : 'Não encontrado. Instale o Claude Code, abra o terminal, digite claude e faça o login; depois reabra o app.'}</small></div><button class="btn fantasma" data-acao="cc-status">Verificar</button></div>
-        <div class="campo"><label for="cCcModelo">Modelo do Claude Code</label><select id="cCcModelo" data-cfg="ccModelo">${[['sonnet', 'Sonnet (rápido, recomendado para voz)'], ['opus', 'Opus (mais capaz, mais lento)'], ['haiku', 'Haiku (o mais rápido)']].map(([v, n]) => `<option value="${v}"${v === c.ccModelo ? ' selected' : ''}>${n}</option>`).join('')}</select></div>`
+      ${(c.cerebro || 'auto') !== 'api' && (c.cerebro || 'auto') !== 'local' ? (CC ? (() => {
+        const st = R.cc, conta = st && st.conta;
+        const situacao = st === null ? 'Procurando…' : !st.instalado ? 'Não está instalado neste computador.'
+          : conta && conta.logado ? `✅ Conectado${conta.email ? ' como ' + esc(conta.email) : ''}${conta.metodo === 'api_key' ? ' (chave de API do Console)' : conta.metodo === 'claude.ai' ? ' (conta do Claude)' : ''}${conta.plano ? ' · plano ' + esc(conta.plano) : ''}${conta.org ? ' · ' + esc(conta.org) : ''}.`
+          : conta ? 'Instalado, mas sem nenhuma conta conectada.' : `Instalado${st.versao ? ' (versão ' + esc(st.versao) + ')' : ''}.`;
+        return `<div class="nota-aviso">Cada pessoa usa a <b>própria conta</b> do Claude (Pro, Max, Team ou Console). Para usar a ${esc(c.nome)} no computador de outra pessoa, ela instala e entra com a conta dela aqui. Não compartilhe a sua assinatura.</div>
+        <div class="chave"><div>Claude Code neste computador<small>${situacao}</small></div><button class="btn fantasma" data-acao="cc-status">Verificar</button></div>
+        <div class="form">${st && !st.instalado ? '<button class="btn" data-acao="cc-terminal" data-a="instalar">⬇️ Instalar o Claude Code</button>' : ''}${!st || st.instalado ? `<button class="btn${conta && conta.logado ? ' fantasma' : ''}" data-acao="cc-terminal" data-a="entrar">🔑 ${conta && conta.logado ? 'Trocar de conta' : 'Entrar com a conta do Claude'}</button><button class="btn fantasma" data-acao="cc-terminal" data-a="entrar-console">Entrar com o Console (API)</button>${conta && conta.logado && conta.metodo !== 'api_key' ? '<button class="btn fantasma" data-acao="cc-sair">Sair da conta</button>' : ''}` : ''}</div>
+        ${tog('ccContaPropria', `Conta separada só da ${esc(c.nome)}`, `A ${esc(c.nome)} usa um login próprio, sem mexer no Claude Code que já estiver logado neste PC. Bom para computadores de outras pessoas.`)}
+        <div class="grade2"><div class="campo"><label for="cCcChave">Ou: chave de API do Console (opcional)</label><input id="cCcChave" type="password" data-cfg="ccChave" value="${esc(c.ccChave || '')}" placeholder="sk-ant-…" autocomplete="off"><small>Se preencher, o Claude Code usa esta chave (cobrada no Console de quem criou) em vez do login.</small></div>
+        <div class="campo"><label for="cCcModelo">Modelo do Claude Code</label><select id="cCcModelo" data-cfg="ccModelo">${[['sonnet', 'Sonnet (rápido, recomendado para voz)'], ['opus', 'Opus (mais capaz, mais lento)'], ['haiku', 'Haiku (o mais rápido)']].map(([v, n]) => `<option value="${v}"${v === c.ccModelo ? ' selected' : ''}>${n}</option>`).join('')}</select></div></div>`;
+      })()
         : '<div class="nota-aviso">O Claude Code como cérebro só funciona no app instalado (Lumi-Instalador.exe).</div>') : ''}
       ${(c.cerebro || 'auto') === 'api' || ((c.cerebro || 'auto') === 'auto' && !(CC && R.cc && R.cc.instalado)) ? `<div class="nota-aviso">API do Claude: cobrada à parte pela Anthropic na sua conta do Console. A chave fica salva só neste computador.</div>
       <div class="grade2"><div class="campo"><label for="cIa">Chave da API (Claude)</label><input id="cIa" type="password" data-cfg="iaChave" value="${esc(c.iaChave)}" placeholder="sk-ant-…" autocomplete="off"><small>Crie em console.anthropic.com</small></div>
       <div class="campo"><label for="cModelo">Modelo</label><select id="cModelo" data-cfg="iaModelo">${[['claude-opus-5-5', 'Claude Opus 5.5 (mais capaz)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (equilibrado)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (mais rápido e barato)']].map(([v, n]) => `<option value="${v}"${v === c.iaModelo ? ' selected' : ''}>${n}</option>`).join('')}</select></div></div>` : ''}
+      <div class="secao">O que eu aprendi</div>
+      <div class="nota-aviso">Quando eu entender errado, diga "não, eu quis dizer …" (ou "errou" e depois o certo). Eu guardo a correção e, da próxima vez, digo "${esc(Trat())} quis dizer …".</div>
+      ${S.aprendido.length ? `<div class="procs">${S.aprendido.slice(0, 40).map((a) => `<div class="proc"><div class="pn"><b>"${esc(a.original || a.de)}" → "${esc(a.para)}"</b><small>${a.usos ? 'usado ' + a.usos + 'x · ' : ''}${esc(quandoTxt(a.quando))}</small></div><button class="btn fantasma pq" data-acao="aprendido-del" data-id="${a.id}">Esquecer</button></div>`).join('')}</div><div class="form"><button class="btn fantasma" data-acao="aprendido-limpar">Esquecer tudo</button></div>` : '<div class="vazio">Ainda não aprendi nenhuma correção.</div>'}
+      ${TELA ? `<div class="secao">Onde eu fico na tela</div>
+      <div class="nota-aviso">Segure o botão esquerdo do mouse num espaço vazio do painel: eu viro uma gotinha e vou com você. Solte num canto, num lado, embaixo ou em outra tela.</div>
+      <div class="grade2"><div class="campo"><span>Posição</span><div class="grade-pos">${['cima', 'meio', 'baixo'].map((v) => ['esq', 'centro', 'dir'].map((h) => `<button class="${R.pos.v === v && R.pos.h === h ? 'on' : ''}" data-acao="pos" data-pv="${v}" data-ph="${h}" aria-label="${v} ${h}" ${v === 'meio' && h === 'centro' ? 'disabled' : ''}></button>`).join('')).join('')}</div></div>
+      <div class="campo"><label for="cTela">Tela</label><select id="cTela">${R.telas ? R.telas.telas.map((t) => `<option value="${t.id}"${t.id === R.telas.atual ? ' selected' : ''}>${esc(t.nome)}</option>`).join('') : '<option>…</option>'}</select></div></div>` : ''}
       <div class="secao">Dados</div>
       <div class="form"><button class="btn fantasma" data-acao="limpar-conversa">Limpar conversa</button><button class="btn perigo" data-acao="apagar-tudo">Apagar tudo</button></div></div>`;
   }
+  /* ================= tela Sistema: memória, antivírus e energia ================= */
+  const quandoFoi = (iso) => { if (!iso) return 'nunca'; const d = Math.floor((Date.now() - Date.parse(iso)) / 864e5); return d <= 0 ? 'hoje' : d === 1 ? 'ontem' : `há ${d} dias`; };
+  function vSistema() {
+    if (!SIS) return '<h4>Sistema</h4><div class="sub">Só no app instalado</div><div class="nota-aviso">Memória, antivírus e controle do computador funcionam no app instalado (Lumi-Instalador.exe).</div>';
+    const m = R.sis.mem, p = R.sis.prot, e = R.sis.energia, car = R.sis.carregando;
+    const gb = (b) => (b / 1024 ** 3).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+    let mem = car.mem && !m ? '<div class="vazio">Analisando a memória…</div>' : !m ? '<div class="vazio">Toque em Analisar</div>' : m.erro ? `<div class="nota-aviso">Não consegui ler a memória: ${esc(m.erro)}</div>` : '';
+    if (m && !m.erro) {
+      const pct = Math.round((m.total - m.livre) / m.total * 100);
+      mem = `<div class="memtopo"><div class="barra-mem${pct >= 85 ? ' alta' : ''}"><b style="width:${pct}%"></b></div><small>${gb(m.total - m.livre)} de ${gb(m.total)} GB em uso · ${pct}%</small></div>
+        <div class="procs">${m.apps.slice(0, 10).map((x) => `<div class="proc"><div class="pn"><b>${esc(x.rotulo)}</b><small>${[x.qtd > 1 ? x.qtd + ' processos' : '', x.cpu >= 1 ? 'CPU ' + Math.round(x.cpu) + '%' : '', x.titulo && x.titulo !== x.rotulo ? x.titulo : ''].filter(Boolean).map(esc).join(' · ')}</small></div>
+          <span class="mb">${tamanho(x.mb)}</span>${x.protegido ? '<span class="tag">Windows</span>' : `<button class="btn fantasma pq${R.sis.forcar[x.nome] ? ' perigo' : ''}" data-acao="sis-fechar" data-proc="${esc(x.nome)}">${R.sis.forcar[x.nome] ? 'Forçar' : 'Fechar'}</button>`}</div>`).join('')}</div>
+        <small class="dica-sis">"Fechar" pede para o programa fechar (ele pode perguntar se quer salvar). "Forçar" encerra na hora e pode perder o que não foi salvo.</small>`;
+    }
+    let prot = car.prot && !p ? '<div class="vazio">Lendo o antivírus…</div>' : !p ? '' : p.indisponivel ? '<div class="nota-aviso">O antivírus só é verificado no Windows.</div>' : '';
+    if (p && !p.indisponivel) {
+      const ok = (b) => (b ? '✅' : '⚠️');
+      const outros = (p.produtos || []).filter((x) => !/defender/i.test(x));
+      const linhas = [];
+      if (p.erroDefender) linhas.push(`⚠️ Microsoft Defender: ${esc(String(p.erroDefender).slice(0, 120))}`);
+      else linhas.push(`${ok(p.ativo)} Microsoft Defender ${p.ativo ? 'ligado' : 'desligado'}${/passiv/i.test(p.modo || '') ? ' (modo passivo)' : ''}`, `${ok(p.tempoReal)} Proteção em tempo real ${p.tempoReal ? 'ligada' : 'DESLIGADA'}`,
+        `${ok((p.idadeAssinatura || 0) <= 3)} Definições de vírus atualizadas ${quandoFoi(p.assinaturas)}`, `🔎 Última verificação rápida: ${quandoFoi(p.rapida)} · completa: ${quandoFoi(p.completa)}`);
+      if (outros.length) linhas.push(`🛡️ Outro antivírus instalado: ${esc(outros.join(', '))}`);
+      if (p.firewall && p.firewall.length) linhas.push(`${ok(p.firewall.every((f) => f.ligado))} Firewall ${p.firewall.every((f) => f.ligado) ? 'ligado' : 'desligado em: ' + esc(p.firewall.filter((f) => !f.ligado).map((f) => f.nome).join(', '))}`);
+      if (p.discoTotal) linhas.push(`${ok(p.discoLivre / p.discoTotal >= 0.1)} Disco C: ${gb(p.discoLivre)} GB livres de ${gb(p.discoTotal)} GB`);
+      const am = p.ameacas || [];
+      prot = `<div class="nota-aviso">${esc(p.resumo || '')}</div><div class="linhas-sis">${linhas.map((l) => `<div>${l}</div>`).join('')}</div>` +
+        (am.length ? `<div class="secao">Ameaças encontradas</div>${am.map((a) => `<div class="proc"><div class="pn"><b>${esc(a.nome)}</b><small>${esc(new Date(a.quando).toLocaleString('pt-BR'))}${a.arquivos && a.arquivos[0] ? ' · ' + esc(String(a.arquivos[0]).replace(/^\w+:_/, '')) : ''}</small></div><span class="tag${a.ativa || !a.resolvida ? ' ruim' : ''}">${a.ativa || !a.resolvida ? 'pendente' : 'resolvida'}</span></div>`).join('')}` : '') +
+        (p.erroHistorico ? `<small class="dica-sis">Não consegui ler o histórico de ameaças (${esc(String(p.erroHistorico).slice(0, 80))}).</small>` : '');
+    }
+    const verif = R.sis.verif ? `<div class="nota-aviso">🛡️ ${esc(NOME_VERIF[R.sis.verif.tipo] || 'Verificação')} em andamento · <b data-verif>${mmss((Date.now() - R.sis.verif.inicio) / 1000)}</b>. Te aviso quando terminar.</div>` : '';
+    const energia = e ? `<form class="form" id="formEnergia"><input id="senhaEnergia" type="password" placeholder="Senha para ${e === 'desligar' ? 'desligar' : 'reiniciar'}" autocomplete="off" required><button class="btn perigo" type="submit">${e === 'desligar' ? '⏻ Desligar' : '🔄 Reiniciar'} em 30 s</button><button class="btn fantasma" type="button" data-acao="sis-energia-nao">Cancelar</button></form>` : '';
+    return `<h4>Sistema</h4><div class="sub">Memória, antivírus e energia do computador</div><div class="rolar">
+      <div class="secao">Memória RAM <button class="btn fantasma pq" data-acao="sis-mem">${car.mem ? '⏳' : '🔄'} Analisar</button></div>${mem}
+      <div class="secao">Proteção (Microsoft Defender) <button class="btn fantasma pq" data-acao="sis-prot">${car.prot ? '⏳' : '🔄'} Atualizar</button></div>${prot}${verif}
+      <div class="form"><button class="btn" data-acao="sis-verificar" data-tipo="rapida" ${R.sis.verif ? 'disabled' : ''}>🛡️ Verificação rápida</button><button class="btn fantasma" data-acao="sis-verificar" data-tipo="pasta" ${R.sis.verif ? 'disabled' : ''}>📥 Verificar Downloads</button><button class="btn fantasma" data-acao="sis-verificar" data-tipo="completa" ${R.sis.verif ? 'disabled' : ''}>Completa (demora)</button></div>
+      <div class="form"><button class="btn fantasma" data-acao="sis-atualizar">⬇️ Atualizar definições de vírus</button><button class="btn fantasma" data-acao="sis-seguranca">Abrir a Segurança do Windows</button></div>
+      <div class="secao">Energia</div>
+      <div class="form"><button class="btn fantasma" data-acao="sis-energia" data-a="bloquear">🔒 Bloquear</button><button class="btn fantasma" data-acao="sis-energia" data-a="desligar">⏻ Desligar…</button><button class="btn fantasma" data-acao="sis-energia" data-a="reiniciar">🔄 Reiniciar…</button><button class="btn fantasma" data-acao="sis-energia" data-a="cancelar">✋ Cancelar desligamento</button></div>${energia}
+      <small class="dica-sis">Desligar e reiniciar pedem a senha, pela voz ("desliga o computador" → ela pergunta a senha) ou aqui. ${R.sis.senhaPadrao ? 'A senha ainda é a padrão: <b>Sabado</b>.' : ''}</small>
+      <form class="form" id="formSenha"><input id="senhaAtual" type="password" placeholder="Senha atual" autocomplete="off"><input id="senhaNova" type="password" placeholder="Senha nova" autocomplete="off"><button class="btn fantasma" type="submit">Trocar a senha</button></form>
+      </div>`;
+  }
+
   /* ================= Estúdio de voz (criar uma voz Piper própria) ================= */
   const EST = { ctx: null, stream: null, no: null, partes: [] };
   async function estudioAtualizar() {
@@ -1198,7 +1492,7 @@
       <div class="nota-aviso">As gravações ficam em <b>Documentos\\Lumi\\estudio-voz</b> (pasta wavs + metadata.csv). Compacte a pasta em .zip e siga o roteiro "Treinar a voz" (arquivo <b>treino/README.md</b> do projeto): o treino roda de graça numa placa de vídeo na nuvem e gera a voz .onnx, que você adiciona em Ajustes → Voz offline.</div>
       <div class="form"><button class="btn fantasma" data-acao="pasta" data-qual="estudio">📁 Abrir pasta das gravações</button><button class="btn fantasma" data-acao="est-voltar">← Voltar aos Ajustes</button></div></div>`;
   }
-  const VIEWS = { estudio: vEstudio, inicio: vInicio, tarefas: vTarefas, habitos: vHabitos, timers: vTimers, musica: vMusica, notas: vNotas, visual: vVisual, ajustes: vAjustes };
+  const VIEWS = { sistema: vSistema, estudio: vEstudio, inicio: vInicio, tarefas: vTarefas, habitos: vHabitos, timers: vTimers, musica: vMusica, notas: vNotas, visual: vVisual, ajustes: vAjustes };
 
   function renderPrincipal() {
     const ativo = document.activeElement;
@@ -1230,7 +1524,8 @@
     const cr = document.querySelector('[data-crono]'); if (cr) cr.textContent = mmss(cronoSeg());
     atualizarProgresso();
     verificarAgendados();
-    if (S.timers.length || R.crono.rodando || R.trabalho) renderPilula();
+    if (S.timers.length || R.crono.rodando || R.trabalho || R.sis.verif) renderPilula();
+    if (R.sis.verif && R.aberto && R.view === 'sistema') { const el = document.querySelector('[data-verif]'); if (el) el.textContent = mmss((agora - R.sis.verif.inicio) / 1000); }
     if (!R.aberto && R.humor === 'idle' && !R.ouvindo && !R.falando && agora - R.ultimaAtividade > 120e3) setHumor('sleep');
   }
 
@@ -1251,7 +1546,7 @@
   const toque = matchMedia('(hover: none), (pointer: coarse)').matches;
   entalho.addEventListener('mouseenter', () => { if (window.lumiDesktop) window.lumiDesktop.mouse(true); if (!toque) abrir(); });
   entalho.addEventListener('mouseleave', () => {
-    if (toque) return;
+    if (toque || R.arrastando) return;
     fecharT = setTimeout(() => {
       const a = document.activeElement;
       if (a && entalho.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.value) return; // está digitando
@@ -1297,6 +1592,7 @@
       }
       if (k === 'pausas' && S.cfg.pausas) R.ultimaPausa = Date.now();
       if (k === 'voz' && !S.cfg.voz) calar();
+      if (k === 'ccContaPropria') { if (CC) CC.nova(); verificarCC(); }
     },
     'testar-voz': () => { avisouGoogle = false; for (const m in pausaMotor) delete pausaMotor[m]; falar(`Oi${S.cfg.usuario ? ' ' + S.cfg.usuario : ''}! Eu sou a ${S.cfg.nome}. É assim que eu falo.`, true); },
     notificacoes: () => pedirNotificacoes(),
@@ -1308,14 +1604,45 @@
     'est-ouvir': () => { const u = R.estudio.ouvir[R.estudio.i]; if (u) new Audio(u).play().catch(() => {}); },
     'est-voltar': () => { if (!R.estudio.gravando) R.view = 'ajustes'; },
     'cc-nova': async () => { if (CC) await CC.nova(); aviso('🧹 Comecei uma conversa nova'); },
-    'cc-status': async () => { if (!CC) return; R.cc = null; renderPrincipal(); R.cc = await CC.status().catch(() => ({ instalado: false })); },
+    'cc-status': () => verificarCC(),
+    'cc-terminal': async (el) => {
+      const x = await CC.terminal(el.dataset.a, ccOp()).catch((e) => ({ erro: String(e && e.message || e) }));
+      if (x && x.erro) { aviso(x.erro); return; }
+      aviso(el.dataset.a === 'instalar' ? '⬇️ Abri o instalador: siga a janela e depois toque em Verificar' : '🔑 Abri a janela de login: entre com a conta e depois toque em Verificar');
+    },
+    'cc-sair': async () => { if (!confirm('Sair da conta do Claude Code neste computador?')) return; const x = await CC.sair(ccOp()); aviso(x && x.ok ? 'Saí da conta' : (x && x.erro) || 'Não consegui sair'); await verificarCC(); },
+    'sis-mem': () => carregarMemoria(),
+    'sis-prot': () => carregarProtecao(),
+    'sis-fechar': async (el) => {
+      const proc = el.dataset.proc, forcar = !!R.sis.forcar[proc];
+      el.disabled = true;
+      const x = await SIS.fechar('', { processo: proc, forcar });
+      if (x.protegido) aviso(`${x.protegido} é do Windows: não vou fechar`);
+      else if (x.naoAchei) aviso('Ele já tinha fechado');
+      else if (x.restantes && x.restantes.length) { R.sis.forcar[proc] = true; aviso(`${listaE(x.restantes)} não fechou. Toque em Forçar (perde o que não foi salvo)`); }
+      else { delete R.sis.forcar[proc]; aviso(`👋 Fechei ${listaE(x.fechados)}`); }
+      setTimeout(carregarMemoria, 1200);
+    },
+    'sis-verificar': (el) => { const r = iniciarVerificacao(el.dataset.tipo); aviso(r.texto); },
+    'sis-atualizar': async () => { aviso('⬇️ Atualizando as definições de vírus…'); const x = await SIS.atualizar(); aviso(x.ok ? '✅ Definições de vírus atualizadas' : 'Não consegui atualizar: ' + (x.erro || '').slice(0, 90)); carregarProtecao(); },
+    'sis-seguranca': () => SIS.segurancaWindows(),
+    'sis-energia': async (el) => {
+      const a = el.dataset.a;
+      if (a === 'bloquear') { await SIS.energia('bloquear'); return; }
+      if (a === 'cancelar') { const x = await SIS.energia('cancelar'); aviso(x.ok ? '✋ Desligamento cancelado' : 'Não tinha desligamento marcado'); return; }
+      R.sis.energia = a; setTimeout(() => { const c = $('#senhaEnergia'); if (c) c.focus(); }, 50);
+    },
+    'sis-energia-nao': () => { R.sis.energia = null; },
+    'aprendido-del': (el) => { S.aprendido = S.aprendido.filter((a) => a.id !== el.dataset.id); salvar(); },
+    'aprendido-limpar': () => { if (confirm('Esquecer todas as correções que eu aprendi?')) { S.aprendido = []; salvar(); } },
+    pos: async (el) => { if (!TELA) return; R.pos = { v: el.dataset.pv, h: el.dataset.ph }; await TELA.posicionar(R.pos); },
     'limpar-conversa': () => { S.chat = []; salvar(); aviso('Conversa apagada'); },
     'apagar-tudo': () => { if (!confirm(`Apagar tarefas, notas, hábitos, conversa e ajustes da ${S.cfg.nome}?`)) return; try { localStorage.removeItem(CHAVE); } catch (_) { /* ignora */ } location.reload(); },
     'buscar-pos': (el, e) => { if (!audio.duration) return; const r = el.getBoundingClientRect(); audio.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * audio.duration; },
   };
   entalho.addEventListener('click', async (e) => {
     R.ultimaAtividade = Date.now();
-    const v = e.target.closest('[data-v]'); if (v) { R.view = v.dataset.v; render(); return; }
+    const v = e.target.closest('[data-v]'); if (v) { R.view = v.dataset.v; if (R.view === 'sistema') carregarSistema(); if (R.view === 'ajustes' && TELA) TELA.listar().then((t) => { R.telas = t; if (R.view === 'ajustes') renderPrincipal(); }).catch(() => {}); render(); return; }
     const d = e.target.closest('[data-diz]'); if (d) { processar(d.dataset.diz); return; }
     const sp = e.target.closest('[data-spot]'); if (sp) { spotifyComando(sp.dataset.spot); return; }
     const m = e.target.closest('[data-mus]'); if (m) { if (!R.musica.lista.length) { R.view = 'musica'; render(); return; } musica(m.dataset.mus); return; }
@@ -1333,6 +1660,15 @@
       const min = parseFloat(String($('#timerMin').value).replace(',', '.')); if (!(min > 0)) { aviso('Quantos minutos?'); return; }
       const t = criarTimer(Math.round(min * 60), $('#timerNome').value.trim() || 'Timer'); delete R.rascunhos.timerNome; delete R.rascunhos.timerMin; aviso(`⏱ Timer "${t.nome}" iniciado`); render(); return;
     }
+    if (f.id === 'formEnergia' && SIS && R.sis.energia) {
+      const acao = R.sis.energia, senha = $('#senhaEnergia').value; R.sis.energia = null;
+      confirmarEnergia({ acao, segundos: 30 }, senha).then((r) => { aviso(r.texto); addChat('k', r.texto); render(); if (S.cfg.voz) falar(r.texto); });
+      render(); return;
+    }
+    if (f.id === 'formSenha' && SIS) {
+      SIS.trocarSenha($('#senhaAtual').value, $('#senhaNova').value).then((x) => { aviso(x.ok ? '🔐 Senha trocada' : x.erro); if (x.ok) { R.sis.senhaPadrao = false; render(); } });
+      return;
+    }
     if (f.id === 'formNota') { const t = $('#novaNota').value.trim(); if (!t) return; S.notas.unshift({ id: uid(), t, ts: Date.now() }); delete R.rascunhos.novaNota; salvar(); setHumor('success', 1500); render(); return; }
     if (f.id === 'formSpotify') { const q = $('#buscaSpotify').value.trim(); if (!q) return; const url = 'https://open.spotify.com/search/' + encodeURIComponent(q); abrirLink(url); delete R.rascunhos.buscaSpotify; aviso('🎵 Abrindo o Spotify'); }
   });
@@ -1345,6 +1681,7 @@
   entalho.addEventListener('change', (e) => {
     const el = e.target;
     if (el.hasAttribute('data-meta')) { S.habitos.meta = Number(el.value); S.habitos.agua = Math.min(S.habitos.agua, S.habitos.meta); salvar(); render(); return; }
+    if (el.id === 'cTela' && TELA) { TELA.posicionar({ tela: Number(el.value) }).then(() => TELA.listar()).then((t) => { R.telas = t; }).catch(() => {}); return; }
     if (!el.hasAttribute('data-cfg')) return;
     const k = el.dataset.cfg; let v = el.hasAttribute('data-num') ? Number(el.value) : el.value.trim();
     if (k === 'nome') v = v || 'Lumi';
@@ -1353,6 +1690,8 @@
     if (/^(vozMotor|gemini|cloud)/.test(k)) { avisouGoogle = false; cacheFala.clear(); for (const m in pausaMotor) delete pausaMotor[m]; }
     if (k === 'reconhecimento' || k === 'whisperModelo') { prepararWhisper(); renderPrincipal(); }
     if (k === 'vozMotor' || k === 'cerebro') renderPrincipal();
+    if (k === 'ccChave') { if (CC) CC.nova(); verificarCC(); }
+    if (k === 'tratamento') renderPrincipal();
     if (k === 'nome' || k === 'usuario') renderLado();
   });
   $('#arquivosMusica').addEventListener('change', (e) => { adicionarMusicas(e.target.files); e.target.value = ''; });
@@ -1369,6 +1708,43 @@
     else if (e.key === ' ' && R.aberto && R.view === 'estudio' && !/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test((document.activeElement || {}).tagName || '')) { e.preventDefault(); if (R.estudio.gravando) estudioParar(); else estudioGravar(); }
     else if (e.key === 'Escape') { if (R.alarme) pararAlarme(); else if (R.falando) calar(); else if (R.ouvindo && voz.rec) voz.rec.abort(); else fechar(); }
   });
+
+  /* arrastar (app instalado): segurar o botão esquerdo num espaço vazio vira uma gotinha que segue o mouse */
+  if (TELA) {
+    const LADOS = ['pv-cima', 'pv-meio', 'pv-baixo', 'ph-esq', 'ph-centro', 'ph-dir'];
+    TELA.aoMudar((p) => {
+      R.pos = p; document.body.classList.remove(...LADOS); document.body.classList.add('pv-' + p.v, 'ph-' + p.h);
+      if (R.arrastando) { R.arrastando = false; document.body.classList.remove('arrastando'); fechar(); window.lumiDesktop.mouse(false); }
+      if (R.view === 'ajustes' && R.aberto) TELA.listar().then((t) => { R.telas = t; renderPrincipal(); }).catch(() => {});
+    });
+    const INTERATIVO = 'button, a, input, select, textarea, label, summary, [data-acao], [data-v], [data-diz], [data-spot], [data-mus], [contenteditable], .msg, .proc, .chip';
+    let segurar = null;
+    entalho.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || R.arrastando || e.target.closest(INTERATIVO)) return;
+      const x0 = e.screenX, y0 = e.screenY, id = e.pointerId;
+      const parar = () => { clearTimeout(segurar); removeEventListener('pointermove', mexeu); removeEventListener('pointerup', parar); };
+      const mexeu = (ev) => { if (Math.hypot(ev.screenX - x0, ev.screenY - y0) > 6) parar(); }; // mexeu antes: é seleção de texto, não arrasto
+      addEventListener('pointermove', mexeu); addEventListener('pointerup', parar);
+      clearTimeout(segurar);
+      segurar = setTimeout(() => { parar(); comecarArrasto(x0, y0, id); }, 260);
+    });
+  }
+  function comecarArrasto(x, y, id) {
+    R.arrastando = true; calar(); document.body.classList.add('arrastando');
+    try { document.documentElement.setPointerCapture(id); } catch (_) { /* segue sem captura */ }
+    TELA.arrastar('inicio');
+    const gota = $('#gota');
+    let ux = x, uy = y, ut = performance.now(), relaxar = null;
+    const mover = (ev) => {
+      const agora = performance.now(), dt = Math.max(8, agora - ut);
+      const vx = (ev.screenX - ux) / dt, vy = (ev.screenY - uy) / dt; ux = ev.screenX; uy = ev.screenY; ut = agora;
+      const v = Math.min(1.5, Math.hypot(vx, vy));
+      if (v > 0.05) { gota.style.setProperty('--ang', (Math.atan2(vy, vx) * 180 / Math.PI).toFixed(1) + 'deg'); gota.style.setProperty('--estica', (1 + v * 0.3).toFixed(3)); }
+      clearTimeout(relaxar); relaxar = setTimeout(() => gota.style.setProperty('--estica', '1'), 90);
+    };
+    const soltar = () => { removeEventListener('pointermove', mover); removeEventListener('pointerup', soltar); clearTimeout(relaxar); gota.style.setProperty('--estica', '1'); TELA.arrastar('fim'); };
+    addEventListener('pointermove', mover); addEventListener('pointerup', soltar);
+  }
 
   /* olhos seguem o mouse; acorda quando você volta */
   addEventListener('pointermove', (e) => {
@@ -1390,7 +1766,8 @@
   if (window.lumiDesktop && window.lumiDesktop.vozInfo) {
     window.lumiDesktop.vozInfo().then((i) => { R.vozOff = i; render(); if (S.cfg.sempreOuvindo) iniciarEscuta(); }).catch(() => { R.vozOff = { disponivel: false }; });
   }
-  if (CC) CC.status().then((st) => { R.cc = st; render(); }).catch(() => { R.cc = { instalado: false }; });
+  if (CC) CC.status(ccOp()).then((st) => { R.cc = st; render(); }).catch(() => { R.cc = { instalado: false }; });
+  if (SIS) SIS.verificando().then((v) => { if (v) { R.sis.verif = v; render(); } }).catch(() => {});
   if (SPOT) { SPOT.aoMudar(receberSpotify); SPOT.estado().then(receberSpotify).catch(() => {}); }
   if (window.lumiDesktop) {
     window.lumiDesktop.aoAtalho((qual) => { if (qual === 'ouvir') { abrir(); ouvir(); } else if (R.aberto) fechar(); else abrir(true); });

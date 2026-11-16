@@ -164,6 +164,8 @@
     drive: 'https://drive.google.com', linkedin: 'https://www.linkedin.com', github: 'https://github.com', tiktok: 'https://www.tiktok.com', claude: 'https://claude.ai', google: 'https://www.google.com',
     tradutor: 'https://translate.google.com', 'notícias': 'https://news.google.com/?hl=pt-BR&gl=BR&ceid=BR:pt-419', noticias: 'https://news.google.com/?hl=pt-BR&gl=BR&ceid=BR:pt-419',
   };
+  // estes abrem sempre no navegador; os outros sites tentam primeiro o app instalado (WhatsApp, Spotify…)
+  const SO_SITE = new Set(['youtube', 'gmail', 'e-mail', 'email', 'agenda', 'calendário', 'calendario', 'mapa', 'mapas', 'maps', 'drive', 'google', 'tradutor', 'notícias', 'noticias', 'github']);
   const ACESSORIOS_FALA = [
     [/coroa de flores|coroinha de flores|guirlanda/, 'coroaflores'], [/tiara/, 'tiara'], [/brincos?/, 'brincos'], [/presilha|cora[cç][aã]o/, 'presilha'], [/la[cç][aã]o|la[cç]o grande/, 'lacao'],
     [/chap[eé]u de festa|festa/, 'festa'], [/coroa/, 'coroa'], [/fones?/, 'fones'], [/la[cç]o|lacinho/, 'laco'], [/gorro de natal|touca de natal|natal/, 'natal'], [/gorro|touca/, 'gorro'],
@@ -209,8 +211,31 @@
     // ajuda
     if (/^(?:ajuda|socorro|comandos)$|o que (?:voc[eê] |vc )?(?:faz|sabe fazer|pode fazer|consegue fazer)|como (?:eu )?(?:te )?uso/u.test(s)) return { tipo: 'ajuda' };
 
+    // computador: ligação, energia, memória, antivírus, fechar apps e conversas
+    let m;
+    if (/(?:sai|sair|saia|saio|desliga|desligar|desligue|encerra|encerrar|termina|terminar|finaliza|fecha|fechar|larga)\s+(?:d[aeo]s?\s+|a\s+|o\s+|essa\s+|esta\s+)?(?:liga[cç](?:[aã]o|ões)|chamada|reuni[aã]o|call|meet|videochamada|v[ií]deo ?chamada)|sai(?:r)? d[ao] (?:call|meet|zoom|teams)/u.test(s)) return { tipo: 'sair_ligacao' };
+    if (/cancel\w*\s+(?:o\s+|a\s+)?(?:desligamento|rein[ií]cio|reinicializa[cç][aã]o|desligar|reiniciar)|n[aã]o (?:desliga|desligue|reinicia)/u.test(s)) return { tipo: 'energia', acao: 'cancelar' };
+    m = /(?:^|\s)(desliga|desligar|desligue|reinicia|reiniciar|reinicie|bloqueia|bloquear|bloqueie|trava|travar)\s+(?:o\s+|a\s+|meu\s+|minha\s+)?(pc|computador|notebook|m[aá]quina|sistema|windows|tela)(?:$|\s)/u.exec(s);
+    if (m) {
+      if (/^(?:bloque|trav)/.test(m[1])) return { tipo: 'energia', acao: 'bloquear' };
+      if (m[2] !== 'tela') { const d = duracao(nt).segundos; return { tipo: 'energia', acao: /^desl/.test(m[1]) ? 'desligar' : 'reiniciar', segundos: d ? Math.min(86400, Math.max(30, d)) : 30 }; }
+    }
+    if (/(?:o que|quem|qual (?:programa|app|aplicativo)|quais (?:programas|apps))\b.*(?:gastando|usando|consumindo|comendo|pesando|ocupando|puxando).*(?:mem[oó]ria|ram|processador|cpu|pc|computador)|(?:analis\w+|verifica\w*|v[eê]|mostra)\s+(?:a\s+)?(?:minha\s+)?(?:mem[oó]ria|ram)|(?:mem[oó]ria|ram)\s+(?:est[aá]|t[aá])\s+(?:cheia|alta|lotada)|(?:pc|computador|notebook)\s+(?:est[aá]|t[aá])\s+(?:lento|travando|pesado|devagar)|uso de (?:mem[oó]ria|ram)|quanta (?:mem[oó]ria|ram)/u.test(s)) return { tipo: 'memoria' };
+    if (/antiv[ií]rus|v[ií]rus|malware|amea[cç]as?|varredura|escane|(?:pc|computador) (?:est[aá] |t[aá] )?(?:seguro|protegido|infectado)|defender|verifica[cç][aã]o (?:no|do) (?:pc|computador)|verifica[cç][aã]o (?:r[aá]pida|completa)|(?:verifica|escaneia|analisa)\s+(?:a\s+)?(?:pasta\s+)?(?:de\s+)?downloads|verifica (?:o\s+)?(?:pc|computador)/u.test(s)) {
+      const fazer = /(?:verifica|escaneia|escanear|analisa|analisar|passa|passar|roda|rodar|faz|fazer|procura|procurar|checa|checar|varredura|escaneamento)/u.test(s) && !/(?:como|status|est[aá]|t[aá] ligado|ligado\?)/u.test(s.replace(/verifica[cç][aã]o/u, ''));
+      const alvo = /downloads?/u.test(s) ? 'pasta' : /complet/u.test(s) ? 'completa' : 'rapida';
+      return { tipo: 'antivirus', acao: fazer ? 'verificar' : 'status', alvo };
+    }
+    m = /^(?:abre|abrir|abra|entra|entrar|vai|ir|me leva)\s+(?:na\s+|a\s+|em\s+|pra\s+)?conversa\s+(?:com|d[oae]|no|na)\s+(?:o\s+|a\s+)?(.+)$/u.exec(s)
+      || /^(?:abre|abrir|abra)\s+(?:o\s+)?(?:whatsapp|whats|zap)\s+(?:d[oae]|com)\s+(?:o\s+|a\s+)?(.+)$/u.exec(s)
+      || /^(?:manda|mandar|envia|enviar)\s+(?:uma\s+)?(?:mensagem|msg|zap|whats)\s+(?:pr[oa]|pra|para|ao|à)\s+(?:o\s+|a\s+)?(.+)$/u.exec(s);
+    if (m) return { tipo: 'conversa', contato: m[1].replace(/\s+(?:no|pelo)\s+(?:whatsapp|whats|zap)$/u, '').trim() };
+    m = /^(?:fecha|fechar|feche|encerra|encerrar|encerre|mata|matar|finaliza|finalizar|sai do|sai da)\s+(?:o\s+|a\s+|os\s+|as\s+|meu\s+|minha\s+)?(?:programa\s+|aplicativo\s+|app\s+|janela d[oa]\s+)?(.+)$/u.exec(s);
+    if (m && !/^(?:painel|isso|aqui|tudo|todos|todas|o painel|a janela)$/u.test(m[1]) && !/timer|alarme|lembrete|tarefa/u.test(m[1])) return { tipo: 'fechar_app', alvo: m[1].replace(/\s+(?:pra mim|por favor|agora)$/u, '').trim() };
+    if (/^(?:fecha|fechar)\s+(?:tudo|todos(?: os programas)?|todas as janelas)$/u.test(s)) return { tipo: 'fechar_app', alvo: 'tudo' };
+
     // coisas que só um app de desktop com permissões faz
-    if (/(?:desliga|desligar|reinicia|reiniciar|hiberna|suspende)\s+(?:o\s+)?(?:pc|computador|notebook|m[aá]quina)|organiza\s+(?:a\s+)?(?:minha\s+)?[aá]rea de trabalho|(?:procura|acha|encontra)\s+(?:o\s+|um\s+)?arquivo|fecha\s+(?:o\s+)?(?:programa|aplicativo|app|chrome)|(?:cria|criar)\s+(?:uma\s+)?pasta|abre\s+(?:a\s+)?pasta/u.test(s)) {
+    if (/(?:hiberna|suspende)\s+(?:o\s+)?(?:pc|computador|notebook|m[aá]quina)|organiza\s+(?:a\s+)?(?:minha\s+)?[aá]rea de trabalho|(?:procura|acha|encontra)\s+(?:o\s+|um\s+)?arquivo|(?:cria|criar)\s+(?:uma\s+)?pasta|abre\s+(?:a\s+)?pasta/u.test(s)) {
       return { tipo: 'desktop', pedido: s };
     }
 
@@ -263,7 +288,7 @@
 
     // tarefas
     if (/^(?:quais s[aã]o |ver |lista |listar |mostra |me mostra |l[eê] )?(?:as )?(?:minhas )?tarefas(?: de hoje| pendentes)?$|o que (?:eu )?tenho (?:pra|para) (?:hoje|fazer)|minha lista/u.test(s)) return { tipo: 'tarefas_listar' };
-    let m = /^(?:conclui|concluir|terminei|marca|marcar|finaliza|finalizar|fiz)\s+(?:a\s+)?(?:tarefa\s+)?(?:de\s+)?(.+?)(?:\s+como\s+(?:feita|conclu[ií]da))?$/u.exec(s);
+    m = /^(?:conclui|concluir|terminei|marca|marcar|finaliza|finalizar|fiz)\s+(?:a\s+)?(?:tarefa\s+)?(?:de\s+)?(.+?)(?:\s+como\s+(?:feita|conclu[ií]da))?$/u.exec(s);
     if (m && /tarefa|como (?:feita|conclu)|^terminei|^conclui/u.test(s)) return { tipo: 'tarefa_concluir', busca: m[1].replace(/^tarefa\s+/, '') };
     m = /^(?:cria|criar|crie|adiciona|adicionar|adicione|nova|novo|coloca|bota|põe|poe|anota|registra|inclui)\s+(?:uma\s+|a\s+)?(?:nova\s+)?tarefas?\s*(?:de|:|para|pra|que|na lista)?\s*(.*)$|^tarefa\s*:?\s+(.+)$/u.exec(s);
     if (m) {
@@ -289,7 +314,7 @@
 
     // música
     if (/o que (?:est[aá]|t[aá]) tocando|que m[uú]sica (?:[eé] essa|[eé] esta|t[aá] tocando|est[aá] tocando)|qual (?:[eé] )?(?:a |essa |esta )?m[uú]sica|quem (?:canta|t[aá] cantando|est[aá] cantando)/u.test(s)) return { tipo: 'musica_atual' };
-    if (/^(?:pausa|pausar|pause|para a m[uú]sica|para de tocar|para o som|pausa a m[uú]sica)$/u.test(s)) return { tipo: 'musica', acao: 'pausar' };
+    if (/^(?:pausa|pausar|pause|para a m[uú]sica|desliga a m[uú]sica|desliga o som|para de tocar|para o som|pausa a m[uú]sica)$/u.test(s)) return { tipo: 'musica', acao: 'pausar' };
     if (/^(?:continua|continuar|despausa|volta a tocar|retoma|play|solta o som)$/u.test(s)) return { tipo: 'musica', acao: 'continuar' };
     if (/^(?:pr[oó]xima|pula|pular|avan[cç]a|passa)(?: (?:a )?m[uú]sica| essa)?$|^pr[oó]xima m[uú]sica$/u.test(s)) return { tipo: 'musica', acao: 'proxima' };
     if (/^(?:anterior|volta|voltar)(?: (?:a )?m[uú]sica)?$|^m[uú]sica anterior$/u.test(s)) return { tipo: 'musica', acao: 'anterior' };
@@ -366,9 +391,9 @@
     if (m) {
       const alvo = m[1].trim();
       const chave = Object.keys(SITES).find((k) => alvo === k || alvo.startsWith(k + ' ') || alvo.endsWith(' ' + k));
-      if (chave) return { tipo: 'abrir', url: SITES[chave], nome: chave };
+      if (chave) return { tipo: 'abrir', url: SITES[chave], nome: chave, app: !SO_SITE.has(chave) };
       if (/^[\w-]+(?:\.[\w-]+)+(?:\/\S*)?$/.test(alvo)) return { tipo: 'abrir', url: 'https://' + alvo, nome: alvo };
-      return { tipo: 'desktop', pedido: s };
+      return { tipo: 'abrir_app', alvo: alvo.replace(/\s+(?:pra mim|por favor|agora)$/u, '') };
     }
 
     // personalização

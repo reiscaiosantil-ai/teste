@@ -7,6 +7,7 @@ const spotify = require('./spotify');
 const claudeCode = require('./claude-code');
 const whisper = require('./whisper');
 const piper = require('./piper');
+const sistema = require('./sistema');
 
 const LARGURA = 900, ALTURA = 580;
 let janela = null, olhoSpotify = null;
@@ -15,11 +16,43 @@ let janela = null, olhoSpotify = null;
 const MODELO_VOZ = app.isPackaged ? path.join(process.resourcesPath, 'voz', 'modelo-pt.tar.gz') : path.join(__dirname, '..', 'voz', 'modelo-pt.tar.gz');
 protocol.registerSchemesAsPrivileged([{ scheme: 'lumivoz', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }]);
 
+/* Onde ela fica: em qual tela e em qual canto/lado (arrastando, ou em Ajustes). Fica salvo em posicao.json. */
+const ARQ_POSICAO = () => path.join(app.getPath('userData'), 'posicao.json');
+const VERT = ['cima', 'meio', 'baixo'], HORIZ = ['esq', 'centro', 'dir'];
+let pos = { tela: null, v: 'cima', h: 'centro' };
+function lerPosicao() {
+  try { const d = JSON.parse(fs.readFileSync(ARQ_POSICAO(), 'utf8')); if (VERT.includes(d.v) && HORIZ.includes(d.h)) pos = { tela: d.tela ?? null, v: d.v, h: d.h }; } catch (_) { /* padrão: topo, no meio */ }
+}
+function salvarPosicao() { try { fs.writeFileSync(ARQ_POSICAO(), JSON.stringify(pos)); } catch (_) { /* sem disco */ } }
+function telaAtual() { return screen.getAllDisplays().find((d) => d.id === pos.tela) || screen.getPrimaryDisplay(); }
 function posicionar() {
-  if (!janela) return;
-  const tela = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-  const { x, y, width } = tela.workArea;
-  janela.setBounds({ x: Math.round(x + (width - LARGURA) / 2), y, width: LARGURA, height: ALTURA });
+  if (!janela || arrasto) return;
+  const { x, y, width, height } = telaAtual().workArea;
+  const nx = pos.h === 'esq' ? x : pos.h === 'dir' ? x + width - LARGURA : x + (width - LARGURA) / 2;
+  const ny = pos.v === 'cima' ? y : pos.v === 'baixo' ? y + height - ALTURA : y + (height - ALTURA) / 2;
+  janela.setBounds({ x: Math.round(nx), y: Math.round(ny), width: LARGURA, height: ALTURA });
+  janela.webContents.send('lumi:posicao', { v: pos.v, h: pos.h });
+}
+// arrastar: enquanto o botão está segurado a janela vira uma gotinha que segue o mouse
+const GOTA = 150;
+let arrasto = null;
+function comecarArrasto() {
+  if (!janela || arrasto) return;
+  janela.setIgnoreMouseEvents(false);
+  const seguir = () => { const c = screen.getCursorScreenPoint(); janela.setBounds({ x: c.x - GOTA / 2, y: c.y - GOTA / 2, width: GOTA, height: GOTA }); };
+  seguir();
+  arrasto = { t: setInterval(seguir, 16), limite: setTimeout(terminarArrasto, 60000) };
+}
+function terminarArrasto() {
+  if (!arrasto) return;
+  clearInterval(arrasto.t); clearTimeout(arrasto.limite); arrasto = null;
+  const c = screen.getCursorScreenPoint(), tela = screen.getDisplayNearestPoint(c), wa = tela.workArea;
+  const fx = (c.x - wa.x) / wa.width, fy = (c.y - wa.y) / wa.height;
+  let h = fx < 1 / 3 ? 'esq' : fx > 2 / 3 ? 'dir' : 'centro', v = fy < 1 / 3 ? 'cima' : fy > 2 / 3 ? 'baixo' : 'meio';
+  if (v === 'meio' && h === 'centro') v = 'cima'; // soltou no meio da tela: volta para o topo
+  pos = { tela: tela.id, v, h }; salvarPosicao();
+  posicionar();
+  janela.setIgnoreMouseEvents(true, { forward: true });
 }
 
 function criar() {
@@ -32,7 +65,9 @@ function criar() {
   janela.setAlwaysOnTop(true, 'screen-saver');
   janela.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
   janela.setIgnoreMouseEvents(true, { forward: true }); // só o entalho recebe o mouse
+  lerPosicao();
   posicionar();
+  janela.webContents.on('did-finish-load', () => janela.webContents.send('lumi:posicao', { v: pos.v, h: pos.h }));
   janela.loadFile(path.join(__dirname, '..', 'index.html'), { query: { desktop: '1' } });
   janela.once('ready-to-show', () => janela.showInactive());
 
@@ -42,6 +77,7 @@ function criar() {
 }
 
 app.whenReady().then(() => {
+  claudeCode.definirPastaConta(path.join(app.getPath('userData'), 'claude-conta'));
   protocol.handle('lumivoz', async () => {
     try {
       const dados = await fs.promises.readFile(MODELO_VOZ);
@@ -105,12 +141,46 @@ ipcMain.handle('lumi:estudio-salvar', (_e, indice, texto, wav) => {
 });
 
 ipcMain.handle('lumi:voz-info', () => ({ disponivel: fs.existsSync(MODELO_VOZ), url: 'lumivoz://modelo/pt.tar.gz' }));
-ipcMain.handle('lumi:cc-status', () => claudeCode.status());
+// cada pessoa conecta a própria conta: login do PC, conta separada só da assistente, ou chave de API do Console
+const opConta = (op) => ({ chave: String((op && op.chave) || '').slice(0, 300), contaPropria: !!(op && op.contaPropria) });
+ipcMain.handle('lumi:cc-status', (_e, op) => claudeCode.status(opConta(op)));
 ipcMain.handle('lumi:cc-pensar', (_e, p) => claudeCode.pensar({
   pedido: String((p && p.pedido) || ''), nome: String((p && p.nome) || 'Lumi').slice(0, 30),
   usuario: String((p && p.usuario) || '').slice(0, 40), personalidade: String((p && p.personalidade) || 'fofo'), modelo: String((p && p.modelo) || 'sonnet'),
+  ...opConta(p),
 }));
 ipcMain.handle('lumi:cc-nova', () => { claudeCode.novaConversa(); return true; });
+ipcMain.handle('lumi:cc-terminal', (_e, acao, op) => claudeCode.abrirTerminal(['instalar', 'entrar', 'entrar-console', 'sair'].includes(acao) ? acao : 'entrar', opConta(op)));
+ipcMain.handle('lumi:cc-sair', (_e, op) => claudeCode.sair(opConta(op)));
+
+// computador: memória, antivírus, apps, conversas, ligações e energia (desligar só com a senha)
+const abrirUrl = (u) => shell.openExternal(u);
+const txt = (t, n = 200) => String(t || '').slice(0, n);
+ipcMain.handle('lumi:sis-memoria', () => sistema.memoria());
+ipcMain.handle('lumi:sis-fechar', (_e, alvo, op) => sistema.fechar(txt(alvo, 120), { forcar: !!(op && op.forcar), processo: txt(op && op.processo, 80) }));
+ipcMain.handle('lumi:sis-abrir', (_e, alvo) => sistema.abrir(txt(alvo, 120), abrirUrl));
+ipcMain.handle('lumi:sis-conversa', (_e, contato) => sistema.conversa(txt(contato, 80), abrirUrl));
+ipcMain.handle('lumi:sis-ligacao', () => sistema.sairLigacao());
+ipcMain.handle('lumi:sis-energia', (_e, acao, senha, nome, segundos) => sistema.energia(txt(acao, 20), txt(senha, 200), app.getPath('userData'), txt(nome, 30) || 'A assistente', Number(segundos) || 30));
+ipcMain.handle('lumi:sis-senha', (_e, atual, nova) => sistema.trocarSenha(app.getPath('userData'), txt(atual, 200), txt(nova, 200)));
+ipcMain.handle('lumi:sis-senha-padrao', () => !!sistema.lerSeguranca(app.getPath('userData')).padrao);
+ipcMain.handle('lumi:sis-protecao', () => sistema.protecao());
+ipcMain.handle('lumi:sis-verificar', (_e, tipo) => sistema.verificar(txt(tipo, 20), app.getPath('downloads')));
+ipcMain.handle('lumi:sis-verificando', () => sistema.estadoVerificacao());
+ipcMain.handle('lumi:sis-atualizar', () => sistema.atualizarProtecao());
+ipcMain.handle('lumi:sis-seguranca-windows', () => shell.openExternal('windowsdefender://threat/').then(() => true).catch(() => false));
+
+// posição na tela
+ipcMain.on('lumi:arrastar', (_e, fase) => { if (fase === 'inicio') comecarArrasto(); else terminarArrasto(); });
+ipcMain.handle('lumi:telas', () => {
+  const prim = screen.getPrimaryDisplay().id, atual = telaAtual().id;
+  return { atual, v: pos.v, h: pos.h, telas: screen.getAllDisplays().map((d, i) => ({ id: d.id, nome: `Tela ${i + 1} · ${d.size.width}×${d.size.height}${d.id === prim ? ' (principal)' : ''}` })) };
+});
+ipcMain.handle('lumi:posicionar', (_e, p) => {
+  if (p && VERT.includes(p.v) && HORIZ.includes(p.h)) { pos.v = p.v; pos.h = p.h; }
+  if (p && p.tela !== undefined && screen.getAllDisplays().some((d) => d.id === p.tela)) pos.tela = p.tela;
+  salvarPosicao(); posicionar(); return true;
+});
 
 ipcMain.handle('lumi:capa', (_e, musica, artista) => spotify.buscarCapa(String(musica || '').slice(0, 200), String(artista || '').slice(0, 200)));
 ipcMain.handle('lumi:spotify-estado', () => (olhoSpotify ? olhoSpotify.estado() : null));
@@ -122,9 +192,9 @@ ipcMain.handle('lumi:spotify-buscar', async (_e, busca) => {
   }
 });
 
-ipcMain.on('lumi:mouse', (_e, dentro) => { if (janela) janela.setIgnoreMouseEvents(!dentro, { forward: true }); });
+ipcMain.on('lumi:mouse', (_e, dentro) => { if (janela && !arrasto) janela.setIgnoreMouseEvents(!dentro, { forward: true }); });
 ipcMain.on('lumi:aberto', (_e, aberto) => {
-  if (!janela) return;
+  if (!janela || arrasto) return;
   if (aberto) { janela.setIgnoreMouseEvents(false); janela.focus(); }
 });
 

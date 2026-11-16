@@ -41,10 +41,24 @@ function rodar(exe, args, opcoes) {
   return spawn(exe, args, opcoes);
 }
 
-function executar(exe, args, entrada, ms) {
+/* Conta usada: a de quem estiver logado no Claude Code deste PC, uma conta separada só da assistente
+   (CLAUDE_CONFIG_DIR próprio) ou uma chave de API do Console (ANTHROPIC_API_KEY, sempre usada no modo -p).
+   Cada pessoa conecta a própria conta: nada aqui guarda ou compartilha a assinatura de outra pessoa. */
+let pastaContaPropria = path.join(os.homedir(), '.lumi-claude');
+function definirPastaConta(p) { pastaContaPropria = p; }
+function ambiente(op = {}) {
+  const env = { ...process.env };
+  if (op.contaPropria) { fs.mkdirSync(pastaContaPropria, { recursive: true }); env.CLAUDE_CONFIG_DIR = pastaContaPropria; }
+  const chave = String(op.chave || '').trim();
+  if (/^sk-ant-[\w-]{10,}$/.test(chave)) env.ANTHROPIC_API_KEY = chave;
+  else delete env.ANTHROPIC_API_KEY; // uma chave esquecida no sistema não deve passar na frente do login escolhido
+  return env;
+}
+
+function executar(exe, args, entrada, ms, env) {
   return new Promise((ok) => {
     let saida = '', erro = '', fim = false;
-    const p = rodar(exe, args, { cwd: PASTA, windowsHide: true, env: process.env });
+    const p = rodar(exe, args, { cwd: PASTA, windowsHide: true, env: env || process.env });
     const t = setTimeout(() => { if (!fim) { fim = true; try { p.kill(); } catch (_) { /* já saiu */ } ok({ tempoEsgotado: true, saida, erro }); } }, ms);
     p.stdout.on('data', (d) => { saida += d; });
     p.stderr.on('data', (d) => { erro += d; });
@@ -105,10 +119,10 @@ function interpretarSaida(saida, erro) {
   try { d = JSON.parse(linhas[linhas.length - 1]); } catch (_) { d = null; }
   const tudo = `${d && d.result ? d.result : ''} ${erro || ''} ${d ? '' : saida || ''}`.toLowerCase();
   if (/not logged in|please run \/login|\/login|invalid api key|oauth|authenticat/.test(tudo) && (!d || d.is_error)) {
-    return { erro: 'login', texto: 'O Claude Code não está logado neste computador. Abra o terminal, digite claude e faça o login.' };
+    return { erro: 'login', texto: 'O Claude Code não está conectado a nenhuma conta neste computador. Em Ajustes, no Cérebro, toque em "Entrar com a conta do Claude".' };
   }
   if (/usage limit|limit reached|rate limit|limite de uso/.test(tudo) && (!d || d.is_error)) {
-    return { erro: 'limite', texto: 'Você atingiu o limite de uso do seu plano do Claude por agora. Os meus comandos continuam funcionando.' };
+    return { erro: 'limite', texto: 'A conta do Claude conectada atingiu o limite de uso por agora. Os meus comandos continuam funcionando.' };
   }
   if (!d) return { erro: 'saida', texto: 'O Claude Code não respondeu direito. ' + String(erro || saida || '').trim().slice(0, 140) };
   if (d.is_error) return { erro: 'claude', texto: 'O Claude Code deu um erro: ' + String(d.result || d.subtype || '').slice(0, 160), sessao: d.session_id };
@@ -121,7 +135,8 @@ function interpretarSaida(saida, erro) {
  */
 async function pensar(p) {
   const exe = acharExecutavel();
-  if (!exe) return { erro: 'ausente', texto: 'Não encontrei o Claude Code neste computador. Instale e faça o login, ou troque o cérebro em Ajustes.' };
+  if (!exe) return { erro: 'ausente', texto: 'Não encontrei o Claude Code neste computador. Em Ajustes, no Cérebro, toque em "Instalar o Claude Code", ou troque o cérebro.' };
+  const env = ambiente(p);
   prepararPasta(p);
   const modelo = MODELOS.includes(p.modelo) ? p.modelo : 'sonnet';
   const base = ['-p', '--output-format', 'json', '--model', modelo, '--allowedTools', ...FERRAMENTAS];
@@ -129,10 +144,10 @@ async function pensar(p) {
   const agora = new Date().toLocaleString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
   const entrada = `[agora: ${agora}] ${String(p.pedido || '').slice(0, 4000)}`;
 
-  let r = await executar(exe, sessao ? base.concat(['--resume', sessao]) : base, entrada, 240000);
+  let r = await executar(exe, sessao ? base.concat(['--resume', sessao]) : base, entrada, 240000, env);
   let res = r.tempoEsgotado ? null : interpretarSaida(r.saida, r.erro);
   if (sessao && res && res.erro && res.erro !== 'login' && res.erro !== 'limite') { // conversa antiga sumiu: começa outra
-    sessao = null; r = await executar(exe, base, entrada, 240000); res = r.tempoEsgotado ? null : interpretarSaida(r.saida, r.erro);
+    sessao = null; r = await executar(exe, base, entrada, 240000, env); res = r.tempoEsgotado ? null : interpretarSaida(r.saida, r.erro);
   }
   if (r.falhou) return { erro: 'falhou', texto: 'Não consegui abrir o Claude Code: ' + r.falhou };
   if (!res) return { erro: 'tempo', texto: 'O Claude Code demorou demais e eu cancelei. Tente um pedido menor.' };
@@ -140,14 +155,70 @@ async function pensar(p) {
   return { texto: res.texto, erro: res.erro };
 }
 
-async function status() {
+/** Lê o `claude auth status` (JSON). Exportada para testes. */
+function interpretarConta(saida, codigo, op = {}) {
+  let d = null; try { const s = String(saida || ''); d = JSON.parse(s.slice(s.indexOf('{'))); } catch (_) { d = null; }
+  const metodo = d && (d.authMethod || d.method) || (codigo === 0 ? 'desconhecido' : 'none');
+  const conta = (d && (d.account || d.oauthAccount)) || {};
+  const pegar = (...k) => { for (const x of k) { const v = (d && d[x]) || conta[x]; if (v && typeof v === 'string') return v; } return ''; };
+  return {
+    logado: codigo === 0 && metodo !== 'none',
+    metodo, // none, claude.ai, oauth_token, api_key, api_key_helper, third_party
+    email: pegar('email', 'emailAddress'), org: pegar('orgName', 'organizationName', 'organization'), plano: pegar('subscriptionType', 'plan'),
+    chaveDaAssistente: !!(op.chave && /^sk-ant-/.test(op.chave)),
+  };
+}
+
+async function status(op = {}) {
   const exe = acharExecutavel();
   if (!exe) return { instalado: false };
   fs.mkdirSync(PASTA, { recursive: true });
-  const r = await executar(exe, ['--version'], undefined, 20000);
-  return { instalado: !r.falhou && r.codigo === 0, versao: String(r.saida || '').trim().split(/\s/)[0] || '', pasta: PASTA };
+  const env = ambiente(op);
+  const r = await executar(exe, ['--version'], undefined, 20000, env);
+  const instalado = !r.falhou && r.codigo === 0;
+  const a = instalado ? await executar(exe, ['auth', 'status'], undefined, 20000, env) : null;
+  const conta = a && !a.falhou && !a.tempoEsgotado ? interpretarConta(a.saida, a.codigo, op) : null;
+  return { instalado, versao: String(r.saida || '').trim().split(/\s/)[0] || '', pasta: PASTA, conta, contaPropria: !!op.contaPropria };
+}
+
+/* Abre uma janela do terminal (visível) para a própria pessoa instalar ou entrar na conta dela. */
+const INSTALAR_PS = 'irm https://claude.ai/install.ps1 | iex';
+function scriptTerminal(acao, exe, op = {}) {
+  const q = (t) => "'" + String(t).replace(/'/g, "''") + "'";
+  const l = ['$Host.UI.RawUI.WindowTitle = ' + q('Claude Code · conectar a sua conta'), '[Console]::OutputEncoding = [Text.Encoding]::UTF8'];
+  if (op.contaPropria) l.push('$env:CLAUDE_CONFIG_DIR = ' + q(pastaContaPropria));
+  l.push('Remove-Item Env:ANTHROPIC_API_KEY -ErrorAction SilentlyContinue');
+  const login = (e) => `& ${e} auth login${acao === 'entrar-console' ? ' --console' : ''}`;
+  if (acao === 'instalar') {
+    l.push("Write-Host 'Instalando o Claude Code (programa oficial da Anthropic). Isso leva um minutinho e não mostra progresso...' -ForegroundColor Cyan",
+      INSTALAR_PS,
+      "$exe = Join-Path $env:USERPROFILE '.local\\bin\\claude.exe'",
+      "if (Test-Path $exe) { Write-Host ''; Write-Host 'Instalado! Agora entre com a SUA conta do Claude (Pro, Max, Team ou Console). O navegador vai abrir.' -ForegroundColor Green; " + login('$exe') + " } else { Write-Host 'A instalação não terminou. Veja a mensagem acima ou tente pelo site code.claude.com.' -ForegroundColor Yellow }");
+  } else if (acao === 'sair') {
+    l.push("Write-Host 'Saindo da conta do Claude Code neste computador...' -ForegroundColor Cyan", `& ${q(exe)} auth logout`);
+  } else {
+    l.push("Write-Host 'Entre com a SUA conta do Claude. O navegador vai abrir; se não abrir, aperte c para copiar o link.' -ForegroundColor Cyan", login(q(exe)));
+  }
+  l.push("Write-Host ''", "Write-Host 'Pronto. Pode fechar esta janela e voltar para a assistente (em Ajustes, toque em Verificar).' -ForegroundColor Green");
+  return '\ufeff' + l.join('\r\n') + '\r\n';
+}
+function abrirTerminal(acao, op = {}) {
+  const exe = acharExecutavel();
+  if (acao !== 'instalar' && !exe) return { erro: 'O Claude Code ainda não está instalado. Toque em "Instalar o Claude Code" primeiro.' };
+  if (process.platform !== 'win32') return { erro: 'Neste sistema, abra o terminal e rode: ' + (acao === 'instalar' ? 'curl -fsSL https://claude.ai/install.sh | bash' : 'claude auth login') };
+  const arq = path.join(os.tmpdir(), `lumi-claude-${acao}.ps1`);
+  fs.writeFileSync(arq, scriptTerminal(acao, exe, op), 'utf8');
+  const p = spawn('powershell.exe', ['-NoExit', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', arq], { detached: true, stdio: 'ignore', windowsHide: false });
+  p.on('error', () => {}); p.unref();
+  return { ok: true };
+}
+async function sair(op = {}) {
+  const exe = acharExecutavel(); if (!exe) return { erro: 'Claude Code não instalado' };
+  const r = await executar(exe, ['auth', 'logout'], undefined, 30000, ambiente(op));
+  sessao = null;
+  return r.codigo === 0 ? { ok: true } : { erro: String(r.erro || r.saida || r.falhou || 'não consegui sair').trim().slice(0, 160) };
 }
 
 function novaConversa() { sessao = null; }
 
-module.exports = { pensar, status, novaConversa, interpretarSaida, limparParaVoz, claudeMd, FERRAMENTAS };
+module.exports = { pensar, status, novaConversa, abrirTerminal, sair, definirPastaConta, interpretarSaida, interpretarConta, scriptTerminal, ambiente, limparParaVoz, claudeMd, FERRAMENTAS };

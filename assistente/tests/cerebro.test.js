@@ -111,7 +111,7 @@ test('utilidades', () => {
 });
 
 test('pedidos de desktop são recusados com honestidade', () => {
-  for (const f of ['organiza minha área de trabalho', 'desliga o PC em 30 minutos', 'procura o arquivo relatório', 'cria uma pasta Projetos']) assert.equal(diz(f).tipo, 'desktop', f);
+  for (const f of ['organiza minha área de trabalho', 'procura o arquivo relatório', 'cria uma pasta Projetos']) assert.equal(diz(f).tipo, 'desktop', f);
 });
 
 test('personalização pela voz', () => {
@@ -161,4 +161,26 @@ test('cabelo pela voz', () => {
   assert.deepEqual(diz('solta o cabelo'), { tipo: 'visual', cabelo: 'longo' });
   assert.deepEqual(diz('tira o cabelo'), { tipo: 'visual', cabelo: 'nenhum' });
   for (const k of Object.keys(M.CABELOS)) assert.doesNotMatch(M.svg({ cabelo: k, corCabelo: '#7A4A2E' }), /undefined|NaN/);
+});
+
+test('pedidos para o computador', () => {
+  assert.deepEqual(diz('fecha o chrome'), { tipo: 'fechar_app', alvo: 'chrome' });
+  assert.deepEqual(diz('abre o word'), { tipo: 'abrir_app', alvo: 'word' });
+  assert.equal(diz('abre o whatsapp').app, true);
+  assert.equal(diz('abre o youtube').app, false);
+  assert.deepEqual(diz('abre a conversa com o Bernardo'), { tipo: 'conversa', contato: 'bernardo' });
+  assert.deepEqual(diz('manda mensagem pro Bernardo no whatsapp'), { tipo: 'conversa', contato: 'bernardo' });
+  for (const f of ['sai da ligação', 'desliga a chamada', 'encerra a reunião', 'sair da call']) assert.equal(diz(f).tipo, 'sair_ligacao', f);
+  assert.deepEqual(diz('desliga o computador'), { tipo: 'energia', acao: 'desligar', segundos: 30 });
+  assert.deepEqual(diz('desliga o PC em 30 minutos'), { tipo: 'energia', acao: 'desligar', segundos: 1800 });
+  assert.equal(diz('reinicia o sistema').acao, 'reiniciar');
+  assert.equal(diz('cancela o desligamento').acao, 'cancelar');
+  assert.equal(diz('bloqueia a tela').acao, 'bloquear');
+  for (const f of ['o que está gastando tanta memória RAM?', 'o pc tá lento', 'quanta memória eu tô usando']) assert.equal(diz(f).tipo, 'memoria', f);
+  assert.deepEqual(diz('verifica se tem vírus no pc'), { tipo: 'antivirus', acao: 'verificar', alvo: 'rapida' });
+  assert.equal(diz('o antivírus está ligado?').acao, 'status');
+  assert.equal(diz('verifica a pasta downloads').alvo, 'pasta');
+  assert.equal(diz('cancela o timer').tipo, 'timer_cancelar');
+  assert.equal(diz('desliga o alarme').tipo, 'alarme_cancelar');
+  assert.equal(diz('desliga a música').tipo, 'musica');
 });
