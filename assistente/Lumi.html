@@ -204,6 +204,11 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
 .capa .eq.sobre { position: absolute; right: 5px; bottom: 5px; height: 14px; padding: 3px 4px; background: rgba(0, 0, 0, .62); border-radius: 6px; z-index: 1; }
 .capa .eq.sobre b { width: 3px; }
 .vivo .capinha { width: 22px; height: 22px; border-radius: 5px; object-fit: cover; flex: none; }
+
+/* Estúdio de voz */
+.estudio-frase { font: 700 22px/1.35 var(--f-titulo); text-align: center; padding: 22px 18px; margin: 6px 0 8px; background: var(--caixa); border: 1px solid var(--linha); border-radius: 16px; }
+.estudio-frase.feita { border-color: rgba(70, 227, 200, .45); }
+.btn[disabled] { opacity: .4; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -1146,6 +1151,211 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
 })(window);
 </script>
 <script>
+/* Frases para gravar no Estúdio de voz (treino de uma voz Piper própria).
+   Tom de conversa, frases curtas e variadas, cobrindo os sons do português do Brasil
+   (lh, nh, rr, ão, ões, x, ch, s/z, ditongos) e o jeito como a assistente fala no dia a dia. */
+window.FRASES_ESTUDIO = [
+  'Oi! Tudo certo por aí?',
+  'Bom dia! Dormiu bem?',
+  'Boa tarde, chefe. O que vamos fazer agora?',
+  'Boa noite! Já tá na hora de descansar, hein.',
+  'Pode deixar comigo.',
+  'Prontinho, já fiz.',
+  'Feito! Mais alguma coisa?',
+  'Opa, essa eu não entendi. Fala de novo?',
+  'Desculpa, acho que eu me confundi.',
+  'Ah, entendi! Você quis dizer outra coisa.',
+  'Timer de cinco minutos iniciado.',
+  'Seu timer da pizza terminou! Corre lá.',
+  'Te lembro daqui a meia hora, combinado?',
+  'Alarme marcado para as sete da manhã.',
+  'Hora de beber água! Já é o terceiro copo hoje.',
+  'Você tem três tarefas para hoje.',
+  'Tarefa criada: comprar pão e leite.',
+  'Anotei aqui pra você não esquecer.',
+  'Agora são três e meia da tarde.',
+  'Hoje é sexta-feira, quinze de novembro.',
+  'Amanhã vai chover, então leva o guarda-chuva.',
+  'Tá fazendo vinte e oito graus lá fora.',
+  'O céu tá limpinho, dia lindo pra sair.',
+  'O dólar tá em cinco reais e sessenta centavos.',
+  'Quinze por cento de duzentos e trinta dá trinta e quatro e meio.',
+  'Tocando agora no Spotify.',
+  'Pausei a música pra você.',
+  'Próxima música! Essa é boa.',
+  'Aumentei o volume.',
+  'Abrindo o YouTube.',
+  'Pesquisei aqui e achei umas receitas ótimas.',
+  'Copiei a chave do Pix, é só colar.',
+  'Gerei uma senha forte e já copiei.',
+  'Deu cara! Quer jogar de novo?',
+  'Faltam quarenta dias para o Natal.',
+  'Que tal uma pausa rapidinha? Alonga as costas.',
+  'Você trabalhou bastante hoje, viu?',
+  'Nossa, que legal!',
+  'Sério? Não acredito!',
+  'Ai, que fofo.',
+  'Hum, deixa eu pensar um pouquinho.',
+  'Calma, uma coisa de cada vez.',
+  'Relaxa, vai dar tudo certo.',
+  'Eita, essa foi difícil.',
+  'Aí sim, mandou bem!',
+  'Tô aqui se precisar de mim.',
+  'Me chama quando quiser.',
+  'Fala, chefe. Tô ouvindo.',
+  'Pode falar, sou toda ouvidos.',
+  'Hoje o trânsito tá complicado, sai mais cedo.',
+  'A reunião começa em dez minutos.',
+  'Você tem uma mensagem nova no WhatsApp.',
+  'Quer que eu responda alguma coisa?',
+  'Fechei o navegador pra você.',
+  'Abri a conversa com o Bernardo.',
+  'Saí da ligação.',
+  'Tem certeza que quer desligar o computador?',
+  'Diga a senha para confirmar.',
+  'Senha correta. Desligando em trinta segundos.',
+  'Cancelei o desligamento, pode continuar.',
+  'O computador tá com a bateria em oitenta por cento.',
+  'A internet tá funcionando direitinho.',
+  'Organizei os arquivos da área de trabalho.',
+  'Achei o relatório na pasta de documentos.',
+  'Não encontrei esse arquivo, sabe o nome certinho?',
+  'A capital da Austrália é Canberra.',
+  'Isso aconteceu em mil novecentos e oitenta e cinco.',
+  'São duzentos e cinquenta e sete quilômetros até lá.',
+  'O filho do vizinho trabalha na cozinha.',
+  'A senhora ganhou um carinho especial.',
+  'O espelho velho ficou no corredor.',
+  'O ninho do passarinho tá no galho.',
+  'A aranha arranhou o jarro de barro.',
+  'O carro correu pela rua de terra.',
+  'Os pães e as mãos estavam quentinhos.',
+  'As canções e as emoções ficaram na lembrança.',
+  'O xadrez da Xuxa tá na caixa.',
+  'A chuva chegou chiando no telhado.',
+  'Zeca fez uma casa azul na praia.',
+  'O sapo saltou sobre a pedra molhada.',
+  'O jogo de hoje vai ser jogado à noite.',
+  'A girafa gigante comeu a gelatina.',
+  'O queijo e a goiabada combinam demais.',
+  'A gente se vê na quinta-feira.',
+  'Quanto custa esse caderno quadriculado?',
+  'Guarda o guarda-chuva no guarda-roupa.',
+  'O pneu do caminhão furou na estrada.',
+  'A bruxa trouxe três frutas frescas.',
+  'O plano é chegar cedo e tomar café.',
+  'A flor amarela floresceu no jardim.',
+  'O atleta treinou atrás do clube.',
+  'O psicólogo e o pneumologista são amigos.',
+  'Ela adora açaí com banana e granola.',
+  'Vamos marcar um churrasco no domingo?',
+  'O cachorro latiu a noite inteira.',
+  'Comprei ração para o gato e para o cachorro.',
+  'Meu irmão mora em Rio das Ostras.',
+  'Macaé fica pertinho daqui.',
+  'O mergulhador desceu até o fundo do mar.',
+  'O robô submarino filmou o navio afundado.',
+  'A previsão é de mar calmo amanhã cedo.',
+  'Bora trabalhar que hoje o dia promete!',
+  'Já tomou café hoje? Eu, se pudesse, tomava.',
+  'Essa música é muito boa, aumenta aí!',
+  'Ih, esqueci! Mas já lembrei, rapidinho.',
+  'Tô curiosa, me conta mais.',
+  'Fiquei feliz que deu certo!',
+  'Que pena, fica pra próxima.',
+  'Não precisa agradecer, foi um prazer.',
+  'Parabéns! Você merece.',
+  'Feliz aniversário! Que seu dia seja incrível.',
+  'Olha só que coisa interessante eu achei.',
+  'Quer ouvir uma piada? Lá vai.',
+  'Por que o livro de matemática ficou triste? Porque tinha muitos problemas.',
+  'Rindo aqui de nervoso, mas tá tudo bem.',
+  'Pronto, mudei minha cor para rosa.',
+  'Coloquei a tiara, gostou?',
+  'Fiquei linda de coque, né?',
+  'Agora meu nome é Sexta-feira.',
+  'Eu sou a sua assistente, moro aqui no topo da tela.',
+  'Posso marcar lembretes, timers e tarefas.',
+  'Também toco música e vejo o clima.',
+  'Se eu errar, é só me corrigir.',
+  'Aprendi! Da próxima vez eu acerto.',
+  'O senhor quis dizer abrir o WhatsApp?',
+  'Entendi, vou fazer do jeito que você pediu.',
+  'Já volto, tô carregando uma coisinha.',
+  'Só um instante, estou pensando.',
+  'Trabalhando nisso, um segundinho.',
+  'Achei três resultados, vou ler o primeiro.',
+  'Isso eu ainda não sei fazer, mas posso aprender.',
+  'Prefiro não falar sobre isso, tudo bem?',
+  'Atenção: sua bateria está acabando.',
+  'Cuidado com esse link, parece estranho.',
+  'Pode confiar, esse site é seguro.',
+  'Um, dois, três, quatro, cinco.',
+  'Seis, sete, oito, nove, dez.',
+  'Onze, doze, treze, quatorze, quinze.',
+  'Vinte, trinta, quarenta, cinquenta.',
+  'Cem, duzentos, mil, um milhão.',
+  'Segunda, terça, quarta, quinta e sexta.',
+  'Sábado e domingo são os melhores dias.',
+  'Janeiro, fevereiro, março e abril.',
+  'Maio, junho, julho e agosto.',
+  'Setembro, outubro, novembro e dezembro.',
+  'Manhã, tarde, noite e madrugada.',
+  'Ontem, hoje, amanhã e depois de amanhã.',
+  'Vermelho, laranja, amarelo e verde.',
+  'Azul, roxo, rosa, branco e preto.',
+  'O WhatsApp, o Instagram e o YouTube estão abertos.',
+  'Mandei o e-mail para o cliente.',
+  'A planilha de vendas foi atualizada.',
+  'O curso de ROV começa na segunda-feira.',
+  'A turma da Black Friday tem vagas abertas.',
+  'O pagamento pode ser no Pix ou no cartão.',
+  'Você quer que eu leia em voz alta?',
+  'Vou falar mais devagar, tá bom?',
+  'Agora vou falar mais rapidinho, prestou atenção?',
+  'Hmm, isso é uma ótima pergunta.',
+  'Olha, sinceramente, eu acho que sim.',
+  'Na verdade, não é bem assim.',
+  'Depende, me fala um pouco mais.',
+  'Com certeza! Vamos nessa.',
+  'Ah, não! Deu erro aqui.',
+  'Tentei de novo e agora funcionou.',
+  'A conexão caiu, mas já voltou.',
+  'Salvei tudo, pode ficar tranquilo.',
+  'Desfiz a última alteração.',
+  'Abri o arquivo pra você revisar.',
+  'Quer que eu feche os outros programas?',
+  'O Chrome tá usando muita memória.',
+  'Reiniciando o computador em um minuto.',
+  'Bloqueei a tela, até daqui a pouco.',
+  'Bem-vindo de volta! Senti sua falta.',
+  'Que bom te ver de novo.',
+  'Tchau, até amanhã!',
+  'Bons sonhos, durma bem.',
+  'Acordei! O que manda?',
+  'Ai, que sono. Brincadeira, tô acordadíssima.',
+  'Tô ouvindo música enquanto você trabalha.',
+  'Essa playlist combina com o seu dia.',
+  'A capa desse álbum é linda.',
+  'O cantor dessa música é o Henrique.',
+  'Agora tá tocando Evidências, um clássico.',
+  'Pulei pra próxima, essa tava chata.',
+  'Volume no máximo! Brincadeira, no setenta.',
+  'Achei a conversa e abri pra você.',
+  'Ninguém respondeu ainda, quer esperar?',
+  'Liguei o modo foco por vinte e cinco minutos.',
+  'Acabou o foco! Hora de uma pausa.',
+  'Você bateu a meta de água hoje, arrasou!',
+  'Leu um capítulo hoje? Que orgulho.',
+  'Fez exercício? Mandou muito bem.',
+  'O seu nível subiu! Agora você é nível cinco.',
+  'Ganhou dez pontos por terminar a tarefa.',
+  'Ainda faltam duas tarefas, bora terminar?',
+  'Tá quase lá, só mais um pouquinho.',
+  'Acho que é isso. Precisa de mais alguma coisa?',
+];
+</script>
+<script>
 /* Lumi — assistente que mora no topo da tela. Tudo fica salvo neste navegador (localStorage). */
 (function () {
   'use strict';
@@ -1168,7 +1378,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   const PADRAO = () => ({
     cfg: {
       nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo', cilios: true, blush: true, batom: false, cabelo: 'nenhum', corCabelo: 0,
-      voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', cloudChave: '', usarChirp: true, reconhecimento: 'whisper', whisperModelo: 'small', somenteExecutar: false, sempreOuvindo: false,
+      voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', cloudChave: '', usarChirp: true, reconhecimento: 'whisper', whisperModelo: 'small', piperVoz: '', piperExpr: 0.65, somenteExecutar: false, sempreOuvindo: false,
       cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', volume: 70, pausas: false,
     },
     xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [],
@@ -1196,6 +1406,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     ouvindo: false, parcial: '', falando: false, alarme: null, crono: { rodando: false, inicio: 0, acum: 0 },
     musica: { lista: [], i: 0, tocando: false }, rascunhos: {}, previa: 'happy', ultimaAtividade: Date.now(), ultimaPausa: Date.now(),
     lugar: null, pendente: null,
+    piperVozes: [], estudio: { i: 0, gravadas: [], gravando: false, ouvir: {} },
     vozOff: null, vozCarregada: false, // voz offline do app instalado
     cc: null, // estado do Claude Code no computador (só no app instalado)
     spotify: null, spotifyUltima: null, // Spotify do computador (só no app instalado)
@@ -1505,6 +1716,32 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     if (c.usarChirp !== false && (c.cloudChave || c.geminiChave)) lista.push('chirp');
     return lista.filter((m) => !(pausaMotor[m] > Date.now()));
   }
+  // toca um áudio (WAV/MP3 em ArrayBuffer) com a mascote falando
+  async function tocarAudio(audio, seq) {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    const buf = await audioCtx.decodeAudioData(audio.slice(0));
+    if (seq !== falaSeq) return false;
+    const src = audioCtx.createBufferSource(); src.buffer = buf; src.connect(audioCtx.destination);
+    src.onended = () => { if (falaFonte === src) { falaFonte = null; fimFala(); } };
+    falaFonte = src; inicioFala(); src.start();
+    return true;
+  }
+  const PIPER = window.lumiDesktop && window.lumiDesktop.piper ? window.lumiDesktop.piper : null;
+  const temPiper = () => !!(PIPER && R.piperVozes && R.piperVozes.length);
+  async function falarPiper(limpo, seq) {
+    try {
+      const r = await PIPER.falar(limpo, S.cfg.piperVoz || R.piperVozes[0], { velocidade: S.cfg.velocidade, expressividade: S.cfg.piperExpr });
+      if (seq !== falaSeq) return;
+      if (!r || r.erro || !r.wav) throw new Error((r && r.erro) || 'sem áudio');
+      R.ultimaVoz = 'Piper (' + (S.cfg.piperVoz || R.piperVozes[0]) + ')';
+      await tocarAudio(r.wav.buffer.slice(r.wav.byteOffset, r.wav.byteOffset + r.wav.byteLength), seq);
+    } catch (e) {
+      if (seq !== falaSeq) return;
+      if (!avisouGoogle) { avisouGoogle = true; aviso('Voz offline: ' + (e && e.message ? e.message : 'erro') + '. Usando a voz do computador.'); }
+      R.ultimaVoz = NOME_MOTOR.computador; falarNavegador(limpo);
+    }
+  }
   async function falarGoogle(limpo, seq) {
     const c = S.cfg, chave = `${c.geminiVoz}|${c.personalidade}|${limpo}`;
     let ultimoErro = null;
@@ -1529,15 +1766,10 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
         cacheFala.set(chave, audio); if (cacheFala.size > 30) cacheFala.delete(cacheFala.keys().next().value);
       }
       if (seq !== falaSeq) return;
-      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') await audioCtx.resume();
-      const buf = await audioCtx.decodeAudioData(audio.slice(0));
-      if (seq !== falaSeq) return;
-      const src = audioCtx.createBufferSource(); src.buffer = buf; src.connect(audioCtx.destination);
-      src.onended = () => { if (falaFonte === src) { falaFonte = null; fimFala(); } };
-      falaFonte = src; inicioFala(); src.start();
+      await tocarAudio(audio, seq);
     } catch (e) {
       if ((e && e.name === 'AbortError') || seq !== falaSeq) return;
+      if (temPiper()) { falarPiper(limpo, seq); return; } // sem Google: voz offline Piper
       R.ultimaVoz = NOME_MOTOR.computador;
       if (!avisouGoogle) { avisouGoogle = true; aviso(`Voz do Google: ${e && e.message ? e.message : 'erro'}. Usando a voz do computador.`); }
       falarNavegador(limpo);
@@ -1548,7 +1780,8 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     const limpo = textoFalavel(texto); if (!limpo) return;
     calar();
     const seq = ++falaSeq;
-    if (S.cfg.vozMotor === 'google' && (S.cfg.geminiChave || S.cfg.cloudChave) && window.VOZ_GOOGLE) falarGoogle(limpo, seq);
+    if (S.cfg.vozMotor === 'piper' && temPiper()) falarPiper(limpo, seq);
+    else if (S.cfg.vozMotor === 'google' && (S.cfg.geminiChave || S.cfg.cloudChave) && window.VOZ_GOOGLE) falarGoogle(limpo, seq);
     else falarNavegador(limpo);
   }
   function calar() {
@@ -1707,7 +1940,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   async function aoResultadoOffline(t, audio) {
     R.ouvidos = [{ t, modo: modoVoz, quando: Date.now() }, ...(R.ouvidos || [])].slice(0, 8); // para Ajustes e diagnóstico
     mostrarOuvido();
-    if (R.falando) return;
+    if (R.falando || R.view === 'estudio') return; // no estúdio as frases não são pedidos
     if (modoVoz === 'comando') {
       const resto = tirarChamado(t); // "ei sexta-feira" repetido no começo não atrapalha
       if (resto === '') { esperarComando(8000); return; } // falou só o nome de novo: continua esperando o pedido
@@ -2212,8 +2445,13 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
         <small>${(() => { const w = R.whisper; if ((c.reconhecimento || 'whisper') !== 'whisper') return 'O Vosk entende os pedidos sozinho.'; if (!w) return 'Verificando…'; if (w.erro) return 'Não consegui baixar o Whisper: ' + esc(w.erro) + '. Por enquanto uso o Vosk.'; if (w.baixando) return `Baixando o Whisper… ${w.progresso || 0}% (uma vez só). Enquanto isso, uso o Vosk.`; if (w.pronto) return '✅ Whisper pronto. O Vosk só espera o chamado; o pedido é entendido pelo Whisper, no seu PC.'; return 'Será baixado uma vez só e roda offline.'; })()}</small></div>
       <div class="campo"><label for="cWm">Modelo do Whisper</label><select id="cWm" data-cfg="whisperModelo">${[['base', 'Base — rápido (80 MB)'], ['small', 'Small — preciso (240 MB, recomendado)'], ['turbo', 'Turbo — máxima precisão, mais lento (730 MB)']].map(([v, n]) => `<option value="${v}"${v === (c.whisperModelo || 'small') ? ' selected' : ''}>${n}</option>`).join('')}</select></div></div>` : ''}
       ${tog('sempreOuvindo', `Sempre ouvindo "Ei, ${esc(c.nome)}"`, usarOffline() ? 'Reconhecimento offline, feito no seu computador: nada do que você fala sai do PC. Funciona melhor com nomes que são palavras em português.' : temVoz() ? 'O microfone fica ligado enquanto esta janela estiver aberta. O reconhecimento é feito pelo navegador.' : window.lumiDesktop ? 'A voz offline não foi encontrada neste app' : 'Precisa do Chrome ou do Edge', !temVoz())}
-      <div class="grade2"><div class="campo"><label for="cMotor">Tipo de voz</label><select id="cMotor" data-cfg="vozMotor"><option value="navegador"${c.vozMotor !== 'google' ? ' selected' : ''}>Voz do computador (grátis, offline)</option><option value="google"${c.vozMotor === 'google' ? ' selected' : ''}>Google AI Studio (Gemini)</option></select></div>
+      <div class="grade2"><div class="campo"><label for="cMotor">Tipo de voz</label><select id="cMotor" data-cfg="vozMotor"><option value="navegador"${c.vozMotor !== 'google' ? ' selected' : ''}>Voz do computador (grátis, offline)</option><option value="google"${c.vozMotor === 'google' ? ' selected' : ''}>Google AI Studio (Gemini)</option>${PIPER ? `<option value="piper"${c.vozMotor === 'piper' ? ' selected' : ''}>Voz offline (Piper)</option>` : ''}</select></div>
       <div class="campo"><span>&nbsp;</span><button class="btn fantasma" data-acao="testar-voz">🔊 Testar voz</button></div></div>
+      ${PIPER ? `<div class="secao">Voz offline (Piper)</div>
+      <div class="nota-aviso">Natural, instantânea e sem internet. ${c.vozMotor === 'piper' ? 'É a voz principal.' : 'Entra quando o Google não puder falar.'} Crie a sua no Estúdio de voz, ou adicione um arquivo .onnx de voz Piper (com o .onnx.json junto).</div>
+      <div class="grade2"><div class="campo"><label for="cPiper">Voz</label><select id="cPiper" data-cfg="piperVoz">${R.piperVozes.length ? R.piperVozes.map((v) => `<option value="${esc(v)}"${v === c.piperVoz ? ' selected' : ''}>${esc(v)}</option>`).join('') : '<option value="">Nenhuma voz instalada</option>'}</select></div>
+      <div class="campo"><label for="cExpr">Jeito de falar · ${Math.round((c.piperExpr ?? 0.65) * 100)}% descontraída</label><input id="cExpr" type="range" min="0" max="1" step="0.05" value="${c.piperExpr ?? 0.65}" data-cfg="piperExpr" data-num></div></div>
+      <div class="form"><button class="btn fantasma" data-acao="piper-add">➕ Adicionar voz (.onnx)</button><button class="btn fantasma" data-acao="pasta" data-qual="vozes">📁 Pasta de vozes</button><button class="btn" data-acao="estudio">🎙 Estúdio de voz</button></div>` : ''}
       ${c.vozMotor === 'google' ? `<div class="nota-aviso">Vozes femininas do Gemini, bem naturais. Precisa de internet e de uma chave grátis do Google AI Studio (aistudio.google.com → Get API key). A chave fica salva só neste navegador; o uso conta na cota da sua conta Google. Se a voz do Google falhar, ela usa a voz do computador.</div>
       <div class="grade2"><div class="campo"><label for="cGemini">Chave do Google AI Studio</label><input id="cGemini" type="password" data-cfg="geminiChave" value="${esc(c.geminiChave)}" placeholder="AIza…" autocomplete="off"></div>
       <div class="campo"><label for="cGVoz">Voz feminina</label><select id="cGVoz" data-cfg="geminiVoz">${window.VOZ_GOOGLE ? window.VOZ_GOOGLE.VOZES.map(([n, d]) => `<option value="${n}"${n === c.geminiVoz ? ' selected' : ''}>${n} · ${d}</option>`).join('') : ''}</select></div>
@@ -2244,7 +2482,81 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
       <div class="secao">Dados</div>
       <div class="form"><button class="btn fantasma" data-acao="limpar-conversa">Limpar conversa</button><button class="btn perigo" data-acao="apagar-tudo">Apagar tudo</button></div></div>`;
   }
-  const VIEWS = { inicio: vInicio, tarefas: vTarefas, habitos: vHabitos, timers: vTimers, musica: vMusica, notas: vNotas, visual: vVisual, ajustes: vAjustes };
+  /* ================= Estúdio de voz (criar uma voz Piper própria) ================= */
+  const EST = { ctx: null, stream: null, no: null, partes: [] };
+  async function estudioAtualizar() {
+    if (window.lumiDesktop && window.lumiDesktop.estudio) {
+      const e = await window.lumiDesktop.estudio.estado(); R.estudio.gravadas = e.gravadas || []; R.estudio.pasta = e.pasta;
+      const n = window.FRASES_ESTUDIO.length; let i = 0; while (i < n && R.estudio.gravadas.includes(i)) i++; R.estudio.i = i % n;
+    }
+    render();
+  }
+  async function estudioGravar() {
+    if (R.estudio.gravando) return;
+    calar();
+    try {
+      EST.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+      EST.ctx = new AudioContext({ sampleRate: 22050 }); EST.partes = [];
+      const src = EST.ctx.createMediaStreamSource(EST.stream); EST.no = EST.ctx.createScriptProcessor(4096, 1, 1);
+      EST.no.onaudioprocess = (ev) => EST.partes.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
+      src.connect(EST.no); EST.no.connect(EST.ctx.destination);
+      R.estudio.gravando = true; render();
+    } catch (e) { aviso('Não consegui usar o microfone: ' + (e && e.message ? e.message : e)); }
+  }
+  // tira o silêncio das pontas (deixa 0,2 s) e normaliza o volume
+  function aparar(a, taxa) {
+    const jan = Math.round(taxa * 0.02), rms = [];
+    for (let i = 0; i < a.length; i += jan) { let s = 0; const f = Math.min(a.length, i + jan); for (let k = i; k < f; k++) s += a[k] * a[k]; rms.push(Math.sqrt(s / Math.max(1, f - i))); }
+    const lim = Math.max(0.008, Math.max(...rms) * 0.08);
+    let ini = rms.findIndex((v) => v > lim), fim = rms.length - 1 - [...rms].reverse().findIndex((v) => v > lim);
+    if (ini < 0) return null;
+    const margem = Math.round(0.2 * taxa / jan); ini = Math.max(0, ini - margem); fim = Math.min(rms.length - 1, fim + margem);
+    const r = a.slice(ini * jan, Math.min(a.length, (fim + 1) * jan)); let pico = 0;
+    for (const v of r) pico = Math.max(pico, Math.abs(v));
+    if (pico > 0) for (let i = 0; i < r.length; i++) r[i] = r[i] * (0.89 / pico);
+    return r;
+  }
+  function wav16(a, taxa) {
+    const b = new ArrayBuffer(44 + a.length * 2), v = new DataView(b), t = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    t(0, 'RIFF'); v.setUint32(4, 36 + a.length * 2, true); t(8, 'WAVE'); t(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, taxa, true); v.setUint32(28, taxa * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); t(36, 'data'); v.setUint32(40, a.length * 2, true);
+    for (let i = 0; i < a.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, a[i])) * 32767, true);
+    return new Uint8Array(b);
+  }
+  async function estudioParar() {
+    if (!R.estudio.gravando) return;
+    R.estudio.gravando = false;
+    try { EST.no.disconnect(); EST.stream.getTracks().forEach((t) => t.stop()); await EST.ctx.close(); } catch (_) { /* já fechado */ }
+    const total = EST.partes.reduce((n, p) => n + p.length, 0), a = new Float32Array(total); let o = 0;
+    for (const p of EST.partes) { a.set(p, o); o += p.length; }
+    const r = aparar(a, 22050);
+    if (!r || r.length < 22050 * 0.6) { aviso('Não ouvi a frase. Grave de novo, mais perto do microfone.'); render(); return; }
+    const i = R.estudio.i, wav = wav16(r, 22050);
+    const res = await window.lumiDesktop.estudio.salvar(i, window.FRASES_ESTUDIO[i], wav);
+    if (res && res.erro) { aviso(res.erro); render(); return; }
+    R.estudio.ouvir[i] = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+    if (!R.estudio.gravadas.includes(i)) R.estudio.gravadas.push(i);
+    aviso(`✅ Frase ${i + 1} salva (${(r.length / 22050).toFixed(1)} s)`);
+    R.estudio.i = (i + 1) % window.FRASES_ESTUDIO.length; render();
+  }
+  function vEstudio() {
+    const F = window.FRASES_ESTUDIO || [], e = R.estudio, n = F.length, feitas = e.gravadas.length;
+    if (!window.lumiDesktop || !window.lumiDesktop.estudio) return '<h4>Estúdio de voz</h4><div class="nota-aviso">O estúdio funciona no app instalado.</div>';
+    return `<h4>🎙 Estúdio de voz</h4><div class="sub">Grave estas frases com a voz que vai virar a ${esc(S.cfg.nome)}: natural e descontraída, sempre na mesma distância do microfone, num lugar silencioso.</div>
+      <div class="rolar"><div class="estudio-frase${e.gravadas.includes(e.i) ? ' feita' : ''}">“${esc(F[e.i] || '')}”</div>
+      <div class="sub" style="text-align:center">Frase ${e.i + 1} de ${n} · ${feitas} gravada${feitas === 1 ? '' : 's'}${e.gravadas.includes(e.i) ? ' · ✅ esta já foi gravada (gravar de novo substitui)' : ''}</div>
+      <div class="barra" style="margin:6px 0 12px"><i style="width:${(feitas / Math.max(1, n)) * 100}%"></i></div>
+      <div class="form" style="justify-content:center">
+        <button class="btn fantasma" data-acao="est-ir" data-d="-1" ${e.gravando ? 'disabled' : ''}>← Anterior</button>
+        ${e.gravando ? '<button class="btn perigo" data-acao="est-parar">■ Parar e salvar</button>' : '<button class="btn" data-acao="est-gravar">● Gravar</button>'}
+        <button class="btn fantasma" data-acao="est-ouvir" ${e.ouvir[e.i] ? '' : 'disabled'}>▶ Ouvir</button>
+        <button class="btn fantasma" data-acao="est-ir" data-d="1" ${e.gravando ? 'disabled' : ''}>Próxima →</button></div>
+      <div class="sub" style="text-align:center">Atalho: barra de espaço grava e para.</div>
+      <div class="secao">Depois de gravar</div>
+      <div class="nota-aviso">As gravações ficam em <b>Documentos\\Lumi\\estudio-voz</b> (pasta wavs + metadata.csv). Compacte a pasta em .zip e siga o roteiro "Treinar a voz" (arquivo <b>treino/README.md</b> do projeto): o treino roda de graça numa placa de vídeo na nuvem e gera a voz .onnx, que você adiciona em Ajustes → Voz offline.</div>
+      <div class="form"><button class="btn fantasma" data-acao="pasta" data-qual="estudio">📁 Abrir pasta das gravações</button><button class="btn fantasma" data-acao="est-voltar">← Voltar aos Ajustes</button></div></div>`;
+  }
+  const VIEWS = { estudio: vEstudio, inicio: vInicio, tarefas: vTarefas, habitos: vHabitos, timers: vTimers, musica: vMusica, notas: vNotas, visual: vVisual, ajustes: vAjustes };
 
   function renderPrincipal() {
     const ativo = document.activeElement;
@@ -2346,6 +2658,13 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     },
     'testar-voz': () => { avisouGoogle = false; for (const m in pausaMotor) delete pausaMotor[m]; falar(`Oi${S.cfg.usuario ? ' ' + S.cfg.usuario : ''}! Eu sou a ${S.cfg.nome}. É assim que eu falo.`, true); },
     notificacoes: () => pedirNotificacoes(),
+    'piper-add': async () => { const r = await PIPER.adicionar(); if (r && r.erro) aviso(r.erro); if (r && r.nome) { R.piperVozes = await PIPER.vozes(); S.cfg.piperVoz = r.nome; salvar(); aviso(`🎙 Voz "${r.nome}" adicionada`); } },
+    pasta: (el) => window.lumiDesktop && window.lumiDesktop.abrirPasta(el.dataset.qual),
+    estudio: async () => { R.view = 'estudio'; await estudioAtualizar(); },
+    'est-gravar': () => estudioGravar(), 'est-parar': () => estudioParar(),
+    'est-ir': (el) => { if (R.estudio.gravando) return; const n = window.FRASES_ESTUDIO.length; R.estudio.i = (R.estudio.i + Number(el.dataset.d) + n) % n; },
+    'est-ouvir': () => { const u = R.estudio.ouvir[R.estudio.i]; if (u) new Audio(u).play().catch(() => {}); },
+    'est-voltar': () => { if (!R.estudio.gravando) R.view = 'ajustes'; },
     'cc-nova': async () => { if (CC) await CC.nova(); aviso('🧹 Comecei uma conversa nova'); },
     'cc-status': async () => { if (!CC) return; R.cc = null; renderPrincipal(); R.cc = await CC.status().catch(() => ({ instalado: false })); },
     'limpar-conversa': () => { S.chat = []; salvar(); aviso('Conversa apagada'); },
@@ -2405,6 +2724,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
     R.ultimaAtividade = Date.now();
     if (e.altKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); if (R.aberto) fechar(); else abrir(true); }
     else if (e.altKey && (e.key === 'l' || e.key === 'L')) { e.preventDefault(); abrir(); ouvir(); }
+    else if (e.key === ' ' && R.aberto && R.view === 'estudio' && !/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test((document.activeElement || {}).tagName || '')) { e.preventDefault(); if (R.estudio.gravando) estudioParar(); else estudioGravar(); }
     else if (e.key === 'Escape') { if (R.alarme) pararAlarme(); else if (R.falando) calar(); else if (R.ouvindo && voz.rec) voz.rec.abort(); else fechar(); }
   });
 
@@ -2420,6 +2740,7 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
   function relogio() { const d = new Date(); $('#wHora').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`; $('#wData').textContent = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' }); }
 
   /* app de computador (Electron) */
+  if (PIPER) PIPER.vozes().then((v) => { R.piperVozes = v || []; if (!S.cfg.piperVoz && R.piperVozes[0]) S.cfg.piperVoz = R.piperVozes[0]; }).catch(() => {});
   if (WH) {
     WH.aoMudar((e) => { R.whisper = e; if (R.view === 'ajustes' && R.aberto) { const a = document.activeElement; if (!(a && /^(INPUT|SELECT)$/.test(a.tagName))) renderPrincipal(); } });
     WH.estado().then((e) => { R.whisper = e; prepararWhisper(); }).catch(() => {});

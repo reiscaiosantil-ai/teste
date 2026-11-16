@@ -192,3 +192,8 @@ body.desktop .entalho.aberto ~ .aviso { top: auto; bottom: 8px; }
 .capa .eq.sobre { position: absolute; right: 5px; bottom: 5px; height: 14px; padding: 3px 4px; background: rgba(0, 0, 0, .62); border-radius: 6px; z-index: 1; }
 .capa .eq.sobre b { width: 3px; }
 .vivo .capinha { width: 22px; height: 22px; border-radius: 5px; object-fit: cover; flex: none; }
+
+/* Estúdio de voz */
+.estudio-frase { font: 700 22px/1.35 var(--f-titulo); text-align: center; padding: 22px 18px; margin: 6px 0 8px; background: var(--caixa); border: 1px solid var(--linha); border-radius: 16px; }
+.estudio-frase.feita { border-color: rgba(70, 227, 200, .45); }
+.btn[disabled] { opacity: .4; cursor: not-allowed; }

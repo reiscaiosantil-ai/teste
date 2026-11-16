@@ -5,6 +5,16 @@ contextBridge.exposeInMainWorld('lumiDesktop', {
   aberto: (aberto) => ipcRenderer.send('lumi:aberto', !!aberto),
   aoAtalho: (fn) => ipcRenderer.on('lumi:atalho', (_e, qual) => fn(qual)),
   vozInfo: () => ipcRenderer.invoke('lumi:voz-info'),
+  piper: {
+    vozes: () => ipcRenderer.invoke('lumi:piper-vozes'),
+    falar: (texto, nome, op) => ipcRenderer.invoke('lumi:piper-falar', texto, nome, op),
+    adicionar: () => ipcRenderer.invoke('lumi:piper-adicionar'),
+  },
+  estudio: {
+    estado: () => ipcRenderer.invoke('lumi:estudio-estado'),
+    salvar: (indice, texto, wav) => ipcRenderer.invoke('lumi:estudio-salvar', indice, texto, wav),
+  },
+  abrirPasta: (qual) => ipcRenderer.invoke('lumi:abrir-pasta', qual),
   whisper: {
     estado: () => ipcRenderer.invoke('lumi:whisper-estado'),
     preparar: (nome) => ipcRenderer.invoke('lumi:whisper-preparar', nome),

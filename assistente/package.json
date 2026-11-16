@@ -66,12 +66,14 @@
     "asarUnpack": [
       "node_modules/onnxruntime-node/**",
       "node_modules/sharp/**",
-      "node_modules/@img/**"
+      "node_modules/@img/**",
+      "node_modules/espeak-ng/**"
     ]
   },
   "author": "Lumi",
   "dependencies": {
     "@huggingface/transformers": "3.8.1",
+    "espeak-ng": "1.0.2",
     "vosk-browser": "^0.0.8"
   }
 }

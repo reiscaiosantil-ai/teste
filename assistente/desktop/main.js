@@ -1,11 +1,12 @@
 /* Lumi — app de computador (Electron): uma janela transparente, sempre no topo,
    presa no alto da tela. Fora do entalho, os cliques passam para o que está atrás. */
-const { app, BrowserWindow, screen, ipcMain, globalShortcut, shell, session, protocol } = require('electron');
+const { app, BrowserWindow, screen, ipcMain, globalShortcut, shell, session, protocol, dialog } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const spotify = require('./spotify');
 const claudeCode = require('./claude-code');
 const whisper = require('./whisper');
+const piper = require('./piper');
 
 const LARGURA = 900, ALTURA = 580;
 let janela = null, olhoSpotify = null;
@@ -67,6 +68,42 @@ ipcMain.handle('lumi:transcrever', async (_e, audio, nome) => {
   try { return { texto: await whisper.transcrever(audio, String(nome || 'small'), app.getPath('userData'), avisarWhisper) }; }
   catch (e) { return { erro: String(e && e.message ? e.message : e).slice(0, 200) }; }
 });
+// Piper: vozes offline (pasta "vozes" do app) e o Estúdio de voz (Documentos/Lumi/estudio-voz)
+const pastaVozes = () => { const p = path.join(app.getPath('userData'), 'vozes'); fs.mkdirSync(p, { recursive: true }); return p; };
+const pastaEstudio = () => path.join(app.getPath('documents'), 'Lumi', 'estudio-voz');
+ipcMain.handle('lumi:piper-vozes', () => piper.listar(pastaVozes()).map((v) => v.nome));
+ipcMain.handle('lumi:piper-falar', async (_e, texto, nome, op) => {
+  const vozes = piper.listar(pastaVozes()), v = vozes.find((x) => x.nome === nome) || vozes[0];
+  if (!v) return { erro: 'nenhuma voz offline instalada' };
+  try { return { wav: new Uint8Array(await piper.sintetizar(String(texto || '').slice(0, 2000), v.modelo, op || {})) }; }
+  catch (e) { return { erro: String(e && e.message ? e.message : e).slice(0, 200) }; }
+});
+ipcMain.handle('lumi:piper-adicionar', async () => {
+  const r = await dialog.showOpenDialog(janela, { title: 'Escolha a voz (arquivo .onnx)', filters: [{ name: 'Voz Piper', extensions: ['onnx'] }], properties: ['openFile'] });
+  if (r.canceled || !r.filePaths[0]) return null;
+  const src = r.filePaths[0];
+  if (!fs.existsSync(src + '.json')) return { erro: `Falta o arquivo ${path.basename(src)}.json na mesma pasta.` };
+  const nome = path.basename(src);
+  fs.copyFileSync(src, path.join(pastaVozes(), nome)); fs.copyFileSync(src + '.json', path.join(pastaVozes(), nome + '.json'));
+  return { nome: nome.replace(/\.onnx$/, '') };
+});
+ipcMain.handle('lumi:abrir-pasta', (_e, qual) => { const p = qual === 'estudio' ? pastaEstudio() : pastaVozes(); fs.mkdirSync(p, { recursive: true }); return shell.openPath(p); });
+function lerMetadados() {
+  const m = new Map();
+  try { for (const l of fs.readFileSync(path.join(pastaEstudio(), 'metadata.csv'), 'utf8').split(/\r?\n/)) { const [a, t] = l.split('|'); if (a && t) m.set(a, t); } } catch (_) { /* ainda vazio */ }
+  return m;
+}
+ipcMain.handle('lumi:estudio-estado', () => ({ gravadas: [...lerMetadados().keys()].map((a) => parseInt(a.replace(/\D/g, ''), 10)), pasta: pastaEstudio() }));
+ipcMain.handle('lumi:estudio-salvar', (_e, indice, texto, wav) => {
+  const i = Number(indice); if (!Number.isInteger(i) || i < 0 || i > 9999 || !(wav instanceof Uint8Array) || wav.length > 20e6) return { erro: 'gravação inválida' };
+  const nome = `frase${String(i).padStart(4, '0')}.wav`;
+  fs.mkdirSync(path.join(pastaEstudio(), 'wavs'), { recursive: true });
+  fs.writeFileSync(path.join(pastaEstudio(), 'wavs', nome), Buffer.from(wav));
+  const m = lerMetadados(); m.set(nome, String(texto || '').replace(/[|\r\n]+/g, ' ').trim());
+  fs.writeFileSync(path.join(pastaEstudio(), 'metadata.csv'), [...m.entries()].sort().map(([a, t]) => `${a}|${t}`).join('\n') + '\n', 'utf8');
+  return { ok: true, total: m.size };
+});
+
 ipcMain.handle('lumi:voz-info', () => ({ disponivel: fs.existsSync(MODELO_VOZ), url: 'lumivoz://modelo/pt.tar.gz' }));
 ipcMain.handle('lumi:cc-status', () => claudeCode.status());
 ipcMain.handle('lumi:cc-pensar', (_e, p) => claudeCode.pensar({

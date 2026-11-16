@@ -20,7 +20,7 @@
   const PADRAO = () => ({
     cfg: {
       nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo', cilios: true, blush: true, batom: false, cabelo: 'nenhum', corCabelo: 0,
-      voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', cloudChave: '', usarChirp: true, reconhecimento: 'whisper', whisperModelo: 'small', somenteExecutar: false, sempreOuvindo: false,
+      voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', cloudChave: '', usarChirp: true, reconhecimento: 'whisper', whisperModelo: 'small', piperVoz: '', piperExpr: 0.65, somenteExecutar: false, sempreOuvindo: false,
       cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', volume: 70, pausas: false,
     },
     xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [],
@@ -48,6 +48,7 @@
     ouvindo: false, parcial: '', falando: false, alarme: null, crono: { rodando: false, inicio: 0, acum: 0 },
     musica: { lista: [], i: 0, tocando: false }, rascunhos: {}, previa: 'happy', ultimaAtividade: Date.now(), ultimaPausa: Date.now(),
     lugar: null, pendente: null,
+    piperVozes: [], estudio: { i: 0, gravadas: [], gravando: false, ouvir: {} },
     vozOff: null, vozCarregada: false, // voz offline do app instalado
     cc: null, // estado do Claude Code no computador (só no app instalado)
     spotify: null, spotifyUltima: null, // Spotify do computador (só no app instalado)
@@ -357,6 +358,32 @@
     if (c.usarChirp !== false && (c.cloudChave || c.geminiChave)) lista.push('chirp');
     return lista.filter((m) => !(pausaMotor[m] > Date.now()));
   }
+  // toca um áudio (WAV/MP3 em ArrayBuffer) com a mascote falando
+  async function tocarAudio(audio, seq) {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    const buf = await audioCtx.decodeAudioData(audio.slice(0));
+    if (seq !== falaSeq) return false;
+    const src = audioCtx.createBufferSource(); src.buffer = buf; src.connect(audioCtx.destination);
+    src.onended = () => { if (falaFonte === src) { falaFonte = null; fimFala(); } };
+    falaFonte = src; inicioFala(); src.start();
+    return true;
+  }
+  const PIPER = window.lumiDesktop && window.lumiDesktop.piper ? window.lumiDesktop.piper : null;
+  const temPiper = () => !!(PIPER && R.piperVozes && R.piperVozes.length);
+  async function falarPiper(limpo, seq) {
+    try {
+      const r = await PIPER.falar(limpo, S.cfg.piperVoz || R.piperVozes[0], { velocidade: S.cfg.velocidade, expressividade: S.cfg.piperExpr });
+      if (seq !== falaSeq) return;
+      if (!r || r.erro || !r.wav) throw new Error((r && r.erro) || 'sem áudio');
+      R.ultimaVoz = 'Piper (' + (S.cfg.piperVoz || R.piperVozes[0]) + ')';
+      await tocarAudio(r.wav.buffer.slice(r.wav.byteOffset, r.wav.byteOffset + r.wav.byteLength), seq);
+    } catch (e) {
+      if (seq !== falaSeq) return;
+      if (!avisouGoogle) { avisouGoogle = true; aviso('Voz offline: ' + (e && e.message ? e.message : 'erro') + '. Usando a voz do computador.'); }
+      R.ultimaVoz = NOME_MOTOR.computador; falarNavegador(limpo);
+    }
+  }
   async function falarGoogle(limpo, seq) {
     const c = S.cfg, chave = `${c.geminiVoz}|${c.personalidade}|${limpo}`;
     let ultimoErro = null;
@@ -381,15 +408,10 @@
         cacheFala.set(chave, audio); if (cacheFala.size > 30) cacheFala.delete(cacheFala.keys().next().value);
       }
       if (seq !== falaSeq) return;
-      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') await audioCtx.resume();
-      const buf = await audioCtx.decodeAudioData(audio.slice(0));
-      if (seq !== falaSeq) return;
-      const src = audioCtx.createBufferSource(); src.buffer = buf; src.connect(audioCtx.destination);
-      src.onended = () => { if (falaFonte === src) { falaFonte = null; fimFala(); } };
-      falaFonte = src; inicioFala(); src.start();
+      await tocarAudio(audio, seq);
     } catch (e) {
       if ((e && e.name === 'AbortError') || seq !== falaSeq) return;
+      if (temPiper()) { falarPiper(limpo, seq); return; } // sem Google: voz offline Piper
       R.ultimaVoz = NOME_MOTOR.computador;
       if (!avisouGoogle) { avisouGoogle = true; aviso(`Voz do Google: ${e && e.message ? e.message : 'erro'}. Usando a voz do computador.`); }
       falarNavegador(limpo);
@@ -400,7 +422,8 @@
     const limpo = textoFalavel(texto); if (!limpo) return;
     calar();
     const seq = ++falaSeq;
-    if (S.cfg.vozMotor === 'google' && (S.cfg.geminiChave || S.cfg.cloudChave) && window.VOZ_GOOGLE) falarGoogle(limpo, seq);
+    if (S.cfg.vozMotor === 'piper' && temPiper()) falarPiper(limpo, seq);
+    else if (S.cfg.vozMotor === 'google' && (S.cfg.geminiChave || S.cfg.cloudChave) && window.VOZ_GOOGLE) falarGoogle(limpo, seq);
     else falarNavegador(limpo);
   }
   function calar() {
@@ -559,7 +582,7 @@
   async function aoResultadoOffline(t, audio) {
     R.ouvidos = [{ t, modo: modoVoz, quando: Date.now() }, ...(R.ouvidos || [])].slice(0, 8); // para Ajustes e diagnóstico
     mostrarOuvido();
-    if (R.falando) return;
+    if (R.falando || R.view === 'estudio') return; // no estúdio as frases não são pedidos
     if (modoVoz === 'comando') {
       const resto = tirarChamado(t); // "ei sexta-feira" repetido no começo não atrapalha
       if (resto === '') { esperarComando(8000); return; } // falou só o nome de novo: continua esperando o pedido
@@ -1064,8 +1087,13 @@
         <small>${(() => { const w = R.whisper; if ((c.reconhecimento || 'whisper') !== 'whisper') return 'O Vosk entende os pedidos sozinho.'; if (!w) return 'Verificando…'; if (w.erro) return 'Não consegui baixar o Whisper: ' + esc(w.erro) + '. Por enquanto uso o Vosk.'; if (w.baixando) return `Baixando o Whisper… ${w.progresso || 0}% (uma vez só). Enquanto isso, uso o Vosk.`; if (w.pronto) return '✅ Whisper pronto. O Vosk só espera o chamado; o pedido é entendido pelo Whisper, no seu PC.'; return 'Será baixado uma vez só e roda offline.'; })()}</small></div>
       <div class="campo"><label for="cWm">Modelo do Whisper</label><select id="cWm" data-cfg="whisperModelo">${[['base', 'Base — rápido (80 MB)'], ['small', 'Small — preciso (240 MB, recomendado)'], ['turbo', 'Turbo — máxima precisão, mais lento (730 MB)']].map(([v, n]) => `<option value="${v}"${v === (c.whisperModelo || 'small') ? ' selected' : ''}>${n}</option>`).join('')}</select></div></div>` : ''}
       ${tog('sempreOuvindo', `Sempre ouvindo "Ei, ${esc(c.nome)}"`, usarOffline() ? 'Reconhecimento offline, feito no seu computador: nada do que você fala sai do PC. Funciona melhor com nomes que são palavras em português.' : temVoz() ? 'O microfone fica ligado enquanto esta janela estiver aberta. O reconhecimento é feito pelo navegador.' : window.lumiDesktop ? 'A voz offline não foi encontrada neste app' : 'Precisa do Chrome ou do Edge', !temVoz())}
-      <div class="grade2"><div class="campo"><label for="cMotor">Tipo de voz</label><select id="cMotor" data-cfg="vozMotor"><option value="navegador"${c.vozMotor !== 'google' ? ' selected' : ''}>Voz do computador (grátis, offline)</option><option value="google"${c.vozMotor === 'google' ? ' selected' : ''}>Google AI Studio (Gemini)</option></select></div>
+      <div class="grade2"><div class="campo"><label for="cMotor">Tipo de voz</label><select id="cMotor" data-cfg="vozMotor"><option value="navegador"${c.vozMotor !== 'google' ? ' selected' : ''}>Voz do computador (grátis, offline)</option><option value="google"${c.vozMotor === 'google' ? ' selected' : ''}>Google AI Studio (Gemini)</option>${PIPER ? `<option value="piper"${c.vozMotor === 'piper' ? ' selected' : ''}>Voz offline (Piper)</option>` : ''}</select></div>
       <div class="campo"><span>&nbsp;</span><button class="btn fantasma" data-acao="testar-voz">🔊 Testar voz</button></div></div>
+      ${PIPER ? `<div class="secao">Voz offline (Piper)</div>
+      <div class="nota-aviso">Natural, instantânea e sem internet. ${c.vozMotor === 'piper' ? 'É a voz principal.' : 'Entra quando o Google não puder falar.'} Crie a sua no Estúdio de voz, ou adicione um arquivo .onnx de voz Piper (com o .onnx.json junto).</div>
+      <div class="grade2"><div class="campo"><label for="cPiper">Voz</label><select id="cPiper" data-cfg="piperVoz">${R.piperVozes.length ? R.piperVozes.map((v) => `<option value="${esc(v)}"${v === c.piperVoz ? ' selected' : ''}>${esc(v)}</option>`).join('') : '<option value="">Nenhuma voz instalada</option>'}</select></div>
+      <div class="campo"><label for="cExpr">Jeito de falar · ${Math.round((c.piperExpr ?? 0.65) * 100)}% descontraída</label><input id="cExpr" type="range" min="0" max="1" step="0.05" value="${c.piperExpr ?? 0.65}" data-cfg="piperExpr" data-num></div></div>
+      <div class="form"><button class="btn fantasma" data-acao="piper-add">➕ Adicionar voz (.onnx)</button><button class="btn fantasma" data-acao="pasta" data-qual="vozes">📁 Pasta de vozes</button><button class="btn" data-acao="estudio">🎙 Estúdio de voz</button></div>` : ''}
       ${c.vozMotor === 'google' ? `<div class="nota-aviso">Vozes femininas do Gemini, bem naturais. Precisa de internet e de uma chave grátis do Google AI Studio (aistudio.google.com → Get API key). A chave fica salva só neste navegador; o uso conta na cota da sua conta Google. Se a voz do Google falhar, ela usa a voz do computador.</div>
       <div class="grade2"><div class="campo"><label for="cGemini">Chave do Google AI Studio</label><input id="cGemini" type="password" data-cfg="geminiChave" value="${esc(c.geminiChave)}" placeholder="AIza…" autocomplete="off"></div>
       <div class="campo"><label for="cGVoz">Voz feminina</label><select id="cGVoz" data-cfg="geminiVoz">${window.VOZ_GOOGLE ? window.VOZ_GOOGLE.VOZES.map(([n, d]) => `<option value="${n}"${n === c.geminiVoz ? ' selected' : ''}>${n} · ${d}</option>`).join('') : ''}</select></div>
@@ -1096,7 +1124,81 @@
       <div class="secao">Dados</div>
       <div class="form"><button class="btn fantasma" data-acao="limpar-conversa">Limpar conversa</button><button class="btn perigo" data-acao="apagar-tudo">Apagar tudo</button></div></div>`;
   }
-  const VIEWS = { inicio: vInicio, tarefas: vTarefas, habitos: vHabitos, timers: vTimers, musica: vMusica, notas: vNotas, visual: vVisual, ajustes: vAjustes };
+  /* ================= Estúdio de voz (criar uma voz Piper própria) ================= */
+  const EST = { ctx: null, stream: null, no: null, partes: [] };
+  async function estudioAtualizar() {
+    if (window.lumiDesktop && window.lumiDesktop.estudio) {
+      const e = await window.lumiDesktop.estudio.estado(); R.estudio.gravadas = e.gravadas || []; R.estudio.pasta = e.pasta;
+      const n = window.FRASES_ESTUDIO.length; let i = 0; while (i < n && R.estudio.gravadas.includes(i)) i++; R.estudio.i = i % n;
+    }
+    render();
+  }
+  async function estudioGravar() {
+    if (R.estudio.gravando) return;
+    calar();
+    try {
+      EST.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+      EST.ctx = new AudioContext({ sampleRate: 22050 }); EST.partes = [];
+      const src = EST.ctx.createMediaStreamSource(EST.stream); EST.no = EST.ctx.createScriptProcessor(4096, 1, 1);
+      EST.no.onaudioprocess = (ev) => EST.partes.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
+      src.connect(EST.no); EST.no.connect(EST.ctx.destination);
+      R.estudio.gravando = true; render();
+    } catch (e) { aviso('Não consegui usar o microfone: ' + (e && e.message ? e.message : e)); }
+  }
+  // tira o silêncio das pontas (deixa 0,2 s) e normaliza o volume
+  function aparar(a, taxa) {
+    const jan = Math.round(taxa * 0.02), rms = [];
+    for (let i = 0; i < a.length; i += jan) { let s = 0; const f = Math.min(a.length, i + jan); for (let k = i; k < f; k++) s += a[k] * a[k]; rms.push(Math.sqrt(s / Math.max(1, f - i))); }
+    const lim = Math.max(0.008, Math.max(...rms) * 0.08);
+    let ini = rms.findIndex((v) => v > lim), fim = rms.length - 1 - [...rms].reverse().findIndex((v) => v > lim);
+    if (ini < 0) return null;
+    const margem = Math.round(0.2 * taxa / jan); ini = Math.max(0, ini - margem); fim = Math.min(rms.length - 1, fim + margem);
+    const r = a.slice(ini * jan, Math.min(a.length, (fim + 1) * jan)); let pico = 0;
+    for (const v of r) pico = Math.max(pico, Math.abs(v));
+    if (pico > 0) for (let i = 0; i < r.length; i++) r[i] = r[i] * (0.89 / pico);
+    return r;
+  }
+  function wav16(a, taxa) {
+    const b = new ArrayBuffer(44 + a.length * 2), v = new DataView(b), t = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    t(0, 'RIFF'); v.setUint32(4, 36 + a.length * 2, true); t(8, 'WAVE'); t(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, taxa, true); v.setUint32(28, taxa * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); t(36, 'data'); v.setUint32(40, a.length * 2, true);
+    for (let i = 0; i < a.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, a[i])) * 32767, true);
+    return new Uint8Array(b);
+  }
+  async function estudioParar() {
+    if (!R.estudio.gravando) return;
+    R.estudio.gravando = false;
+    try { EST.no.disconnect(); EST.stream.getTracks().forEach((t) => t.stop()); await EST.ctx.close(); } catch (_) { /* já fechado */ }
+    const total = EST.partes.reduce((n, p) => n + p.length, 0), a = new Float32Array(total); let o = 0;
+    for (const p of EST.partes) { a.set(p, o); o += p.length; }
+    const r = aparar(a, 22050);
+    if (!r || r.length < 22050 * 0.6) { aviso('Não ouvi a frase. Grave de novo, mais perto do microfone.'); render(); return; }
+    const i = R.estudio.i, wav = wav16(r, 22050);
+    const res = await window.lumiDesktop.estudio.salvar(i, window.FRASES_ESTUDIO[i], wav);
+    if (res && res.erro) { aviso(res.erro); render(); return; }
+    R.estudio.ouvir[i] = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+    if (!R.estudio.gravadas.includes(i)) R.estudio.gravadas.push(i);
+    aviso(`✅ Frase ${i + 1} salva (${(r.length / 22050).toFixed(1)} s)`);
+    R.estudio.i = (i + 1) % window.FRASES_ESTUDIO.length; render();
+  }
+  function vEstudio() {
+    const F = window.FRASES_ESTUDIO || [], e = R.estudio, n = F.length, feitas = e.gravadas.length;
+    if (!window.lumiDesktop || !window.lumiDesktop.estudio) return '<h4>Estúdio de voz</h4><div class="nota-aviso">O estúdio funciona no app instalado.</div>';
+    return `<h4>🎙 Estúdio de voz</h4><div class="sub">Grave estas frases com a voz que vai virar a ${esc(S.cfg.nome)}: natural e descontraída, sempre na mesma distância do microfone, num lugar silencioso.</div>
+      <div class="rolar"><div class="estudio-frase${e.gravadas.includes(e.i) ? ' feita' : ''}">“${esc(F[e.i] || '')}”</div>
+      <div class="sub" style="text-align:center">Frase ${e.i + 1} de ${n} · ${feitas} gravada${feitas === 1 ? '' : 's'}${e.gravadas.includes(e.i) ? ' · ✅ esta já foi gravada (gravar de novo substitui)' : ''}</div>
+      <div class="barra" style="margin:6px 0 12px"><i style="width:${(feitas / Math.max(1, n)) * 100}%"></i></div>
+      <div class="form" style="justify-content:center">
+        <button class="btn fantasma" data-acao="est-ir" data-d="-1" ${e.gravando ? 'disabled' : ''}>← Anterior</button>
+        ${e.gravando ? '<button class="btn perigo" data-acao="est-parar">■ Parar e salvar</button>' : '<button class="btn" data-acao="est-gravar">● Gravar</button>'}
+        <button class="btn fantasma" data-acao="est-ouvir" ${e.ouvir[e.i] ? '' : 'disabled'}>▶ Ouvir</button>
+        <button class="btn fantasma" data-acao="est-ir" data-d="1" ${e.gravando ? 'disabled' : ''}>Próxima →</button></div>
+      <div class="sub" style="text-align:center">Atalho: barra de espaço grava e para.</div>
+      <div class="secao">Depois de gravar</div>
+      <div class="nota-aviso">As gravações ficam em <b>Documentos\\Lumi\\estudio-voz</b> (pasta wavs + metadata.csv). Compacte a pasta em .zip e siga o roteiro "Treinar a voz" (arquivo <b>treino/README.md</b> do projeto): o treino roda de graça numa placa de vídeo na nuvem e gera a voz .onnx, que você adiciona em Ajustes → Voz offline.</div>
+      <div class="form"><button class="btn fantasma" data-acao="pasta" data-qual="estudio">📁 Abrir pasta das gravações</button><button class="btn fantasma" data-acao="est-voltar">← Voltar aos Ajustes</button></div></div>`;
+  }
+  const VIEWS = { estudio: vEstudio, inicio: vInicio, tarefas: vTarefas, habitos: vHabitos, timers: vTimers, musica: vMusica, notas: vNotas, visual: vVisual, ajustes: vAjustes };
 
   function renderPrincipal() {
     const ativo = document.activeElement;
@@ -1198,6 +1300,13 @@
     },
     'testar-voz': () => { avisouGoogle = false; for (const m in pausaMotor) delete pausaMotor[m]; falar(`Oi${S.cfg.usuario ? ' ' + S.cfg.usuario : ''}! Eu sou a ${S.cfg.nome}. É assim que eu falo.`, true); },
     notificacoes: () => pedirNotificacoes(),
+    'piper-add': async () => { const r = await PIPER.adicionar(); if (r && r.erro) aviso(r.erro); if (r && r.nome) { R.piperVozes = await PIPER.vozes(); S.cfg.piperVoz = r.nome; salvar(); aviso(`🎙 Voz "${r.nome}" adicionada`); } },
+    pasta: (el) => window.lumiDesktop && window.lumiDesktop.abrirPasta(el.dataset.qual),
+    estudio: async () => { R.view = 'estudio'; await estudioAtualizar(); },
+    'est-gravar': () => estudioGravar(), 'est-parar': () => estudioParar(),
+    'est-ir': (el) => { if (R.estudio.gravando) return; const n = window.FRASES_ESTUDIO.length; R.estudio.i = (R.estudio.i + Number(el.dataset.d) + n) % n; },
+    'est-ouvir': () => { const u = R.estudio.ouvir[R.estudio.i]; if (u) new Audio(u).play().catch(() => {}); },
+    'est-voltar': () => { if (!R.estudio.gravando) R.view = 'ajustes'; },
     'cc-nova': async () => { if (CC) await CC.nova(); aviso('🧹 Comecei uma conversa nova'); },
     'cc-status': async () => { if (!CC) return; R.cc = null; renderPrincipal(); R.cc = await CC.status().catch(() => ({ instalado: false })); },
     'limpar-conversa': () => { S.chat = []; salvar(); aviso('Conversa apagada'); },
@@ -1257,6 +1366,7 @@
     R.ultimaAtividade = Date.now();
     if (e.altKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); if (R.aberto) fechar(); else abrir(true); }
     else if (e.altKey && (e.key === 'l' || e.key === 'L')) { e.preventDefault(); abrir(); ouvir(); }
+    else if (e.key === ' ' && R.aberto && R.view === 'estudio' && !/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test((document.activeElement || {}).tagName || '')) { e.preventDefault(); if (R.estudio.gravando) estudioParar(); else estudioGravar(); }
     else if (e.key === 'Escape') { if (R.alarme) pararAlarme(); else if (R.falando) calar(); else if (R.ouvindo && voz.rec) voz.rec.abort(); else fechar(); }
   });
 
@@ -1272,6 +1382,7 @@
   function relogio() { const d = new Date(); $('#wHora').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`; $('#wData').textContent = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' }); }
 
   /* app de computador (Electron) */
+  if (PIPER) PIPER.vozes().then((v) => { R.piperVozes = v || []; if (!S.cfg.piperVoz && R.piperVozes[0]) S.cfg.piperVoz = R.piperVozes[0]; }).catch(() => {});
   if (WH) {
     WH.aoMudar((e) => { R.whisper = e; if (R.view === 'ajustes' && R.aberto) { const a = document.activeElement; if (!(a && /^(INPUT|SELECT)$/.test(a.tagName))) renderPrincipal(); } });
     WH.estado().then((e) => { R.whisper = e; prepararWhisper(); }).catch(() => {});
