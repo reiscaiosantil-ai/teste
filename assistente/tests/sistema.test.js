@@ -59,11 +59,11 @@ test('senha para desligar: padrão "Sabado", sem acento e dentro da frase', () =
   assert.ok(!nova.padrao && S.confereSenha('lua cheia', nova) && !S.confereSenha('sabado', nova));
 });
 
+// Cuidado: com a senha certa, no Windows, energia() desliga a máquina de verdade. O teste nunca chama com a senha certa.
 test('desligar sem a senha certa não faz nada', async () => {
   const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'lumi-seg-'));
   assert.ok((await S.energia('desligar', 'domingo', pasta)).senhaErrada);
-  const certo = await S.energia('desligar', 'sábado', pasta);
-  if (process.platform !== 'win32') assert.deepEqual(certo, { indisponivel: true, senhaOk: true });
+  assert.ok((await S.energia('reiniciar', '', pasta)).senhaErrada);
 });
 
 test('resumo do antivírus fala o que importa', () => {
