@@ -24,7 +24,7 @@ jobs:
       - name: Instalar dependências
         run: npm ci
       - name: Testes
-        run: node --test tests/cerebro.test.js tests/spotify.test.js tests/voz-google.test.js tests/claude-code.test.js tests/whisper.test.js tests/piper.test.js tests/sistema.test.js tests/jogos.test.js
+        run: node --test tests/cerebro.test.js tests/spotify.test.js tests/voz-google.test.js tests/claude-code.test.js tests/whisper.test.js tests/piper.test.js tests/sistema.test.js tests/jogos.test.js tests/trabalho.test.js
       - name: Baixar o modelo de voz offline (Vosk, português)
         run: node scripts/baixar-voz.js
       - name: Gerar instalador e versão portátil

@@ -214,6 +214,37 @@
     let m;
     const nomesLista = (t) => String(t || '').replace(/[.!?]+$/, '').split(/\s*,\s*|\s+e\s+/u).map((x) => x.trim().replace(/^(?:o|a)\s+/u, '')).filter(Boolean).map(cap);
 
+    const original = String(texto).trim().replace(/^(?:(?:ei|oi|ô|o|e|hey)[,\s]+)?/iu, '');
+    const doOriginal = (re, i = 1) => { const o = re.exec(original); return o ? o[i] : null; }; // mantém maiúsculas e acentos do que foi dito
+
+    // trabalho: agenda, documentos, ditado, mensagens, arquivos, volume e brilho
+    if (/minha agenda|(?:o que|que) (?:eu )?tenho (?:amanh[aã]|na agenda|marcado|de reuni[aã]o)|agenda (?:de |pra |para )?(?:hoje|amanh[aã])|pr[oó]xima reuni[aã]o|(?:tenho|tem) (?:alguma )?reuni[aã]o|compromissos (?:de )?(?:hoje|amanh[aã])/u.test(s)) return { tipo: 'agenda', dia: /amanh[aã]/u.test(s) ? 'amanha' : /pr[oó]xima|tenho reuni|tem reuni|tem alguma/u.test(s) ? 'proxima' : 'hoje' };
+    if (/^(?:entra|entrar|entre|abre|abrir|me coloca|me p[oõ]e)\s+(?:na|a|nessa)\s+(?:reuni[aã]o|call|chamada|meet)/u.test(s)) return { tipo: 'entrar_reuniao' };
+    m = /^(?:escreve|escreva|escrever|redige|redija|faz|faça|faca|fazer|cria|crie|prepara|prepare|monta|elabora|elabore|gera|gere)\s+(?:pra mim\s+)?(?:um|uma|o|a)\s+(?:novo\s+|nova\s+)?(e-?mail|relat[oó]rio|proposta|contrato|or[cç]amento|texto|post|legenda|roteiro|ata|resumo|carta|apresenta[cç][aã]o|plano|lista|briefing|descri[cç][aã]o|an[uú]ncio|artigo|mensagem formal|planilha)\b/u.exec(s);
+    if (m) return { tipo: 'documento', pedido: original, doc: m[1] };
+    if (/^(?:resume|resumir|resuma|traduz o arquivo|revisa|revise|corrige|corrija)\s+(?:o|a|esse|essa|este|esta|meu|minha)\s+(?:arquivo|pdf|documento|contrato|relat[oó]rio|planilha|texto)/u.test(s)) return { tipo: 'documento', pedido: original, doc: 'resumo' };
+    m = /^(?:manda|mandar|envia|enviar|escreve|escreva)\s+(?:uma\s+)?(?:mensagem\s+|msg\s+|zap\s+|whats\s+)?(?:pr[oa]|pra|para)\s+(?:o\s+|a\s+)?([^:,]+?)(?:\s+(?:no|pelo)\s+(?:whatsapp|whats|zap))?\s*(?:[:,]\s*|\s+(?:dizendo|falando|escrito|avisando)\s+(?:que\s+)?)(.+)$/u.exec(s);
+    if (m) { const t = doOriginal(/(?:[:,]\s*|\s+(?:dizendo|falando|escrito|avisando)\s+(?:que\s+)?)(.+)$/iu) || m[2]; return { tipo: 'mensagem', contato: m[1].trim().split(' ').map(cap).join(' '), texto: t.charAt(0).toUpperCase() + t.slice(1) }; }
+    m = /^(?:escreve|escreva|digita|digite|escrever|digitar)(?:\s+(?:a[ií]|aqui|isso|pra mim))?\s*:?\s+(.+)$/u.exec(s);
+    if (m) return { tipo: 'digitar', texto: doOriginal(/^(?:escreve|escreva|digita|digite|escrever|digitar)(?:\s+(?:a[ií]|aqui|isso|pra mim))?\s*:?\s+(.+)$/iu) || m[1] };
+    if (/(?:abre|abrir|abra|mostra|qual (?:foi|[eé]))\s+(?:o\s+)?(?:[uú]ltimo\s+(?:download|arquivo baixado|arquivo que (?:eu )?baixei)|arquivo que (?:eu )?baixei por [uú]ltimo)|o que (?:eu )?baixei por [uú]ltimo/u.test(s)) return { tipo: 'ultimo_download' };
+    if (/^(?:limpa|limpar|arruma|arrumar|organiza|organizar|esvazia)\s+(?:a\s+)?(?:minha\s+)?(?:pasta\s+)?(?:de\s+)?downloads?/u.test(s)) return { tipo: 'limpar_downloads' };
+    m = /^(?:acha|ache|achar|procura|procure|procurar|encontra|encontre|encontrar|localiza|localize|cad[eê])\s+(?:o\s+|a\s+|os\s+|as\s+|meu\s+|minha\s+|meus\s+|minhas\s+)?((?:arquivo|planilha|documento|pdf|apresenta[cç][aã]o|foto|imagem|v[ií]deo|contrato|proposta|relat[oó]rio|curr[ií]culo)s?\b.*)$/u.exec(s);
+    if (m) return { tipo: 'arquivo', busca: m[1].trim(), abrir: false };
+    m = /^(?:abre|abrir|abra)\s+(?:o\s+|a\s+|meu\s+|minha\s+)?((?:arquivo|planilha|documento|pdf|apresenta[cç][aã]o|contrato|proposta|relat[oó]rio|curr[ií]culo)\b.+)$/u.exec(s);
+    if (m) return { tipo: 'arquivo', busca: m[1].trim(), abrir: true };
+    if (/(?:volume|som)\s+(?:geral\s+)?(?:do|no|da)\s+(?:pc|computador|sistema|windows|notebook)|(?:muta|silencia|desmuta)\s+(?:o\s+)?(?:pc|computador|notebook|windows)/u.test(s)) {
+      m = /(\d{1,3})\s*%?/.exec(n);
+      if (/(?:^|\s)(?:muta|silencia|desmuta)/u.test(s)) return { tipo: 'volume_pc', mudo: true };
+      if (m && !/aumenta|sobe|diminui|abaixa|baixa/u.test(s)) return { tipo: 'volume_pc', valor: Math.min(100, parseInt(m[1], 10)) };
+      return { tipo: 'volume_pc', delta: (/(?:diminui|abaixa|baixa|menos)/u.test(s) ? -1 : 1) * (m ? parseInt(m[1], 10) : 10) };
+    }
+    if (/\bbrilho\b/u.test(s)) {
+      m = /(\d{1,3})\s*%?/.exec(n);
+      if (m && !/aumenta|sobe|diminui|abaixa|baixa/u.test(s)) return { tipo: 'brilho', valor: Math.min(100, parseInt(m[1], 10)) };
+      return { tipo: 'brilho', delta: (/(?:diminui|abaixa|baixa|menos|escurece)/u.test(s) ? -1 : 1) * (m ? parseInt(m[1], 10) : 20) };
+    }
+
     // jogos e Discord
     if (/^(?:ativa |ativar |liga |ligar |entra no |entrar no |coloca no |bota no )?modo (?:jogo|gamer|game|gameplay)$|^(?:vou|bora|vamos) jogar$|^hora (?:de|do) jogo$/u.test(s)) return { tipo: 'modo_jogo', ligar: true };
     if (/^(?:desliga |desligar |sai do |sair do |desativa |desativar )(?:o )?modo (?:jogo|gamer|game|gameplay)$|^modo normal$|^(?:parei|cansei) de jogar$/u.test(s)) return { tipo: 'modo_jogo', ligar: false };
@@ -294,7 +325,7 @@
     m = /^(?:abre|abrir|abra|entra|entrar|vai|ir|me leva)\s+(?:na\s+|a\s+|em\s+|pra\s+)?conversa\s+(?:com|d[oae]|no|na)\s+(?:o\s+|a\s+)?(.+)$/u.exec(s)
       || /^(?:abre|abrir|abra)\s+(?:o\s+)?(?:whatsapp|whats|zap)\s+(?:d[oae]|com)\s+(?:o\s+|a\s+)?(.+)$/u.exec(s)
       || /^(?:manda|mandar|envia|enviar)\s+(?:uma\s+)?(?:mensagem|msg|zap|whats)\s+(?:pr[oa]|pra|para|ao|à)\s+(?:o\s+|a\s+)?(.+)$/u.exec(s);
-    if (m) return { tipo: 'conversa', contato: m[1].replace(/\s+(?:no|pelo)\s+(?:whatsapp|whats|zap)$/u, '').trim() };
+    if (m) return { tipo: 'conversa', contato: m[1].replace(/\s+(?:no|pelo)\s+(?:whatsapp|whats|zap)$/u, '').trim().split(' ').map(cap).join(' ') };
     m = /^(?:fecha|fechar|feche|encerra|encerrar|encerre|mata|matar|finaliza|finalizar|sai do|sai da)\s+(?:o\s+|a\s+|os\s+|as\s+|meu\s+|minha\s+)?(?:programa\s+|aplicativo\s+|app\s+|janela d[oa]\s+)?(.+)$/u.exec(s);
     if (m && !/^(?:painel|isso|aqui|tudo|todos|todas|o painel|a janela)$/u.test(m[1]) && !/timer|alarme|lembrete|tarefa/u.test(m[1])) return { tipo: 'fechar_app', alvo: m[1].replace(/\s+(?:pra mim|por favor|agora)$/u, '').trim() };
     if (/^(?:fecha|fechar)\s+(?:tudo|todos(?: os programas)?|todas as janelas)$/u.test(s)) return { tipo: 'fechar_app', alvo: 'tudo' };

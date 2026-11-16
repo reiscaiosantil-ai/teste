@@ -21,7 +21,7 @@
     cfg: {
       nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo', cilios: true, blush: true, batom: false, cabelo: 'nenhum', corCabelo: 0,
       voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', cloudChave: '', usarChirp: true, reconhecimento: 'whisper', whisperModelo: 'small', piperVoz: '', piperExpr: 0.65, somenteExecutar: false, sempreOuvindo: false,
-      cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', ccChave: '', ccContaPropria: false, tratamento: 'o senhor', gravador: 'xbox', discordMutar: 'ctrl+shift+m', discordSurdo: 'ctrl+shift+d', vozCall: '', vozCallModo: 'jogo', horaDormir: '', resumoManha: true, volume: 70, pausas: false,
+      cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', ccChave: '', ccContaPropria: false, tratamento: 'o senhor', agendaLinks: '', avisoReuniao: 10, alertasPc: true, gravador: 'xbox', discordMutar: 'ctrl+shift+m', discordSurdo: 'ctrl+shift+d', vozCall: '', vozCallModo: 'jogo', horaDormir: '', resumoManha: true, volume: 70, pausas: false,
     },
     xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [], aprendido: [], memoria: [], rotinas: [], placar: { dia: '', v: 0, d: 0, e: 0, seq: [] }, modoJogo: false, ultimosNomes: [], resumoDia: '', dormir: { dia: '', proximo: 0 },
     habitos: { dia: hojeStr(), agua: 0, meta: 8, leitura: 0, exercicio: 0 },
@@ -53,7 +53,7 @@
     cc: null, // estado do Claude Code no computador (só no app instalado)
     spotify: null, spotifyUltima: null, // Spotify do computador (só no app instalado)
     sis: { mem: null, prot: null, verif: null, forcar: {}, energia: null, carregando: {}, senhaPadrao: null }, // computador (app instalado)
-    jogos: null, saidas: null, quiz: null, avisouDiscord: false,
+    jogos: null, saidas: null, quiz: null, avisouDiscord: false, agenda: null, avisadas: {}, alertaRam: 0, alertaDisco: '',
     ultimo: null, escutarDepois: false, arrastando: false, pos: { v: 'cima', h: 'centro' }, telas: null,
   };
 
@@ -453,6 +453,8 @@
     const hoje = S.tarefas.filter((t) => !t.feito && t.quando && t.quando <= fim.getTime());
     const semData = S.tarefas.filter((t) => !t.feito && !t.quando).length;
     partes.push(hoje.length ? `Você tem ${hoje.length} compromisso${hoje.length > 1 ? 's' : ''} hoje: ${listaE(hoje.slice(0, 3).map((t) => t.t))}.` : semData ? `Nada marcado com horário hoje, e ${semData} tarefa${semData > 1 ? 's' : ''} na lista.` : 'Nada marcado para hoje.');
+    const ag = await carregarAgenda(true).catch(() => null);
+    if (ag && ag.eventos) { const hj = doDia(ag.eventos, new Date()).filter((e) => e.diaInteiro || e.fim > Date.now()); partes.push(hj.length ? `Na agenda: ${listaE(hj.slice(0, 4).map(eventoTxt))}.` : 'A agenda está livre hoje.'); }
     if (cot) partes.push(`O dólar está em ${brl(cot.v)}.`);
     if (man && man[0]) partes.push(`Manchete: ${man[0]}.`);
     return { texto: partes.join(' '), humor: 'happy' };
@@ -479,6 +481,81 @@
       resumindo = true; S.resumoDia = hojeStr(); salvar();
       montarResumo().then((r) => { addChat('k', r.texto); setHumor('happy', 3000); render(); falar(r.texto); }).catch(() => {}).finally(() => { resumindo = false; });
     }
+  }
+
+  /* ================= trabalho: agenda, documentos, arquivos, alertas ================= */
+  const DSK = window.lumiDesktop || null;
+  const ARQ = DSK && DSK.arquivos ? DSK.arquivos : null;
+  const linksAgenda = () => String(S.cfg.agendaLinks || '').split(/\s+/).filter((l) => /^(?:https|webcal):\/\//i.test(l));
+  async function carregarAgenda(forcar) {
+    if (!DSK || !DSK.agenda || !linksAgenda().length) return null;
+    if (!forcar && R.agenda && Date.now() - R.agenda.quando < 5 * 60e3) return R.agenda;
+    try { const r = await DSK.agenda(linksAgenda()); R.agenda = { ...r, quando: Date.now() }; } catch (e) { R.agenda = { eventos: [], erros: [String(e && e.message || e)], quando: Date.now() }; }
+    return R.agenda;
+  }
+  const horaTxt = (ms) => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const doDia = (eventos, dia) => { const a = new Date(dia); a.setHours(0, 0, 0, 0); const b = a.getTime() + 864e5; return eventos.filter((e) => e.inicio < b && e.fim > a.getTime() && (!e.diaInteiro || e.inicio >= a.getTime() - 864e5)); };
+  const eventoTxt = (e) => (e.diaInteiro ? `${e.titulo} (o dia todo)` : `${horaTxt(e.inicio)} ${e.titulo}`);
+  function reuniaoAgora() { // a que está rolando ou começa nos próximos 15 minutos, com link
+    const ag = R.agenda; if (!ag) return null; const t = Date.now();
+    return ag.eventos.filter((e) => e.link && !e.diaInteiro && e.inicio - t < 15 * 60e3 && e.fim > t).sort((a, b) => Math.abs(a.inicio - t) - Math.abs(b.inicio - t))[0] || null;
+  }
+  async function verificarAgenda(agora) {
+    if (!linksAgenda().length) return;
+    const ag = await carregarAgenda(); if (!ag) return;
+    const antes = (Number(S.cfg.avisoReuniao) || 10) * 60e3;
+    for (const e of ag.eventos) {
+      if (e.diaInteiro || R.avisadas[e.id] || e.inicio - agora > antes || e.inicio - agora < -60e3) continue;
+      R.avisadas[e.id] = true;
+      const min = Math.max(0, Math.round((e.inicio - agora) / 60e3));
+      const t = `${min ? `Em ${min} minuto${min > 1 ? 's' : ''}` : 'Agora'}: ${e.titulo}.${e.link ? ' Quer entrar? Diga "entra na reunião".' : ''}`;
+      if (e.link) R.pendente = { tipo: 'reuniao', link: e.link, titulo: e.titulo, ate: e.inicio + 15 * 60e3 };
+      addChat('k', t, e.link ? `📅 ${esc(t)} ${linkHtml(e.link, 'Entrar agora')}` : null); aviso('📅 ' + t); notificar('Reunião', t); setHumor('surprised', 3000); render();
+      if (!S.modoJogo) falar(t);
+    }
+  }
+  // alertas do PC: memória acima de 90% (avisa de novo só depois de 30 min) e disco C com menos de 10% (uma vez por dia)
+  async function verificarPc(agora) {
+    if (!S.cfg.alertasPc || !SIS || !SIS.ram) return;
+    const r = await SIS.ram().catch(() => null);
+    if (r && r.pct >= 90 && agora - R.alertaRam > 30 * 60e3) {
+      R.alertaRam = agora;
+      const m = await carregarMemoria();
+      const top = m && m.apps ? m.apps.find((a) => !a.protegido) : null;
+      const t = `A memória do PC está em ${r.pct}%.${top ? ` Quem mais gasta é ${top.rotulo} (${tamanho(top.mb)}).` : ''} Fechar alguma coisa deixa tudo mais leve.`;
+      addChat('k', t); aviso('🧠 ' + t); notificar('PC pesado', t); render(); if (!S.modoJogo) falar(t);
+    }
+    if (R.alertaDisco !== hojeStr()) {
+      R.alertaDisco = hojeStr();
+      const d = SIS.disco ? await SIS.disco().catch(() => null) : null;
+      if (d && d.total && d.livre / d.total < 0.1) { const t = `O disco está quase cheio: só ${Math.round(d.livre / 1024 ** 3)} GB livres. Quer que eu limpe a pasta Downloads? Diga "limpa a pasta downloads".`; addChat('k', t); aviso('💾 ' + t); notificar('Disco quase cheio', t); render(); }
+    }
+  }
+  async function escreverMensagem(p) {
+    if (!SIS || !SIS.mensagem) { try { await navigator.clipboard.writeText(p.texto); } catch (_) { /* sem área de transferência */ } abrirLink('https://web.whatsapp.com'); return { texto: `Copiei a mensagem e abri o WhatsApp Web: procure ${p.contato} e cole.`, humor: 'cool' }; }
+    fechar();
+    const x = await SIS.mensagem(p.contato, p.texto).catch(() => ({}));
+    if (x.ok) return { texto: x.por === 'numero' ? `Pronto, a mensagem está escrita na conversa. Confere e aperta Enter para enviar.` : `Escrevi para ${p.contato}. Confere se é a conversa certa e aperta Enter para enviar. ✉️`, humor: 'cool' };
+    if (x.semWhatsapp) { try { await navigator.clipboard.writeText(p.texto); } catch (_) { /* sem área de transferência */ } abrirLink('https://web.whatsapp.com'); return { texto: `Não achei o WhatsApp instalado. Copiei a mensagem e abri o WhatsApp Web: procure ${p.contato} e cole.`, humor: 'think' }; }
+    return { texto: 'Escrever no WhatsApp só funciona no Windows.', humor: 'think' };
+  }
+  // documentos: o Claude Code escreve e salva em Notas; ela abre o arquivo e deixa o texto copiado
+  async function fazerDocumento(a) {
+    if (motorCerebro() !== 'cc') {
+      if (motorCerebro() === 'api') return executar({ tipo: 'desconhecido' }, a.pedido, false);
+      return { texto: 'Para escrever documentos eu preciso do Claude Code conectado (Ajustes → Cérebro).', humor: 'think' };
+    }
+    const desde = Date.now();
+    const instr = `${a.pedido}\n\n(Escreva o ${a.doc === 'resumo' ? 'resumo' : a.doc} completo em português do Brasil, pronto para usar, e SALVE em Notas/ como arquivo .md com um nome curto e claro. Se precisar ler um arquivo do usuário, procure em Desktop, Documentos e Downloads. Responda só com uma frase dizendo o que fez.)`;
+    const r = await perguntarClaudeCode(instr);
+    if (r && r.erro) return r;
+    const nota = CC.ultimaNota ? await CC.ultimaNota(desde).catch(() => null) : null;
+    if (nota && nota.texto) {
+      const limpo = nota.texto.replace(/^#+\s*/gm, '').replace(/\*\*/g, '').trim();
+      try { await navigator.clipboard.writeText(limpo); } catch (_) { /* sem área de transferência */ }
+      return { texto: `${r.texto} Abri o arquivo ${nota.arquivo} e deixei o texto copiado: é só colar.`, humor: 'happy' };
+    }
+    return r;
   }
 
   /* ================= aprender com as correções ================= */
@@ -888,6 +965,15 @@
       S.aprendido = S.aprendido.filter((a) => a.id !== R.ultimoAprendido); R.ultimoAprendido = null; salvar();
       return { acao: { tipo: 'correcao' }, r: { texto: 'Pronto, esqueci essa.', humor: 'idle' } };
     }
+    if (pend && pend.tipo === 'reuniao' && (SIM.test(n) || /^(?:entra|entrar|bora|vamos)(?:\s|$)/.test(n))) { abrirLink(pend.link); return { acao: { tipo: 'pendente' }, r: { texto: `Abrindo a reunião: ${pend.titulo}. 🎥`, humor: 'cool' } }; }
+    if (pend && pend.tipo === 'lixeira') {
+      if (SIM.test(n)) { const x = await ARQ.lixeira(); return { acao: { tipo: 'pendente' }, r: { texto: x.ok ? `Pronto: mandei ${x.ok} arquivo${x.ok > 1 ? 's' : ''} para a Lixeira.${x.falhas.length ? ` ${x.falhas.length} não deu (podem estar abertos).` : ''} Se precisar, dá para recuperar de lá.` : 'Não consegui mover nada para a Lixeira.', humor: 'cool' } }; }
+      if (NAO.test(n)) return { acao: { tipo: 'pendente' }, r: { texto: 'Tudo bem, não apaguei nada.', humor: 'idle' } };
+    }
+    if (pend && pend.tipo === 'mensagem') {
+      if (SIM.test(n) || /^(?:manda|envia|escreve)(?:\s|$)/.test(n)) return { acao: { tipo: 'pendente' }, r: await escreverMensagem(pend) };
+      if (NAO.test(n)) return { acao: { tipo: 'pendente' }, r: { texto: 'Tudo bem, não escrevi nada.', humor: 'idle' } };
+    }
     if (pend && pend.tipo === 'quiz') { const r = responderQuiz(pend, t); if (r) return { acao: { tipo: 'pendente' }, r }; }
     if (pend && pend.tipo === 'fechar_lista') {
       if (SIM.test(n)) { const feitos = []; for (const pr of pend.processos) { const x = await SIS.fechar('', { processo: pr }).catch(() => ({})); if (x.fechados) feitos.push(...x.fechados); } setTimeout(carregarMemoria, 1500); return { acao: { tipo: 'pendente' }, r: { texto: feitos.length ? `Fechei ${listaE(feitos)}. Bom jogo! 🎮` : 'Não consegui fechar. Bom jogo mesmo assim! 🎮', humor: 'cool' } }; }
@@ -956,7 +1042,7 @@
       case 'parar': calar(); pararAlarme(); return { texto: 'Ok, fiquei quietinho. 🤫', humor: 'idle', mudo: true };
       case 'ajuda': return {
         texto: 'Eu sei fazer um monte de coisa!', humor: 'happy',
-        html: `Eu sei fazer um monte de coisa! Experimente:<br>⏱ <b>timer de 10 minutos para a pizza</b><br>⏰ <b>me lembra de ligar pro cliente em 30 minutos</b> · <b>alarme às 7h</b><br>✅ <b>cria uma tarefa comprar pão</b> · <b>minhas tarefas</b><br>🎵 <b>toca uma música</b> · <b>próxima</b> · <b>volume 50</b><br>🌤️ <b>vai chover hoje?</b> · 💵 <b>quanto está o dólar?</b><br>🧮 <b>quanto é 15% de 230</b> · 🌍 <b>traduz para inglês bom dia</b><br>📝 <b>anota que preciso comprar café</b> · 💧 <b>bebi um copo de água</b><br>🔐 <b>gera uma senha de 20</b> · 📋 <b>copia meu pix</b> · 🪙 <b>cara ou coroa</b><br>🎄 <b>quantos dias faltam pro Natal?</b> · 😂 <b>conta uma piada</b><br>🎨 <b>coloca a coroa</b> · <b>muda sua cor para rosa</b>${SIS ? '<br>💻 <b>o que está gastando memória?</b> · <b>verifica se tem vírus</b><br>🪟 <b>abre o Word</b> · <b>fecha o Chrome</b> · <b>abre a conversa com o Bernardo</b><br>📞 <b>sai da ligação</b> · ⏻ <b>desliga o computador</b> (pede a senha)<br>🎮 <b>modo jogo</b> · <b>clipa isso</b> · <b>abre o Valorant</b> · <b>qual meu ping?</b> · <b>muta</b><br>🎲 <b>sorteia dois times com …</b> · <b>escolhe um mapa do Valorant</b> · <b>quem paga o lanche entre …</b><br>🏆 <b>ganhei</b> / <b>perdi</b> · <b>como tá meu placar?</b> · 🎁 <b>tem jogo de graça na Epic?</b> · <b>quanto tá o Elden Ring na Steam?</b><br>🧠 <b>lembra que …</b> · 🌙 <b>minha hora de dormir é 1h</b> · ☀️ <b>resumo do dia</b>' : ''}`,
+        html: `Eu sei fazer um monte de coisa! Experimente:<br>⏱ <b>timer de 10 minutos para a pizza</b><br>⏰ <b>me lembra de ligar pro cliente em 30 minutos</b> · <b>alarme às 7h</b><br>✅ <b>cria uma tarefa comprar pão</b> · <b>minhas tarefas</b><br>🎵 <b>toca uma música</b> · <b>próxima</b> · <b>volume 50</b><br>🌤️ <b>vai chover hoje?</b> · 💵 <b>quanto está o dólar?</b><br>🧮 <b>quanto é 15% de 230</b> · 🌍 <b>traduz para inglês bom dia</b><br>📝 <b>anota que preciso comprar café</b> · 💧 <b>bebi um copo de água</b><br>🔐 <b>gera uma senha de 20</b> · 📋 <b>copia meu pix</b> · 🪙 <b>cara ou coroa</b><br>🎄 <b>quantos dias faltam pro Natal?</b> · 😂 <b>conta uma piada</b><br>🎨 <b>coloca a coroa</b> · <b>muda sua cor para rosa</b>${SIS ? '<br>💻 <b>o que está gastando memória?</b> · <b>verifica se tem vírus</b><br>🪟 <b>abre o Word</b> · <b>fecha o Chrome</b> · <b>abre a conversa com o Bernardo</b><br>📞 <b>sai da ligação</b> · ⏻ <b>desliga o computador</b> (pede a senha)<br>🎮 <b>modo jogo</b> · <b>clipa isso</b> · <b>abre o Valorant</b> · <b>qual meu ping?</b> · <b>muta</b><br>🎲 <b>sorteia dois times com …</b> · <b>escolhe um mapa do Valorant</b> · <b>quem paga o lanche entre …</b><br>🏆 <b>ganhei</b> / <b>perdi</b> · <b>como tá meu placar?</b> · 🎁 <b>tem jogo de graça na Epic?</b> · <b>quanto tá o Elden Ring na Steam?</b><br>📅 <b>minha agenda de hoje</b> · <b>entra na reunião</b> · ✉️ <b>escreve um e-mail pro cliente sobre …</b> · <b>faz o relatório da semana</b><br>💬 <b>manda pro Bernardo: chego em 10 minutos</b> · <b>escreve: …</b> · 🔎 <b>acha a planilha de vendas</b> · <b>abre o último download</b> · <b>limpa a pasta downloads</b><br>🔊 <b>volume do PC no 30</b> · ☀️ <b>brilho no 50</b><br>🧠 <b>lembra que …</b> · 🌙 <b>minha hora de dormir é 1h</b> · ☀️ <b>resumo do dia</b>' : ''}`,
         fala: 'Eu marco timers, lembretes, alarmes e tarefas, toco música, vejo o clima e o dólar, faço contas, traduzo, anoto coisas e conto piadas. Os exemplos estão na tela.',
       };
       case 'desktop': if (motorCerebro() === 'cc') return perguntarClaudeCode(original); return { texto: 'Isso mexe direto nos arquivos e programas do seu PC, e por segurança eu ainda não faço. Posso criar uma tarefa ou um lembrete pra você não esquecer?', humor: 'think' };
@@ -985,6 +1071,12 @@
         return { texto: `Tarefa criada: "${a.texto}"${a.quando ? ' para ' + quandoTxt(a.quando) : ''} ✅`, humor: 'success' };
       }
       case 'tarefas_listar': {
+        if (linksAgenda().length && DSK && DSK.agenda) {
+          const ag = await carregarAgenda().catch(() => null);
+          const hoje = ag ? doDia(ag.eventos, new Date()).filter((e) => e.diaInteiro || e.fim > Date.now()) : [];
+          const pend = S.tarefas.filter((t) => !t.feito && t.tipo !== 'alarme');
+          if (hoje.length) return { texto: `Agenda de hoje: ${listaE(hoje.map(eventoTxt))}.${pend.length ? ` E ${pend.length} tarefa${pend.length > 1 ? 's' : ''} na lista: ${listaE(pend.slice(0, 3).map((t) => t.t))}.` : ''}`, humor: 'cool' };
+        }
         const pend = S.tarefas.filter((t) => !t.feito && t.tipo === 'tarefa');
         if (!pend.length) return { texto: 'Sua lista está vazia! Quer criar uma tarefa?', humor: 'cool' };
         R.view = 'tarefas';
@@ -1163,6 +1255,77 @@
         R.pendente = { tipo: 'senha', acao: a.acao, segundos: a.segundos || 30, ate: Date.now() + 60e3 };
         const quando = (a.segundos || 30) > 60 ? ` daqui a ${durTxt(a.segundos)}` : '';
         return { texto: `Tem certeza que quer ${a.acao === 'desligar' ? 'desligar' : 'reiniciar'} o computador${quando}? Para confirmar, diga a senha.`, humor: 'think', escutar: true };
+      }
+      case 'agenda': {
+        if (!DSK || !DSK.agenda) return { texto: 'A agenda só funciona no app instalado.', humor: 'think' };
+        if (!linksAgenda().length) { R.view = 'ajustes'; return { texto: 'Ainda não tenho sua agenda. Em Ajustes → Agenda, cole o link secreto da sua agenda (Google Agenda: Configurações → sua agenda → "Endereço secreto no formato iCal").', humor: 'think' }; }
+        return trabalhar('📅', 'Vendo a agenda', async () => {
+          const ag = await carregarAgenda(true);
+          if (!ag || (ag.erros.length && !ag.eventos.length)) return { texto: 'Não consegui ler a agenda: ' + ((ag && ag.erros[0]) || 'sem resposta'), humor: 'cry', erro: true };
+          if (a.dia === 'proxima') {
+            const e = ag.eventos.find((x) => !x.diaInteiro && x.fim > Date.now());
+            return e ? { texto: `A próxima é ${e.titulo}, ${quandoTxt(e.inicio)}${e.link ? ', com link para entrar' : ''}.`, humor: 'cool' } : { texto: 'Não tem nenhuma reunião marcada nos próximos dias.', humor: 'happy' };
+          }
+          const dia = new Date(); if (a.dia === 'amanha') dia.setDate(dia.getDate() + 1);
+          const l = doDia(ag.eventos, dia).filter((e) => a.dia === 'amanha' || e.diaInteiro || e.fim > Date.now());
+          const q = a.dia === 'amanha' ? 'Amanhã' : 'Hoje';
+          if (!l.length) return { texto: `${q} sua agenda está livre. 🎉`, humor: 'happy' };
+          return { texto: `${q} você tem ${l.length} compromisso${l.length > 1 ? 's' : ''}: ${listaE(l.map(eventoTxt))}.`, html: `${q}:<br>${l.map((e) => `📅 <b>${esc(eventoTxt(e))}</b>${e.link ? ' · ' + linkHtml(e.link, 'entrar') : ''}`).join('<br>')}`, humor: 'cool' };
+        });
+      }
+      case 'entrar_reuniao': {
+        await carregarAgenda();
+        const e = reuniaoAgora();
+        if (!e) return { texto: linksAgenda().length ? 'Não achei nenhuma reunião com link agora ou nos próximos 15 minutos.' : 'Conecte sua agenda em Ajustes para eu achar o link das reuniões.', humor: 'think' };
+        abrirLink(e.link); return { texto: `Abrindo a reunião: ${e.titulo}. 🎥`, humor: 'cool' };
+      }
+      case 'documento': return fazerDocumento(a);
+      case 'mensagem':
+        R.pendente = { tipo: 'mensagem', contato: a.contato, texto: a.texto, ate: Date.now() + 60e3 };
+        return { texto: `Vou escrever para ${a.contato}: "${a.texto}". Pode ser?`, humor: 'think', escutar: true };
+      case 'digitar': {
+        if (!DSK || !DSK.digitar) { try { await navigator.clipboard.writeText(a.texto); } catch (_) { /* sem área de transferência */ } return { texto: 'Copiei o texto: é só colar onde quiser.', humor: 'cool' }; }
+        fechar();
+        const x = await DSK.digitar(a.texto);
+        if (x && x.indisponivel) { try { await navigator.clipboard.writeText(a.texto); } catch (_) { /* sem área de transferência */ } return { texto: 'Aqui eu não consigo digitar; copiei o texto para você colar.', humor: 'think' }; }
+        return { texto: 'Escrevi onde o cursor estava. ✍️', humor: 'cool', mudo: true };
+      }
+      case 'ultimo_download': {
+        if (!ARQ) return { texto: 'Só no app instalado.', humor: 'think' };
+        const f = await ARQ.ultimo();
+        if (!f) return { texto: 'A pasta Downloads está vazia.', humor: 'think' };
+        await ARQ.abrir(f.caminho);
+        return { texto: `Abrindo ${f.nome}, ${quandoTxt(f.mtime)}.`, humor: 'cool' };
+      }
+      case 'limpar_downloads': {
+        if (!ARQ) return { texto: 'Só no app instalado.', humor: 'think' };
+        const v = await ARQ.velhos(30);
+        if (!v.qtd) return { texto: 'Nada para limpar: não tem arquivo com mais de 30 dias na pasta Downloads.', humor: 'happy' };
+        R.pendente = { tipo: 'lixeira', ate: Date.now() + 90e3 };
+        const mb = Math.round(v.total / 1024 ** 2);
+        return { texto: `Achei ${v.qtd} arquivo${v.qtd > 1 ? 's' : ''} com mais de 30 dias em Downloads (${tamanho(mb)}), como ${listaE(v.exemplos.slice(0, 3))}. Mando para a Lixeira? Diga sim ou não.`, humor: 'think', escutar: true };
+      }
+      case 'arquivo': {
+        if (!ARQ) return executar({ tipo: 'desktop', pedido: original }, original, porVoz);
+        return trabalhar('🔎', 'Procurando', async () => {
+          const l = await ARQ.procurar(a.busca);
+          if (!l.length) return { texto: `Não achei "${a.busca}" na Área de Trabalho, em Documentos nem em Downloads.`, humor: 'think', erro: true };
+          if (a.abrir || l.length === 1) { await ARQ.abrir(l[0].caminho); return { texto: `Abrindo ${l[0].nome}.${l.length > 1 ? ` Achei mais ${l.length - 1} parecido${l.length > 2 ? 's' : ''}; os outros estão na conversa.` : ''}`, html: `Abrindo <b>${esc(l[0].nome)}</b>.${l.length > 1 ? '<br>' + l.slice(1).map((f) => `📄 <a href="#" data-acao="arq-abrir" data-caminho="${esc(f.caminho)}">${esc(f.nome)}</a> <small>(${esc(f.pasta)})</small>`).join('<br>') : ''}`, humor: 'cool' }; }
+          return { texto: `Achei ${l.length}: ${listaE(l.slice(0, 3).map((f) => f.nome))}. Toque no que quer abrir.`, html: `Achei ${l.length}:<br>${l.map((f) => `📄 <a href="#" data-acao="arq-abrir" data-caminho="${esc(f.caminho)}">${esc(f.nome)}</a> <small>(${esc(f.pasta)} · ${esc(quandoTxt(f.mtime))})</small>`).join('<br>')}`, humor: 'happy' };
+        });
+      }
+      case 'volume_pc': {
+        if (!SIS || !SIS.volume) return { texto: 'O volume do PC só dá para mudar no app instalado.', humor: 'think' };
+        const x = await SIS.volume(a);
+        if (x.indisponivel) return { texto: 'Isso só funciona no Windows.', humor: 'think' };
+        return { texto: a.mudo ? 'Alternei o mudo do PC. 🔇' : typeof a.valor === 'number' ? `Volume do PC em ${a.valor}%. 🔊` : `Volume do PC ${a.delta > 0 ? 'mais alto' : 'mais baixo'}. 🔊`, humor: 'cool', mudo: !!a.mudo };
+      }
+      case 'brilho': {
+        if (!SIS || !SIS.brilho) return { texto: 'O brilho só dá para mudar no app instalado.', humor: 'think' };
+        const x = await SIS.brilho(a);
+        if (x.ok) return { texto: `Brilho em ${x.valor}%. ☀️`, humor: 'cool' };
+        if (x.indisponivel) return { texto: 'Isso só funciona no Windows.', humor: 'think' };
+        return { texto: 'Esta tela não deixa mudar o brilho pelo Windows (monitores externos normalmente não deixam). Use os botões do monitor.', humor: 'think' };
       }
       case 'modo_jogo': {
         S.modoJogo = !!a.ligar; salvar(); render();
@@ -1599,6 +1762,11 @@
       ${(c.cerebro || 'auto') === 'api' || ((c.cerebro || 'auto') === 'auto' && !(CC && R.cc && R.cc.instalado)) ? `<div class="nota-aviso">API do Claude: cobrada à parte pela Anthropic na sua conta do Console. A chave fica salva só neste computador.</div>
       <div class="grade2"><div class="campo"><label for="cIa">Chave da API (Claude)</label><input id="cIa" type="password" data-cfg="iaChave" value="${esc(c.iaChave)}" placeholder="sk-ant-…" autocomplete="off"><small>Crie em console.anthropic.com</small></div>
       <div class="campo"><label for="cModelo">Modelo</label><select id="cModelo" data-cfg="iaModelo">${[['claude-opus-5-5', 'Claude Opus 5.5 (mais capaz)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (equilibrado)'], ['claude-haiku-5-5', 'Claude Haiku 5.5 (mais rápido e barato)']].map(([v, n]) => `<option value="${v}"${v === c.iaModelo ? ' selected' : ''}>${n}</option>`).join('')}</select></div></div>` : ''}
+      ${DSK && DSK.agenda ? `<div class="secao">Agenda</div>
+      <div class="nota-aviso">Cole o link secreto da sua agenda (só leitura). <b>Google Agenda</b>: no computador, Configurações → clique na sua agenda → "Endereço secreto no formato iCal". <b>Outlook</b>: Configurações → Calendário → Calendários compartilhados → Publicar → link ICS. Pode colar mais de um, separados por espaço. O link fica só neste computador.</div>
+      <div class="grade2"><div class="campo"><label for="cAgenda">Link(s) da agenda (.ics)</label><input id="cAgenda" type="password" data-cfg="agendaLinks" value="${esc(c.agendaLinks || '')}" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" autocomplete="off"><small>${R.agenda ? (R.agenda.erros && R.agenda.erros.length ? '⚠️ ' + esc(R.agenda.erros[0]) : `✅ ${R.agenda.eventos.length} compromisso${R.agenda.eventos.length === 1 ? '' : 's'} nos próximos dias`) : linksAgenda().length ? 'Lendo…' : 'Sem agenda conectada'}</small></div>
+      <div class="campo"><label for="cAvRe">Avisar antes da reunião</label><select id="cAvRe" data-cfg="avisoReuniao" data-num>${[5, 10, 15, 30].map((v) => `<option value="${v}"${v === Number(c.avisoReuniao || 10) ? ' selected' : ''}>${v} minutos</option>`).join('')}</select></div></div>` : ''}
+      ${SIS ? tog('alertasPc', 'Alerta de PC pesado', 'Aviso quando a memória passar de 90% (e quem está gastando) ou quando o disco estiver quase cheio') : ''}
       ${JOGO ? `<div class="secao">Jogos e Discord</div>
       <div class="grade2"><div class="campo"><label for="cGrav">Gravador de clipes</label><select id="cGrav" data-cfg="gravador">${[['xbox', 'Xbox Game Bar (Win+Alt+G)'], ['nvidia', 'NVIDIA ShadowPlay (Alt+F10)'], ['amd', 'AMD ReLive (Ctrl+Shift+S)']].map(([v, n]) => `<option value="${v}"${v === (c.gravador || 'xbox') ? ' selected' : ''}>${n}</option>`).join('')}</select><small>"Clipa isso" salva os últimos segundos. No Xbox Game Bar, ative "Gravar o que aconteceu" nas configurações de captura.</small></div>
       <div class="campo"><label for="cDorm">Hora de dormir</label><input id="cDorm" type="time" data-cfg="horaDormir" value="${esc(c.horaDormir || '')}"><small>Eu aviso e cobro a cada 20 minutos. Vazio = desligado.</small></div>
@@ -1776,6 +1944,7 @@
     atualizarProgresso();
     verificarAgendados();
     if (agora % 15000 < 1000) verificarRotinaDoDia(agora);
+    if (agora % 60000 < 1000) { verificarAgenda(agora).catch(() => {}); verificarPc(agora).catch(() => {}); }
     if (S.timers.length || R.crono.rodando || R.trabalho || R.sis.verif) renderPilula();
     if (R.sis.verif && R.aberto && R.view === 'sistema') { const el = document.querySelector('[data-verif]'); if (el) el.textContent = mmss((agora - R.sis.verif.inicio) / 1000); }
     if (!R.aberto && R.humor === 'idle' && !R.ouvindo && !R.falando && agora - R.ultimaAtividade > 120e3) setHumor('sleep');
@@ -1885,6 +2054,7 @@
       R.sis.energia = a; setTimeout(() => { const c = $('#senhaEnergia'); if (c) c.focus(); }, 50);
     },
     'sis-energia-nao': () => { R.sis.energia = null; },
+    'arq-abrir': (el) => { if (ARQ) ARQ.abrir(el.dataset.caminho); },
     'rotina-del': (el) => { S.rotinas = S.rotinas.filter((r) => r.id !== el.dataset.id); salvar(); },
     'rotina-testar': (el) => { const r = S.rotinas.find((x) => x.id === el.dataset.id); if (r) processar(r.nome); },
     'memoria-del': (el) => { S.memoria = S.memoria.filter((x) => x.id !== el.dataset.id); salvar(); },
@@ -1953,6 +2123,7 @@
     if (k === 'vozMotor' || k === 'cerebro') renderPrincipal();
     if (k === 'ccChave') { if (CC) CC.nova(); verificarCC(); }
     if (k === 'tratamento') renderPrincipal();
+    if (k === 'agendaLinks') { R.agenda = null; carregarAgenda(true).then(() => renderPrincipal()); }
     if (k === 'nome' || k === 'usuario') renderLado();
   });
   $('#arquivosMusica').addEventListener('change', (e) => { adicionarMusicas(e.target.files); e.target.value = ''; });

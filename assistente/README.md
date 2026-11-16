@@ -62,6 +62,23 @@ Aba **🛡️ Sistema** e pedidos por voz. Tudo roda pelo PowerShell do próprio
 
 Testado no app Electron real no Linux (memória, fechar programa, senha certa e errada, aprendizado, arrastar e posição). As partes só de Windows (Defender, abrir pelo menu Iniciar, WhatsApp, ligações, desligar) foram escritas e testadas na lógica, mas não num Windows real: o atalho de busca do WhatsApp e os atalhos de ligação podem mudar com novas versões desses apps.
 
+## Trabalho (app instalado)
+
+| Pedido | O que ela faz |
+|---|---|
+| "minha agenda de hoje" · "o que eu tenho amanhã?" · "próxima reunião" | Lê sua agenda pelo **link iCal secreto** (Google Agenda: Configurações → sua agenda → "Endereço secreto no formato iCal"; Outlook: Calendários compartilhados → Publicar → link ICS), colado em Ajustes → Agenda. Só leitura, sem login e sem app novo. Entende eventos que se repetem, exceções, reuniões remarcadas e fuso horário. |
+| (sozinha) | Avisa 5, 10, 15 ou 30 minutos antes de cada reunião, com voz e notificação. Os compromissos também entram no resumo da manhã e em "o que eu tenho pra hoje". |
+| "entra na reunião" | Abre o link do Google Meet, Zoom ou Teams da reunião que está começando. Depois do aviso, só "entra" já basta. |
+| "escreve um e-mail pro cliente sobre o atraso" · "faz um relatório da semana" · "escreve uma legenda pro post do curso de ROV" · "resume o PDF do contrato" | O Claude Code escreve e salva em Documentos/Lumi/cerebro/Notas; ela abre o arquivo e deixa o texto copiado para colar. |
+| "manda pro Bernardo: chego em 10 minutos" · "manda uma mensagem pra Ana dizendo que vou atrasar" | Ela lê a mensagem e pergunta "Pode ser?". Com "sim", abre a conversa no WhatsApp e deixa o texto escrito; **quem envia é você** (Enter), para nunca mandar para a pessoa errada. Com número de telefone, abre a conversa já com o texto. |
+| "escreve: Bom dia, João! Segue o orçamento." | Cola o texto onde o cursor estiver (e-mail, Word, planilha) e depois devolve o que estava copiado antes. |
+| "acha a planilha de vendas de outubro" · "abre o contrato do cliente" · "procura o arquivo relatório do Bernardo" | Procura pelo nome na Área de Trabalho, Documentos, Downloads, Imagens, Vídeos e OneDrive; "planilha", "pdf", "apresentação", "foto" filtram o tipo. Um resultado: abre; vários: lista para tocar. |
+| "abre o último download" · "limpa a pasta Downloads" | Abre o arquivo mais recente. A limpeza mostra quantos arquivos têm mais de 30 dias (e o tamanho) e só manda para a **Lixeira** depois do seu "sim". |
+| "volume do PC no 30" · "aumenta o volume do PC" · "muta o computador" · "brilho no 50" | Volume do Windows pelas teclas de volume. O brilho funciona em telas de notebook; monitores externos normalmente não deixam. "volume 50" sozinho continua sendo o volume da música. |
+| (sozinha) | **Alerta de PC pesado**: memória acima de 90% (diz quem está gastando) ou disco C com menos de 10% livre. |
+
+Testado no app Electron real no Linux: busca e abertura de arquivos, último download, limpeza indo de verdade para a Lixeira, agenda lida de um link real do Google (feriados) até a resposta e o resumo, e os pedidos de mensagem, ditado e documento. Não puderam ser testados aqui: colar no Windows (Ctrl+V), o WhatsApp, volume e brilho, e o documento escrito pelo Claude Code.
+
 ## Jogos, Discord e diversão (app instalado)
 
 | Pedido | O que ela faz |

@@ -1,6 +1,6 @@
 /* Lumi — app de computador (Electron): uma janela transparente, sempre no topo,
    presa no alto da tela. Fora do entalho, os cliques passam para o que está atrás. */
-const { app, BrowserWindow, screen, ipcMain, globalShortcut, shell, session, protocol, dialog } = require('electron');
+const { app, BrowserWindow, screen, ipcMain, globalShortcut, shell, session, protocol, dialog, clipboard } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const spotify = require('./spotify');
@@ -9,6 +9,8 @@ const whisper = require('./whisper');
 const piper = require('./piper');
 const sistema = require('./sistema');
 const jogos = require('./jogos');
+const agenda = require('./agenda');
+const arquivos = require('./arquivos');
 
 const LARGURA = 900, ALTURA = 580;
 let janela = null, olhoSpotify = null;
@@ -189,6 +191,73 @@ ipcMain.handle('lumi:jogo-status', () => jogos.status());
 ipcMain.handle('lumi:jogo-epic', () => jogos.epicGratis());
 ipcMain.handle('lumi:jogo-steam', (_e, busca) => jogos.precoSteam(txt(busca, 80)));
 ipcMain.handle('lumi:manchetes', () => jogos.manchetes());
+
+// agenda pelo link iCal (só leitura)
+ipcMain.handle('lumi:agenda', (_e, links) => agenda.eventos(Array.isArray(links) ? links.map((l) => txt(l, 1000)) : []));
+
+// arquivos: só abre o que a busca devolveu; lixeira só com a lista que foi mostrada
+const permitidos = new Set();
+let paraLixeira = [];
+const resumoArq = (a) => { permitidos.add(a.caminho); return { nome: a.nome, caminho: a.caminho, pasta: a.pasta, mtime: a.mtime, tamanho: a.tamanho }; };
+ipcMain.handle('lumi:arq-procurar', (_e, texto) => arquivos.procurar(txt(texto, 120)).map(resumoArq));
+ipcMain.handle('lumi:arq-ultimo', () => arquivos.ultimosDownloads(1).map(resumoArq)[0] || null);
+ipcMain.handle('lumi:arq-abrir', async (_e, caminho) => (permitidos.has(caminho) ? { ok: !(await shell.openPath(caminho)) } : { erro: 'arquivo não autorizado' }));
+ipcMain.handle('lumi:arq-mostrar', (_e, caminho) => { if (permitidos.has(caminho)) shell.showItemInFolder(caminho); return true; });
+ipcMain.handle('lumi:arq-velhos', (_e, dias) => {
+  const r = arquivos.downloadsVelhos(Math.max(7, Math.min(365, Number(dias) || 30)));
+  paraLixeira = r.arquivos.map((a) => a.caminho);
+  return { qtd: r.arquivos.length, total: r.total, exemplos: r.arquivos.slice(0, 5).map((a) => a.nome) };
+});
+ipcMain.handle('lumi:arq-lixeira', async () => {
+  let ok = 0; const falhas = [];
+  for (const p of paraLixeira) { try { await shell.trashItem(p); ok++; } catch (e) { falhas.push(path.basename(p)); } }
+  paraLixeira = [];
+  return { ok, falhas };
+});
+
+// ditado: cola o texto onde o cursor estiver (área de transferência + Ctrl+V; depois devolve o que estava copiado)
+async function digitar(texto) {
+  if (process.platform !== 'win32') return { indisponivel: true };
+  const antes = clipboard.readText();
+  clipboard.writeText(String(texto));
+  if (janela && janela.isFocused()) janela.blur(); // devolve o foco para a janela onde você estava
+  await new Promise((r) => setTimeout(r, 450));
+  const r = await jogos.teclas('ctrl+v');
+  setTimeout(() => { try { if (clipboard.readText() === String(texto)) clipboard.writeText(antes); } catch (_) { /* sem área de transferência */ } }, 1500);
+  return r;
+}
+ipcMain.handle('lumi:digitar', (_e, texto) => digitar(txt(texto, 4000)));
+// mensagem no WhatsApp: abre a conversa e deixa o texto escrito; quem envia é você (Enter)
+ipcMain.handle('lumi:sis-mensagem', async (_e, contato, texto) => {
+  const c = txt(contato, 80), t = txt(texto, 2000), digitos = c.replace(/\D/g, '');
+  if (digitos.length >= 10) {
+    const numero = digitos.length <= 11 ? '55' + digitos : digitos;
+    await shell.openExternal(`whatsapp://send?phone=${numero}&text=${encodeURIComponent(t)}`).catch(() => shell.openExternal(`https://wa.me/${numero}?text=${encodeURIComponent(t)}`));
+    return { ok: true, por: 'numero' };
+  }
+  const r = await sistema.conversa(c, abrirUrl);
+  if (!r.ok) return r;
+  await new Promise((ok) => setTimeout(ok, 1500));
+  await digitar(t);
+  return { ok: true, por: 'busca' };
+});
+// documentos do Claude Code: o arquivo mais novo em Notas desde o pedido
+ipcMain.handle('lumi:cc-ultima-nota', async (_e, desde) => {
+  let itens = []; try { itens = fs.readdirSync(claudeCode.NOTAS); } catch (_) { return null; }
+  const novo = itens.map((n) => { const p = path.join(claudeCode.NOTAS, n); try { const st = fs.statSync(p); return st.isFile() ? { p, n, t: st.mtimeMs, s: st.size } : null; } catch (_) { return null; } })
+    .filter((x) => x && x.t >= (Number(desde) || 0) - 2000).sort((a, b) => b.t - a.t)[0];
+  if (!novo) return null;
+  await shell.openPath(novo.p);
+  const texto = /\.(?:md|txt|csv|html?)$/i.test(novo.n) && novo.s < 300e3 ? fs.readFileSync(novo.p, 'utf8') : '';
+  return { arquivo: novo.n, texto };
+});
+// alertas: memória e disco (leitura rápida, sem PowerShell)
+ipcMain.handle('lumi:sis-ram', () => { const os = require('os'); return { pct: Math.round((1 - os.freemem() / os.totalmem()) * 100) }; });
+ipcMain.handle('lumi:sis-disco', async () => {
+  try { const st = await fs.promises.statfs(process.platform === 'win32' ? 'C:\\' : '/'); return { livre: st.bavail * st.bsize, total: st.blocks * st.bsize }; } catch (_) { return null; }
+});
+ipcMain.handle('lumi:sis-volume', (_e, op) => sistema.volume(op && typeof op === 'object' ? { valor: typeof op.valor === 'number' ? op.valor : undefined, delta: Number(op.delta) || 0, mudo: !!op.mudo } : {}));
+ipcMain.handle('lumi:sis-brilho', (_e, op) => sistema.brilho(op && typeof op === 'object' ? { valor: typeof op.valor === 'number' ? op.valor : undefined, delta: Number(op.delta) || 0 } : {}));
 
 // posição na tela
 ipcMain.on('lumi:arrastar', (_e, fase) => { if (fase === 'inicio') comecarArrasto(); else terminarArrasto(); });

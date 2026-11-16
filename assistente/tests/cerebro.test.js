@@ -111,7 +111,7 @@ test('utilidades', () => {
 });
 
 test('pedidos de desktop são recusados com honestidade', () => {
-  for (const f of ['organiza minha área de trabalho', 'procura o arquivo relatório', 'cria uma pasta Projetos']) assert.equal(diz(f).tipo, 'desktop', f);
+  for (const f of ['organiza minha área de trabalho', 'cria uma pasta Projetos']) assert.equal(diz(f).tipo, 'desktop', f);
 });
 
 test('personalização pela voz', () => {
@@ -168,8 +168,8 @@ test('pedidos para o computador', () => {
   assert.deepEqual(diz('abre o word'), { tipo: 'abrir_app', alvo: 'word' });
   assert.equal(diz('abre o whatsapp').app, true);
   assert.equal(diz('abre o youtube').app, false);
-  assert.deepEqual(diz('abre a conversa com o Bernardo'), { tipo: 'conversa', contato: 'bernardo' });
-  assert.deepEqual(diz('manda mensagem pro Bernardo no whatsapp'), { tipo: 'conversa', contato: 'bernardo' });
+  assert.deepEqual(diz('abre a conversa com o Bernardo'), { tipo: 'conversa', contato: 'Bernardo' });
+  assert.deepEqual(diz('manda mensagem pro Bernardo no whatsapp'), { tipo: 'conversa', contato: 'Bernardo' });
   for (const f of ['sai da ligação', 'desliga a chamada', 'encerra a reunião', 'sair da call']) assert.equal(diz(f).tipo, 'sair_ligacao', f);
   assert.deepEqual(diz('desliga o computador'), { tipo: 'energia', acao: 'desligar', segundos: 30 });
   assert.deepEqual(diz('desliga o PC em 30 minutos'), { tipo: 'energia', acao: 'desligar', segundos: 1800 });
@@ -219,4 +219,27 @@ test('memória, hora de dormir e resumo', () => {
   assert.deepEqual(diz('minha hora de dormir é à 1h'), { tipo: 'hora_dormir', hora: '01:00' });
   assert.equal(diz('só mais uma').tipo, 'so_mais_uma');
   assert.equal(diz('resumo do dia').tipo, 'resumo');
+});
+
+test('pedidos de trabalho', () => {
+  assert.deepEqual(diz('minha agenda de hoje'), { tipo: 'agenda', dia: 'hoje' });
+  assert.equal(diz('o que eu tenho amanhã').dia, 'amanha');
+  assert.equal(diz('próxima reunião').dia, 'proxima');
+  assert.equal(diz('entra na reunião').tipo, 'entrar_reuniao');
+  assert.equal(diz('escreve um e-mail pro cliente sobre o atraso').doc, 'e-mail');
+  assert.equal(diz('faz um relatório da semana').tipo, 'documento');
+  assert.equal(diz('resume o PDF do contrato').tipo, 'documento');
+  assert.deepEqual(diz('manda pro Bernardo: chego em 10 minutos'), { tipo: 'mensagem', contato: 'Bernardo', texto: 'Chego em 10 minutos' });
+  assert.deepEqual(diz('manda uma mensagem pra Ana dizendo que vou atrasar'), { tipo: 'mensagem', contato: 'Ana', texto: 'Vou atrasar' });
+  assert.deepEqual(diz('manda mensagem pro Bernardo no whatsapp'), { tipo: 'conversa', contato: 'Bernardo' });
+  assert.deepEqual(diz('escreve: Bom dia, João! Segue o orçamento.'), { tipo: 'digitar', texto: 'Bom dia, João! Segue o orçamento.' });
+  assert.equal(diz('abre o último download').tipo, 'ultimo_download');
+  assert.equal(diz('limpa a pasta downloads').tipo, 'limpar_downloads');
+  assert.deepEqual(diz('acha a planilha de vendas de outubro'), { tipo: 'arquivo', busca: 'planilha de vendas de outubro', abrir: false });
+  assert.equal(diz('abre a planilha de vendas').abrir, true);
+  assert.deepEqual(diz('volume do pc no 30'), { tipo: 'volume_pc', valor: 30 });
+  assert.deepEqual(diz('muta o computador'), { tipo: 'volume_pc', mudo: true });
+  assert.deepEqual(diz('brilho no 50'), { tipo: 'brilho', valor: 50 });
+  assert.equal(diz('volume 50').tipo, 'volume'); // sem "do PC" continua sendo o volume da música
+  assert.equal(diz('o que eu tenho pra hoje').tipo, 'tarefas_listar');
 });

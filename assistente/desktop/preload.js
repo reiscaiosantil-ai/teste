@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('lumiDesktop', {
     nova: () => ipcRenderer.invoke('lumi:cc-nova'),
     terminal: (acao, op) => ipcRenderer.invoke('lumi:cc-terminal', acao, op),
     sair: (op) => ipcRenderer.invoke('lumi:cc-sair', op),
+    ultimaNota: (desde) => ipcRenderer.invoke('lumi:cc-ultima-nota', desde),
   },
   sistema: {
     memoria: () => ipcRenderer.invoke('lumi:sis-memoria'),
@@ -42,6 +43,11 @@ contextBridge.exposeInMainWorld('lumiDesktop', {
     verificando: () => ipcRenderer.invoke('lumi:sis-verificando'),
     atualizar: () => ipcRenderer.invoke('lumi:sis-atualizar'),
     segurancaWindows: () => ipcRenderer.invoke('lumi:sis-seguranca-windows'),
+    mensagem: (contato, texto) => ipcRenderer.invoke('lumi:sis-mensagem', contato, texto),
+    ram: () => ipcRenderer.invoke('lumi:sis-ram'),
+    disco: () => ipcRenderer.invoke('lumi:sis-disco'),
+    volume: (op) => ipcRenderer.invoke('lumi:sis-volume', op),
+    brilho: (op) => ipcRenderer.invoke('lumi:sis-brilho', op),
   },
   jogos: {
     teclas: (combo) => ipcRenderer.invoke('lumi:jogo-teclas', combo),
@@ -54,6 +60,16 @@ contextBridge.exposeInMainWorld('lumiDesktop', {
     steam: (busca) => ipcRenderer.invoke('lumi:jogo-steam', busca),
   },
   manchetes: () => ipcRenderer.invoke('lumi:manchetes'),
+  agenda: (links) => ipcRenderer.invoke('lumi:agenda', links),
+  digitar: (texto) => ipcRenderer.invoke('lumi:digitar', texto),
+  arquivos: {
+    procurar: (texto) => ipcRenderer.invoke('lumi:arq-procurar', texto),
+    ultimo: () => ipcRenderer.invoke('lumi:arq-ultimo'),
+    abrir: (caminho) => ipcRenderer.invoke('lumi:arq-abrir', caminho),
+    mostrar: (caminho) => ipcRenderer.invoke('lumi:arq-mostrar', caminho),
+    velhos: (dias) => ipcRenderer.invoke('lumi:arq-velhos', dias),
+    lixeira: () => ipcRenderer.invoke('lumi:arq-lixeira'),
+  },
   tela: {
     arrastar: (fase) => ipcRenderer.send('lumi:arrastar', fase),
     listar: () => ipcRenderer.invoke('lumi:telas'),

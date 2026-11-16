@@ -454,7 +454,44 @@ async function atualizarProtecao() {
   return /^ok/.test(s) ? { ok: true } : { erro: s.replace(/^erro:\s*/, '').slice(0, 200) || 'não consegui atualizar' };
 }
 
+/* ================= volume do sistema e brilho da tela ================= */
+const PS_VOLUME = `
+Add-Type @"
+using System; using System.Runtime.InteropServices;
+public class LumiVol { [DllImport("user32.dll")] public static extern void keybd_event(byte k, byte s, uint f, UIntPtr e); }
+"@
+foreach ($passo in ($env:LUMI_SEQ -split ',')) { $p = $passo -split '\\*'; for ($i = 0; $i -lt [int]$p[1]; $i++) { [LumiVol]::keybd_event([byte][Convert]::ToInt32($p[0], 16), 0, 0, [UIntPtr]::Zero); [LumiVol]::keybd_event([byte][Convert]::ToInt32($p[0], 16), 0, 2, [UIntPtr]::Zero); Start-Sleep -Milliseconds 8 } }
+'ok'
+`;
+/** Volume do Windows pelas teclas de volume (cada toque = 2%). { valor } põe no número; { delta } sobe/desce; { mudo } alterna. Exportada para testes. */
+function sequenciaVolume(op) {
+  if (op.mudo) return 'AD*1';
+  if (typeof op.valor === 'number') { const v = Math.max(0, Math.min(100, Math.round(op.valor))); return `AE*50,AF*${Math.round(v / 2)}`; }
+  const d = Math.max(-100, Math.min(100, Math.round(op.delta || 0)));
+  return d >= 0 ? `AF*${Math.round(d / 2)}` : `AE*${Math.round(-d / 2)}`;
+}
+async function volume(op = {}) {
+  if (!WIN) return { indisponivel: true };
+  const r = await ps(PS_VOLUME, { LUMI_SEQ: sequenciaVolume(op) }, 20000);
+  return /ok/.test(r.saida || '') ? { ok: true } : { erro: String(r.erro || r.falhou || '').slice(0, 160) };
+}
+const PS_BRILHO = `
+try {
+  $atual = (Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightness -ErrorAction Stop | Select-Object -First 1).CurrentBrightness
+  $alvo = if ($env:LUMI_VALOR) { [int]$env:LUMI_VALOR } else { [math]::Max(0, [math]::Min(100, [int]$atual + [int]$env:LUMI_DELTA)) }
+  Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightnessMethods -ErrorAction Stop | Select-Object -First 1 | Invoke-CimMethod -MethodName WmiSetBrightness -Arguments @{ Timeout = [uint32]1; Brightness = [byte]$alvo } | Out-Null
+  "ok $alvo"
+} catch { "semSuporte" }
+`;
+async function brilho(op = {}) {
+  if (!WIN) return { indisponivel: true };
+  const r = await ps(PS_BRILHO, { LUMI_VALOR: typeof op.valor === 'number' ? String(Math.max(0, Math.min(100, Math.round(op.valor)))) : '', LUMI_DELTA: String(Math.round(op.delta || 0)) }, 20000);
+  const m = /ok (\d+)/.exec(r.saida || '');
+  return m ? { ok: true, valor: Number(m[1]) } : { semSuporte: true };
+}
+
 module.exports = {
+  volume, brilho, sequenciaVolume,
   memoria, fechar, abrir, conversa, sairLigacao, energia, trocarSenha, protecao, verificar, estadoVerificacao, atualizarProtecao,
   // para testes
   escolherProcessos, escolherApp, escolherLigacao, confereSenha, lerSeguranca, resumoProtecao, resumoMemoria, escaparTeclas, rotulo, PROTEGIDOS,

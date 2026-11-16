@@ -222,4 +222,4 @@ async function sair(op = {}) {
 
 function novaConversa() { sessao = null; }
 
-module.exports = { pensar, status, novaConversa, abrirTerminal, sair, definirPastaConta, interpretarSaida, interpretarConta, scriptTerminal, ambiente, limparParaVoz, claudeMd, FERRAMENTAS };
+module.exports = { NOTAS, pensar, status, novaConversa, abrirTerminal, sair, definirPastaConta, interpretarSaida, interpretarConta, scriptTerminal, ambiente, limparParaVoz, claudeMd, FERRAMENTAS };
