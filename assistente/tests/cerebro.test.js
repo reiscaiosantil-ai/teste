@@ -243,3 +243,11 @@ test('pedidos de trabalho', () => {
   assert.equal(diz('volume 50').tipo, 'volume'); // sem "do PC" continua sendo o volume da música
   assert.equal(diz('o que eu tenho pra hoje').tipo, 'tarefas_listar');
 });
+
+test('lista de desejos da Steam', () => {
+  assert.deepEqual(diz('me avisa quando o Elden Ring entrar em promoção'), { tipo: 'desejo_add', jogo: 'elden ring' });
+  assert.deepEqual(diz('coloca o Hades na lista de desejos'), { tipo: 'desejo_add', jogo: 'hades' });
+  assert.equal(diz('minha lista de desejos').tipo, 'desejo_ver');
+  assert.deepEqual(diz('tira o hades da lista de desejos'), { tipo: 'desejo_del', jogo: 'hades' });
+  assert.equal(diz('me avisa de beber água em 20 minutos').tipo, 'lembrete');
+});

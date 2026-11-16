@@ -94,6 +94,10 @@ Testado no app Electron real no Linux: busca e abertura de arquivos, último dow
 | "ganhei" / "perdi" · "como tá meu placar?" · "zera o placar" | Placar do dia. Depois de 3 derrotas seguidas ela sugere uma pausa (controle de tilt). |
 | "tem jogo de graça na Epic?" · "quanto tá o Elden Ring na Steam?" | Jogos grátis da semana e os próximos (loja da Epic) e preço em reais com desconto (loja da Steam). |
 
+| "me avisa quando o Elden Ring entrar em promoção" · "minha lista de desejos" · "tira o … da lista de desejos" | Lista de desejos: ela confere os preços na Steam a cada 6 horas e avisa (voz e notificação) quando um jogo entra em promoção. |
+
+**Personalidade:** o mascote dança na pílula enquanto toca música (Spotify ou arquivos), e o humor de fundo acompanha o dia: animada quando você terminou 3 tarefas, ganhou 3 partidas ou bateu a meta de água; pensativa depois de 3 derrotas seguidas; calminha de madrugada. Com "Comentários espontâneos" ligado (Ajustes), ela comenta o seu dia de vez em quando (no máximo um a cada 2 horas, nunca no modo jogo): "Você terminou 5 tarefas hoje. Mandou bem!", "Hoje você ainda não bebeu água", "Sextou!".
+
 **A voz dela na call do Discord:** com o VB-Cable (grátis), em Ajustes → Jogos e Discord escolha "CABLE Input" em "Também falar em". No Windows, nas propriedades do seu microfone, marque "Escutar este dispositivo" com saída "CABLE Input"; no Discord, use "CABLE Output" como entrada. Assim os amigos ouvem você e ela. Funciona com as vozes Piper e Google (a voz do computador não dá para redirecionar). Dá para deixar só no modo jogo ou sempre.
 
 Ela nunca mexe dentro dos jogos (memória, mira, automação), para não esbarrar em anti-cheat. Em jogos em tela cheia exclusiva o painel dela não aparece por cima; a voz funciona igual, e em "janela sem bordas" ela aparece.

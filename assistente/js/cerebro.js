@@ -282,6 +282,13 @@
     if (/^(?:zera|zerar|reseta|resetar|limpa|limpar)\s+(?:o\s+)?placar/u.test(s)) return { tipo: 'placar_zerar' };
     if (/meu (?:placar|winrate|desempenho)|como (?:t[aá]|est[aá]) (?:o\s+)?meu dia (?:nos jogos|jogando|no jogo)|quantas (?:eu )?(?:ganhei|perdi)|como (?:t[aá]|est[aá]) o placar/u.test(s)) return { tipo: 'placar_ver' };
 
+    // lista de desejos da Steam (avisa quando entrar em promoção)
+    m = /^(?:me )?(?:avisa|avise|fala|me fala|me diz|diz)\s+quando\s+(?:o\s+|a\s+)?(.+?)\s+(?:entrar|ficar|estiver|tiver)\s+(?:em\s+)?(?:promo[cç][aã]o|desconto|barato|mais barato)(?:\s+na steam)?$|^(?:coloca|bota|p[oõ]e|adiciona)\s+(?:o\s+|a\s+)?(.+?)\s+na (?:minha )?lista de desejos$/u.exec(s);
+    if (m) return { tipo: 'desejo_add', jogo: (m[1] || m[2]).trim() };
+    if (/^(?:minha |a |ver a |mostra a )?lista de desejos$|o que (?:t[aá]|est[aá]) na (?:minha )?lista de desejos/u.test(s)) return { tipo: 'desejo_ver' };
+    m = /^(?:tira|tirar|remove|remover)\s+(?:o\s+|a\s+)?(.+?)\s+da (?:minha )?lista de desejos$/u.exec(s);
+    if (m) return { tipo: 'desejo_del', jogo: m[1].trim() };
+
     // promoções e jogos de graça
     if (/(?:jogos?|game)\s+(?:de\s+)?gr[aá]tis|de gra[cç]a na epic|epic (?:de |t[aá] )?(?:gr[aá]tis|de gra[cç]a)|tem jogo de gra[cç]a|jogos? de gra[cç]a/u.test(s)) return { tipo: 'epic' };
     m = /quanto\s+(?:t[aá]|est[aá]|custa|sai|t[aá] custando|est[aá] custando)\s+(?:o\s+|a\s+)?(.+?)\s+na steam$|pre[cç]o d[oae]\s+(.+?)\s+na steam$|(.+?)\s+t[aá] em promo[cç][aã]o(?: na steam)?$/u.exec(s);

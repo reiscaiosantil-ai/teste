@@ -21,9 +21,9 @@
     cfg: {
       nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo', cilios: true, blush: true, batom: false, cabelo: 'nenhum', corCabelo: 0,
       voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', cloudChave: '', usarChirp: true, reconhecimento: 'whisper', whisperModelo: 'small', piperVoz: '', piperExpr: 0.65, somenteExecutar: false, sempreOuvindo: false,
-      cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', ccChave: '', ccContaPropria: false, tratamento: 'o senhor', agendaLinks: '', avisoReuniao: 10, alertasPc: true, gravador: 'xbox', discordMutar: 'ctrl+shift+m', discordSurdo: 'ctrl+shift+d', vozCall: '', vozCallModo: 'jogo', horaDormir: '', resumoManha: true, volume: 70, pausas: false,
+      cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', ccChave: '', ccContaPropria: false, tratamento: 'o senhor', espontanea: true, agendaLinks: '', avisoReuniao: 10, alertasPc: true, gravador: 'xbox', discordMutar: 'ctrl+shift+m', discordSurdo: 'ctrl+shift+d', vozCall: '', vozCallModo: 'jogo', horaDormir: '', resumoManha: true, volume: 70, pausas: false,
     },
-    xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [], aprendido: [], memoria: [], rotinas: [], placar: { dia: '', v: 0, d: 0, e: 0, seq: [] }, modoJogo: false, ultimosNomes: [], resumoDia: '', dormir: { dia: '', proximo: 0 },
+    xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [], aprendido: [], memoria: [], rotinas: [], placar: { dia: '', v: 0, d: 0, e: 0, seq: [] }, modoJogo: false, ultimosNomes: [], resumoDia: '', dormir: { dia: '', proximo: 0 }, desejos: [], desejosChecado: 0, espontaneo: { ultimo: 0, dia: '', ditos: [] },
     habitos: { dia: hojeStr(), agua: 0, meta: 8, leitura: 0, exercicio: 0 },
   });
   function carregar() {
@@ -70,8 +70,18 @@
 
   function setHumor(h, ms) {
     R.humor = h; clearTimeout(R.humorT);
-    if (ms) R.humorT = setTimeout(() => { if (R.falando || R.ouvindo) return; R.humor = 'idle'; renderMascotes(); }, ms);
+    if (ms) R.humorT = setTimeout(() => { if (R.falando || R.ouvindo) return; R.humor = humorBase(); renderMascotes(); }, ms);
     renderMascotes();
+  }
+  // humor de fundo que acompanha o dia: animada quando as coisas andam, calminha de madrugada
+  function humorBase() {
+    const h = new Date().getHours();
+    if (h >= 0 && h < 5) return 'idle';
+    const feitasHoje = S.tarefas.filter((t) => t.feito && t.feitoEm && new Date(t.feitoEm).toDateString() === new Date().toDateString()).length;
+    const pl = S.placar && S.placar.dia === hojeStr() ? S.placar : null;
+    if (pl && pl.seq.slice(-3).length === 3 && pl.seq.slice(-3).every((r) => r === 'd')) return 'think';
+    if (feitasHoje >= 3 || (pl && pl.v >= 3) || S.habitos.agua >= S.habitos.meta) return 'happy';
+    return 'idle';
   }
   function renderMascotes() { renderPilula(); if (R.aberto) { const eu = $('#euMascote'); if (eu) eu.innerHTML = K(46); } }
 
@@ -458,6 +468,42 @@
     if (cot) partes.push(`O dólar está em ${brl(cot.v)}.`);
     if (man && man[0]) partes.push(`Manchete: ${man[0]}.`);
     return { texto: partes.join(' '), humor: 'happy' };
+  }
+  // lista de desejos: confere os preços na Steam a cada 6 horas e avisa quando entrar em promoção
+  async function verificarDesejos(agora) {
+    if (!JOGO || !S.desejos.length || agora - (S.desejosChecado || 0) < 6 * 3600e3) return;
+    S.desejosChecado = agora; salvar();
+    for (const d of S.desejos) {
+      const x = await JOGO.steam(d.nome).catch(() => null);
+      if (!x || x.erro || x.naoAchei) continue;
+      const antes = d.desconto || 0; d.preco = x.preco; d.desconto = x.desconto || 0; d.url = x.url;
+      if (d.desconto > 0 && d.desconto !== antes) {
+        const t = `🔥 ${x.nome} entrou em promoção na Steam: ${x.desconto}% de desconto, de ${brl(x.original)} por ${brl(x.preco)}!`;
+        addChat('k', t, `${esc(t)} ${linkHtml(x.url, 'ver na Steam')}`); aviso(t); notificar('Promoção na Steam', t); setHumor('love', 3000); render(); if (!S.modoJogo) falar(t);
+      }
+    }
+    salvar();
+  }
+  // comentários espontâneos: raros (no máximo um a cada 2 horas), nunca no modo jogo nem falando
+  function comentarioEspontaneo(agora) {
+    if (!S.cfg.espontanea || S.modoJogo || R.falando || R.ouvindo || R.alarme || R.pensando || agora - R.ultimaAtividade > 60e3) return;
+    const e = S.espontaneo; if (e.dia !== hojeStr()) { e.dia = hojeStr(); e.ditos = []; }
+    if (agora - e.ultimo < 2 * 3600e3) return;
+    const feitas = S.tarefas.filter((t) => t.feito && t.feitoEm && new Date(t.feitoEm).toDateString() === new Date().toDateString()).length;
+    const pl = S.placar && S.placar.dia === hojeStr() ? S.placar : null;
+    const h = new Date(agora).getHours();
+    const opcoes = [
+      ['tarefas5', feitas >= 5, `Você terminou ${feitas} tarefas hoje. Mandou bem! 🏆`],
+      ['agua', S.habitos.agua === 0 && h >= 14, 'Ei, hoje você ainda não bebeu água. Bora um copo? 💧'],
+      ['vitorias', pl && pl.v >= 3 && pl.v > pl.d, `${pl ? pl.v : 0} vitórias hoje! Tá on fire! 🔥`],
+      ['sexta', new Date(agora).getDay() === 5 && h >= 17, 'Sextou! Já pensou no que vai jogar hoje? 🎮'],
+      ['segunda', new Date(agora).getDay() === 1 && h >= 8 && h < 11, 'Segunda-feira, começo de semana. Quer que eu mostre suas tarefas? 💪'],
+      ['tarde', h >= 23 || h < 2, 'Já está tarde, hein. Não esquece de descansar. 🌙'],
+    ].filter(([id, ok]) => ok && !e.ditos.includes(id));
+    if (!opcoes.length) return;
+    const [id, , t] = opcoes[0];
+    e.ultimo = agora; e.ditos.push(id); salvar();
+    addChat('k', t); aviso(t); setHumor('happy', 3000); render(); falar(t);
   }
   // hora de dormir (avisa e cobra a cada 20 min) e resumo da manhã (uma vez por dia, quando você chega)
   let resumindo = false;
@@ -1425,6 +1471,19 @@
           return { texto: t, html: `${esc(t)} ${linkHtml(x.url, 'ver na Steam')}`, humor: x.desconto ? 'love' : 'cool' };
         });
       }
+      case 'desejo_add': {
+        if (!JOGO) return { texto: 'A lista de desejos só funciona no app instalado.', humor: 'think' };
+        return trabalhar('💲', 'Vendo a Steam', async () => {
+          const x = await JOGO.steam(a.jogo);
+          if (!x || x.erro) return { texto: 'Não consegui ver a Steam agora.', humor: 'cry', erro: true };
+          if (x.naoAchei) return { texto: `Não achei "${a.jogo}" na Steam.`, humor: 'think', erro: true };
+          if (x.gratis) return { texto: `${x.nome} já é de graça! 🎉`, humor: 'love' };
+          S.desejos = S.desejos.filter((d) => d.nome !== x.nome); S.desejos.push({ nome: x.nome, preco: x.preco, desconto: x.desconto || 0, url: x.url }); salvar();
+          return { texto: x.desconto ? `${x.nome} já está com ${x.desconto}% de desconto: ${brl(x.preco)}! Coloquei na lista e aviso nas próximas promoções.` : `Combinado! ${x.nome} está ${brl(x.preco)}; eu confiro a Steam a cada 6 horas e aviso quando entrar em promoção. 🔔`, humor: 'love' };
+        });
+      }
+      case 'desejo_ver': return { texto: S.desejos.length ? `Na lista de desejos: ${listaE(S.desejos.map((d) => `${d.nome} (${brl(d.preco)}${d.desconto ? ', ' + d.desconto + '% off' : ''})`))}.` : 'Sua lista de desejos está vazia. Diga "me avisa quando o … entrar em promoção".', humor: 'happy' };
+      case 'desejo_del': { const alvo = basePalavra(a.jogo); const antes = S.desejos.length; S.desejos = S.desejos.filter((d) => !basePalavra(d.nome).includes(alvo)); salvar(); return { texto: S.desejos.length < antes ? 'Tirei da lista de desejos.' : 'Esse jogo não estava na lista.', humor: 'idle' }; }
       case 'memoria_add':
         S.memoria = S.memoria.filter((x) => basePalavra(x.t) !== basePalavra(a.texto));
         S.memoria.unshift({ id: uid(), t: a.texto, quando: Date.now() }); S.memoria = S.memoria.slice(0, 60); salvar();
@@ -1560,6 +1619,7 @@
     else if (R.crono.rodando) vivo = `<span class="vivo">⏱ <span class="nm">Cronômetro</span><span>${mmss(cronoSeg())}</span></span>`;
     else if (R.musica.tocando && faixaAtual()) vivo = `<span class="vivo">${faixaAtual().capa ? `<img class="capinha" src="${esc(faixaAtual().capa)}" alt="" onerror="this.remove()">` : ''}<span class="eq"><b></b><b></b><b></b></span><span class="nm">${esc(faixaAtual().nome)}</span></span>`;
     else if (spotTocando() && R.spotify.musica) vivo = `<span class="vivo spot">${R.spotify.capa ? `<img class="capinha" src="${esc(R.spotify.capa)}" alt="" onerror="this.remove()">` : ''}<span class="eq"><b></b><b></b><b></b></span><span class="nm">${esc(spotNome())}</span></span>`;
+    pilula.classList.toggle('dancando', !!((R.musica.tocando && faixaAtual()) || spotTocando()) && !R.falando && !R.ouvindo);
     pilula.innerHTML = `${K(30)}${ponto}${S.modoJogo && !vivo ? '<span class="vivo"><span class="nm">🎮</span></span>' : ''}${vivo}`;
     if (!R.aberto) entalho.style.setProperty('--w', vivo ? (R.ouvindo || R.alarme || /vivo spot/.test(vivo) ? '380px' : '300px') : '160px');
     M.olhar(document, mx, my);
@@ -1775,6 +1835,7 @@
       <div class="nota-aviso">🎧 <b>Minha voz na call:</b> instale o VB-Cable (grátis, vb-audio.com/Cable) e escolha "CABLE Input" abaixo. No Windows, em Som → Gravação → seu microfone → Propriedades → Escutar, marque "Escutar este dispositivo" com saída "CABLE Input"; no Discord, escolha "CABLE Output" como entrada. Assim seus amigos ouvem você e eu. Funciona com as vozes Piper e Google.</div>
       <div class="grade2"><div class="campo"><label for="cCall">Também falar em</label><select id="cCall" data-cfg="vozCall"><option value="">Não (só no alto-falante)</option>${(R.saidas || []).map((d) => `<option value="${esc(d.deviceId)}"${d.deviceId === c.vozCall ? ' selected' : ''}>${esc(d.label || 'Saída de áudio')}</option>`).join('')}</select></div>
       <div class="campo"><label for="cCallM">Quando</label><select id="cCallM" data-cfg="vozCallModo"><option value="jogo"${c.vozCallModo !== 'sempre' ? ' selected' : ''}>Só no modo jogo</option><option value="sempre"${c.vozCallModo === 'sempre' ? ' selected' : ''}>Sempre</option></select></div></div>` : ''}
+      ${tog('espontanea', 'Comentários espontâneos', 'De vez em quando (no máximo um a cada 2 horas) eu comento seu dia: tarefas, água, vitórias. Nunca no modo jogo')}
       ${tog('resumoManha', 'Resumo da manhã', 'Na primeira vez que você usa o PC no dia: clima, compromissos, dólar e a manchete principal')}
       <div class="secao">Rotinas (uma frase faz várias coisas)</div>
       <div class="nota-aviso">Dê um nome e escreva um pedido por linha, do jeito que você falaria. Depois é só dizer o nome (ex.: "modo trabalho" ou "rotina estudo").</div>
@@ -1944,7 +2005,7 @@
     atualizarProgresso();
     verificarAgendados();
     if (agora % 15000 < 1000) verificarRotinaDoDia(agora);
-    if (agora % 60000 < 1000) { verificarAgenda(agora).catch(() => {}); verificarPc(agora).catch(() => {}); }
+    if (agora % 60000 < 1000) { verificarAgenda(agora).catch(() => {}); verificarPc(agora).catch(() => {}); verificarDesejos(agora).catch(() => {}); comentarioEspontaneo(agora); }
     if (S.timers.length || R.crono.rodando || R.trabalho || R.sis.verif) renderPilula();
     if (R.sis.verif && R.aberto && R.view === 'sistema') { const el = document.querySelector('[data-verif]'); if (el) el.textContent = mmss((agora - R.sis.verif.inicio) / 1000); }
     if (!R.aberto && R.humor === 'idle' && !R.ouvindo && !R.falando && agora - R.ultimaAtividade > 120e3) setHumor('sleep');

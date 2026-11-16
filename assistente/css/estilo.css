@@ -251,3 +251,8 @@ body.arrastando .gota { display: grid; place-items: center; position: fixed; ins
 .rotina-form { flex-wrap: wrap; }
 .rotina-form textarea { flex: 1 1 100%; min-height: 64px; resize: vertical; font: inherit; color: var(--tinta); background: rgba(255, 255, 255, .06); border: 1px solid var(--linha); border-radius: 11px; padding: 8px 10px; }
 .rotina-form input { flex: 1 1 200px; }
+
+/* ===== mascote dança quando tem música tocando ===== */
+.pilula.dancando .lumi { animation: dancaLumi .55s ease-in-out infinite alternate; transform-origin: 50% 90%; }
+@keyframes dancaLumi { 0% { transform: translateY(0) rotate(-7deg); } 100% { transform: translateY(-2px) rotate(7deg); } }
+@media (prefers-reduced-motion: reduce) { .pilula.dancando .lumi { animation: none; } }
