@@ -7,6 +7,7 @@ const spotify = require('./spotify');
 const claudeCode = require('./claude-code');
 const whisper = require('./whisper');
 const piper = require('./piper');
+const supertonic = require('./supertonic');
 const sistema = require('./sistema');
 const jogos = require('./jogos');
 const agenda = require('./agenda');
@@ -106,6 +107,19 @@ ipcMain.handle('lumi:transcrever', async (_e, audio, nome) => {
   if (!(audio instanceof Float32Array) || audio.length < 1600 || audio.length > 16000 * 30) return { texto: '' };
   try { return { texto: await whisper.transcrever(audio, String(nome || 'small'), app.getPath('userData'), avisarWhisper) }; }
   catch (e) { return { erro: String(e && e.message ? e.message : e).slice(0, 200) }; }
+});
+// voz natural offline (Supertonic 3): baixa uma vez e fala sem internet; uma frase por vez, na ordem pedida
+const avisarNatural = (e) => { if (janela && !janela.isDestroyed()) janela.webContents.send('lumi:natural', e); };
+let filaNatural = Promise.resolve();
+ipcMain.handle('lumi:nat-estado', () => { const e = supertonic.lerEstado(app.getPath('userData')); if (e.pronto) supertonic.aquecer(app.getPath('userData')); return e; });
+ipcMain.handle('lumi:nat-baixar', () => supertonic.baixar(app.getPath('userData'), avisarNatural).then((e) => { if (e.pronto) supertonic.aquecer(app.getPath('userData')); return e; }));
+ipcMain.handle('lumi:nat-falar', (_e, texto, op) => {
+  const r = filaNatural.then(async () => {
+    try { return { wav: new Uint8Array(await supertonic.sintetizar(String(texto || '').slice(0, 1200), app.getPath('userData'), { voz: String((op && op.voz) || 'F1'), passos: Number(op && op.passos) || 6, velocidade: Number(op && op.velocidade) || 1.05 })) }; }
+    catch (e) { return { erro: String(e && e.message ? e.message : e).slice(0, 200) }; }
+  });
+  filaNatural = r.catch(() => {});
+  return r;
 });
 // Piper: vozes offline (pasta "vozes" do app) e o Estúdio de voz (Documentos/Lumi/estudio-voz)
 const pastaVozes = () => { const p = path.join(app.getPath('userData'), 'vozes'); fs.mkdirSync(p, { recursive: true }); return p; };

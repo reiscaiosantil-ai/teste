@@ -1566,7 +1566,7 @@ window.FRASES_ESTUDIO = [
   const PADRAO = () => ({
     cfg: {
       nome: 'Lumi', usuario: '', corpo: 0, olho: 0, estiloOlho: 'redondo', acessorio: 'nenhum', personalidade: 'fofo', cilios: true, blush: true, batom: false, cabelo: 'nenhum', corCabelo: 0,
-      voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: 'navegador', geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', cloudChave: '', usarChirp: true, reconhecimento: 'whisper', whisperModelo: 'small', piperVoz: '', piperExpr: 0.65, somenteExecutar: false, sempreOuvindo: false,
+      voz: true, vozNome: '', velocidade: 1.05, tom: 1.45, vozMotor: window.lumiDesktop && window.lumiDesktop.vozNatural ? 'natural' : 'navegador', naturalVoz: 'F1', naturalPassos: 6, geminiChave: '', geminiVoz: 'Leda', geminiModelo: 'gemini-3.8-flash-tts', cloudChave: '', usarChirp: true, reconhecimento: 'whisper', whisperModelo: 'small', piperVoz: '', piperExpr: 0.65, somenteExecutar: false, sempreOuvindo: false,
       cidade: '', pix: '', iaChave: '', iaModelo: 'claude-opus-5-5', cerebro: 'auto', ccModelo: 'sonnet', ccChave: '', ccContaPropria: false, tratamento: 'o senhor', espontanea: true, agendaLinks: '', avisoReuniao: 10, alertasPc: true, gravador: 'xbox', discordMutar: 'ctrl+shift+m', discordSurdo: 'ctrl+shift+d', vozCall: '', vozCallModo: 'jogo', horaDormir: '', resumoManha: true, volume: 70, pausas: false,
     },
     xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [], aprendido: [], memoria: [], rotinas: [], placar: { dia: '', v: 0, d: 0, e: 0, seq: [] }, modoJogo: false, ultimosNomes: [], resumoDia: '', dormir: { dia: '', proximo: 0 }, desejos: [], desejosChecado: 0, espontaneo: { ultimo: 0, dia: '', ditos: [] },
@@ -1588,6 +1588,8 @@ window.FRASES_ESTUDIO = [
     }, 250);
   }
 
+  if (window.lumiDesktop && window.lumiDesktop.vozNatural && !S.vozNaturalOferecida) { S.vozNaturalOferecida = true; if (!S.cfg.vozMotor || S.cfg.vozMotor === 'navegador') S.cfg.vozMotor = 'natural'; salvar(); }
+
   /* ================= estado da sessão ================= */
   const R = {
     view: 'inicio', aberto: false, humor: 'idle', humorT: null, trabalho: null, pensando: false,
@@ -1599,6 +1601,7 @@ window.FRASES_ESTUDIO = [
     cc: null, // estado do Claude Code no computador (só no app instalado)
     spotify: null, spotifyUltima: null, // Spotify do computador (só no app instalado)
     sis: { mem: null, prot: null, verif: null, forcar: {}, energia: null, carregando: {}, senhaPadrao: null }, // computador (app instalado)
+    natural: null,
     jogos: null, saidas: null, quiz: null, avisouDiscord: false, agenda: null, avisadas: {}, alertaRam: 0, alertaDisco: '',
     ultimo: null, escutarDepois: false, arrastando: false, pos: { v: 'cima', h: 'centro' }, telas: null,
   };
@@ -2032,7 +2035,7 @@ window.FRASES_ESTUDIO = [
   }
   // comentários espontâneos: raros (no máximo um a cada 2 horas), nunca no modo jogo nem falando
   function comentarioEspontaneo(agora) {
-    if (!S.cfg.espontanea || S.modoJogo || R.falando || R.ouvindo || R.alarme || R.pensando || agora - R.ultimaAtividade > 60e3) return;
+    if (!S.cfg.espontanea || S.modoJogo || R.falando || agora - (R.vaiFalar || 0) < 15000 || R.ouvindo || R.alarme || R.pensando || agora - R.ultimaAtividade > 60e3) return;
     const e = S.espontaneo; if (e.dia !== hojeStr()) { e.dia = hojeStr(); e.ditos = []; }
     if (agora - e.ultimo < 2 * 3600e3) return;
     const feitas = S.tarefas.filter((t) => t.feito && t.feitoEm && new Date(t.feitoEm).toDateString() === new Date().toDateString()).length;
@@ -2251,6 +2254,64 @@ window.FRASES_ESTUDIO = [
       const f = ctxCall.createBufferSource(); f.buffer = buf; f.connect(ctxCall.destination); fonteCall = f; f.start();
     } catch (_) { /* dispositivo sumiu: segue só no alto-falante */ }
   }
+  // voz natural offline (Supertonic 3): fala frase por frase, para começar a responder rápido
+  const NAT = window.lumiDesktop && window.lumiDesktop.vozNatural ? window.lumiDesktop.vozNatural : null;
+  const temNatural = () => !!(NAT && R.natural && R.natural.pronto);
+  let falaSolta = null; // resolve a espera da frase atual quando alguém manda calar
+  function fatiarFala(t) {
+    const out = []; let atual = '';
+    for (const f of String(t).split(/(?<=[.!?…])\s+/).filter(Boolean)) { if (atual && (atual + ' ' + f).length > 160) { out.push(atual); atual = f; } else atual = (atual + ' ' + f).trim(); }
+    if (atual) out.push(atual);
+    return out;
+  }
+  async function tocarParte(dados, seq) {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    const buf = await audioCtx.decodeAudioData(dados);
+    if (seq !== falaSeq) return false;
+    const src = audioCtx.createBufferSource(); src.buffer = buf; src.connect(audioCtx.destination);
+    const fim = new Promise((ok) => { falaSolta = ok; src.onended = () => ok(true); });
+    falaFonte = src; if (!R.falando) inicioFala(); src.start(); falarNaCall(buf);
+    await fim; if (falaFonte === src) falaFonte = null;
+    return seq === falaSeq;
+  }
+  async function falarNatural(limpo, seq) {
+    const op = { voz: S.cfg.naturalVoz || 'F1', passos: S.cfg.naturalPassos || 6, velocidade: Math.max(0.85, Math.min(1.35, S.cfg.velocidade || 1.05)) };
+    const partes = fatiarFala(limpo), pedidos = partes.map((p) => NAT.falar(p, op)); // o app gera na ordem; a 2ª frase fica pronta enquanto a 1ª toca
+    pedidos.forEach((p) => p.catch(() => {}));
+    let tocou = false;
+    try {
+      for (let i = 0; i < partes.length; i++) {
+        const r = await pedidos[i];
+        if (seq !== falaSeq) return;
+        if (!r || r.erro || !r.wav) throw new Error((r && r.erro) || 'sem áudio');
+        R.ultimaVoz = 'Voz natural (' + op.voz.replace('F', 'voz ') + ')';
+        const segue = await tocarParte(r.wav.buffer.slice(r.wav.byteOffset, r.wav.byteOffset + r.wav.byteLength), seq); tocou = true;
+        if (!segue) return;
+      }
+      fimFala();
+    } catch (e) {
+      if (seq !== falaSeq) return;
+      if (tocou) { fimFala(); return; }
+      if (!avisouGoogle) { avisouGoogle = true; aviso('Voz natural: ' + (e && e.message ? e.message : 'erro') + '. Usando outra voz por enquanto.'); }
+      falarReserva(limpo, seq);
+    }
+  }
+  // quando a voz escolhida não pode falar: natural → Piper → voz do computador (último recurso)
+  function falarReserva(limpo, seq, pulaNatural) {
+    if (!pulaNatural && temNatural()) return falarNatural(limpo, seq);
+    if (temPiper()) return falarPiper(limpo, seq);
+    R.ultimaVoz = NOME_MOTOR.computador; falarNavegador(limpo);
+  }
+  function baixarNatural() {
+    if (!NAT || (R.natural && (R.natural.baixando || R.natural.pronto))) return;
+    R.natural = { pronto: false, baixando: true, progresso: 0, erro: null };
+    NAT.baixar().then((e) => {
+      const estava = R.natural && R.natural.pronto; R.natural = e;
+      if (e.pronto && !estava) { avisouGoogle = false; aviso('🎙 Minha voz nova está pronta!'); if (S.cfg.vozMotor === 'natural') falar('Pronto! Essa é a minha voz nova. Gostou?'); }
+      if (R.aberto && R.view === 'ajustes') renderPrincipal();
+    }).catch(() => {});
+  }
   const PIPER = window.lumiDesktop && window.lumiDesktop.piper ? window.lumiDesktop.piper : null;
   const temPiper = () => !!(PIPER && R.piperVozes && R.piperVozes.length);
   async function falarPiper(limpo, seq) {
@@ -2262,6 +2323,7 @@ window.FRASES_ESTUDIO = [
       await tocarAudio(r.wav.buffer.slice(r.wav.byteOffset, r.wav.byteOffset + r.wav.byteLength), seq);
     } catch (e) {
       if (seq !== falaSeq) return;
+      if (temNatural()) { falarNatural(limpo, seq); return; }
       if (!avisouGoogle) { avisouGoogle = true; aviso('Voz offline: ' + (e && e.message ? e.message : 'erro') + '. Usando a voz do computador.'); }
       R.ultimaVoz = NOME_MOTOR.computador; falarNavegador(limpo);
     }
@@ -2293,7 +2355,8 @@ window.FRASES_ESTUDIO = [
       await tocarAudio(audio, seq);
     } catch (e) {
       if ((e && e.name === 'AbortError') || seq !== falaSeq) return;
-      if (temPiper()) { falarPiper(limpo, seq); return; } // sem Google: voz offline Piper
+      if (temNatural()) { falarNatural(limpo, seq); return; } // sem Google: voz natural offline
+      if (temPiper()) { falarPiper(limpo, seq); return; }
       R.ultimaVoz = NOME_MOTOR.computador;
       if (!avisouGoogle) { avisouGoogle = true; aviso(`Voz do Google: ${e && e.message ? e.message : 'erro'}. Usando a voz do computador.`); }
       falarNavegador(limpo);
@@ -2302,17 +2365,22 @@ window.FRASES_ESTUDIO = [
   function falar(texto, forcar) {
     if (!forcar && (!S.cfg.voz || S.cfg.somenteExecutar)) return;
     const limpo = textoFalavel(texto); if (!limpo) return;
-    calar();
+    calar(); R.vaiFalar = Date.now();
     const seq = ++falaSeq;
-    if (S.cfg.vozMotor === 'piper' && temPiper()) falarPiper(limpo, seq);
+    if (S.cfg.vozMotor === 'natural' && NAT) {
+      if (temNatural()) falarNatural(limpo, seq);
+      else { baixarNatural(); if (!avisouGoogle && R.natural && R.natural.baixando) { avisouGoogle = true; aviso(`🎙 Baixando a minha voz nova (${R.natural.progresso || 0}%)… por enquanto falo com outra voz.`); } falarReserva(limpo, seq, true); }
+    } else if (S.cfg.vozMotor === 'piper' && temPiper()) falarPiper(limpo, seq);
     else if (S.cfg.vozMotor === 'google' && (S.cfg.geminiChave || S.cfg.cloudChave) && window.VOZ_GOOGLE) falarGoogle(limpo, seq);
-    else falarNavegador(limpo);
+    else if (S.cfg.vozMotor === 'navegador' || !NAT) falarNavegador(limpo);
+    else falarReserva(limpo, seq);
   }
   function calar() {
     falaSeq++;
     if (falaCtl) { try { falaCtl.abort(); } catch (_) { /* ignora */ } falaCtl = null; }
     if (falaFonte) { const f = falaFonte; falaFonte = null; try { f.onended = null; f.stop(); } catch (_) { /* já parou */ } }
     if (fonteCall) { try { fonteCall.stop(); } catch (_) { /* já parou */ } fonteCall = null; }
+    if (falaSolta) { const s = falaSolta; falaSolta = null; s(false); }
     try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (_) { /* ignora */ }
     R.falando = false;
   }
@@ -3318,17 +3386,22 @@ window.FRASES_ESTUDIO = [
       <div class="grade2"><div class="campo"><label for="cTrat">Como ela te chama</label><select id="cTrat" data-cfg="tratamento">${[['o senhor', 'O senhor'], ['a senhora', 'A senhora'], ['você', 'Você']].map(([v, n]) => `<option value="${v}"${v === trat() ? ' selected' : ''}>${n}</option>`).join('')}</select><small>Ex.: "${esc(Trat())} quis dizer…?"</small></div><div></div></div>
       <div class="campo"><span>Personalidade</span><div class="chips" style="margin:0">${Object.entries(PERSONAS).map(([k, v]) => `<button class="chip${k === c.personalidade ? ' on' : ''}" data-acao="set" data-k="personalidade" data-val="${k}">${v.rotulo}</button>`).join('')}</div></div>
       <div class="secao">Voz</div>
-      ${tog('voz', 'Responder em voz alta', 'Uma voz de robozinho lê as respostas')}
+      ${tog('voz', 'Responder em voz alta', 'Ela lê as respostas com a voz escolhida abaixo')}
       ${tog('somenteExecutar', 'Modo só executar', 'Faz o que você pediu e fica quieto')}
       ${usarOffline() ? `<div class="chave"><div>Última coisa que eu ouvi<small id="ultimoOuvido">${esc((R.ouvidos && R.ouvidos[0] && (R.ouvidos[0].w ? R.ouvidos[0].w + '  (Vosk ouviu: ' + R.ouvidos[0].t + ')' : R.ouvidos[0].t)) || '—')}</small></div></div>` : ''}
       ${WH ? `<div class="grade2"><div class="campo"><label for="cRec">Reconhecimento da fala</label><select id="cRec" data-cfg="reconhecimento"><option value="whisper"${(c.reconhecimento || 'whisper') === 'whisper' ? ' selected' : ''}>Whisper — bem mais preciso (recomendado)</option><option value="vosk"${c.reconhecimento === 'vosk' ? ' selected' : ''}>Só o Vosk — mais leve</option></select>
         <small>${(() => { const w = R.whisper; if ((c.reconhecimento || 'whisper') !== 'whisper') return 'O Vosk entende os pedidos sozinho.'; if (!w) return 'Verificando…'; if (w.erro) return 'Não consegui baixar o Whisper: ' + esc(w.erro) + '. Por enquanto uso o Vosk.'; if (w.baixando) return `Baixando o Whisper… ${w.progresso || 0}% (uma vez só). Enquanto isso, uso o Vosk.`; if (w.pronto) return '✅ Whisper pronto. O Vosk só espera o chamado; o pedido é entendido pelo Whisper, no seu PC.'; return 'Será baixado uma vez só e roda offline.'; })()}</small></div>
       <div class="campo"><label for="cWm">Modelo do Whisper</label><select id="cWm" data-cfg="whisperModelo">${[['base', 'Base — rápido (80 MB)'], ['small', 'Small — preciso (240 MB, recomendado)'], ['turbo', 'Turbo — máxima precisão, mais lento (730 MB)']].map(([v, n]) => `<option value="${v}"${v === (c.whisperModelo || 'small') ? ' selected' : ''}>${n}</option>`).join('')}</select></div></div>` : ''}
       ${tog('sempreOuvindo', `Sempre ouvindo "Ei, ${esc(c.nome)}"`, usarOffline() ? 'Reconhecimento offline, feito no seu computador: nada do que você fala sai do PC. Funciona melhor com nomes que são palavras em português.' : temVoz() ? 'O microfone fica ligado enquanto esta janela estiver aberta. O reconhecimento é feito pelo navegador.' : window.lumiDesktop ? 'A voz offline não foi encontrada neste app' : 'Precisa do Chrome ou do Edge', !temVoz())}
-      <div class="grade2"><div class="campo"><label for="cMotor">Tipo de voz</label><select id="cMotor" data-cfg="vozMotor"><option value="navegador"${c.vozMotor !== 'google' ? ' selected' : ''}>Voz do computador (grátis, offline)</option><option value="google"${c.vozMotor === 'google' ? ' selected' : ''}>Google AI Studio (Gemini)</option>${PIPER ? `<option value="piper"${c.vozMotor === 'piper' ? ' selected' : ''}>Voz offline (Piper)</option>` : ''}</select></div>
+      <div class="grade2"><div class="campo"><label for="cMotor">Tipo de voz</label><select id="cMotor" data-cfg="vozMotor">${NAT ? `<option value="natural"${c.vozMotor === 'natural' ? ' selected' : ''}>Voz natural offline (recomendada)</option>` : ''}<option value="google"${c.vozMotor === 'google' ? ' selected' : ''}>Google AI Studio (Gemini)</option>${PIPER ? `<option value="piper"${c.vozMotor === 'piper' ? ' selected' : ''}>Voz offline (Piper)</option>` : ''}<option value="navegador"${c.vozMotor === 'navegador' || (!NAT && !['google', 'piper'].includes(c.vozMotor)) ? ' selected' : ''}>Voz do computador (robótica)</option></select></div>
       <div class="campo"><span>&nbsp;</span><button class="btn fantasma" data-acao="testar-voz">🔊 Testar voz</button></div></div>
+      ${NAT ? `<div class="secao">Voz natural offline</div>
+      <div class="nota-aviso">Voz feminina natural que roda no seu PC: sem internet, sem placa de vídeo e sem limite de uso. ${(() => { const n = R.natural; if (!n) return 'Verificando…'; if (n.pronto) return c.vozMotor === 'natural' ? '✅ É a minha voz principal.' : '✅ Pronta: entra sozinha quando a voz escolhida não puder falar.'; if (n.baixando) return `⬇️ Baixando (uma vez só, ~430 MB): <b>${n.progresso || 0}%</b>. Enquanto isso falo com outra voz.`; if (n.erro) return '⚠️ Não consegui baixar: ' + esc(n.erro) + '.'; return 'Ainda não foi baixada (~430 MB, uma vez só).'; })()}</div>
+      <div class="grade2"><div class="campo"><label for="cNatVoz">Voz</label><select id="cNatVoz" data-cfg="naturalVoz">${['F1', 'F2', 'F3', 'F4', 'F5'].map((v, i) => `<option value="${v}"${v === (c.naturalVoz || 'F1') ? ' selected' : ''}>Voz ${i + 1}</option>`).join('')}</select><small>Troque e toque em "Testar voz" para ouvir cada uma</small></div>
+      <div class="campo"><label for="cNatQ">Qualidade</label><select id="cNatQ" data-cfg="naturalPassos" data-num>${[[4, 'Rápida'], [6, 'Equilibrada (recomendada)'], [10, 'Máxima (mais lenta)']].map(([v, n]) => `<option value="${v}"${v === Number(c.naturalPassos || 6) ? ' selected' : ''}>${n}</option>`).join('')}</select></div></div>
+      ${R.natural && !R.natural.pronto && !R.natural.baixando ? '<div class="form"><button class="btn" data-acao="nat-baixar">⬇️ Baixar a voz natural</button></div>' : ''}` : ''}
       ${PIPER ? `<div class="secao">Voz offline (Piper)</div>
-      <div class="nota-aviso">Natural, instantânea e sem internet. ${c.vozMotor === 'piper' ? 'É a voz principal.' : 'Entra quando o Google não puder falar.'} Crie a sua no Estúdio de voz, ou adicione um arquivo .onnx de voz Piper (com o .onnx.json junto).</div>
+      <div class="nota-aviso">Para usar uma voz só sua. ${c.vozMotor === 'piper' ? 'É a voz principal.' : ''} Crie a sua no Estúdio de voz, ou adicione um arquivo .onnx de voz Piper (com o .onnx.json junto).</div>
       <div class="grade2"><div class="campo"><label for="cPiper">Voz</label><select id="cPiper" data-cfg="piperVoz">${R.piperVozes.length ? R.piperVozes.map((v) => `<option value="${esc(v)}"${v === c.piperVoz ? ' selected' : ''}>${esc(v)}</option>`).join('') : '<option value="">Nenhuma voz instalada</option>'}</select></div>
       <div class="campo"><label for="cExpr">Jeito de falar · ${Math.round((c.piperExpr ?? 0.65) * 100)}% descontraída</label><input id="cExpr" type="range" min="0" max="1" step="0.05" value="${c.piperExpr ?? 0.65}" data-cfg="piperExpr" data-num></div></div>
       <div class="form"><button class="btn fantasma" data-acao="piper-add">➕ Adicionar voz (.onnx)</button><button class="btn fantasma" data-acao="pasta" data-qual="vozes">📁 Pasta de vozes</button><button class="btn" data-acao="estudio">🎙 Estúdio de voz</button></div>` : ''}
@@ -3339,6 +3412,7 @@ window.FRASES_ESTUDIO = [
       <div class="chave"><div>Reserva: Google Cloud (Chirp 3 HD)<small>As mesmas vozes (Leda, Kore…), com cota própria de 1 milhão de caracteres grátis por mês. Entra quando as duas cotas do Gemini acabarem. ${R.ultimaVoz ? 'Última voz usada: ' + esc(R.ultimaVoz) + '.' : ''}</small></div><button class="tog${c.usarChirp !== false ? ' on' : ''}" data-acao="tog" data-cfg="usarChirp" aria-label="Usar o Google Cloud como reserva"></button></div>
       ${c.usarChirp !== false ? `<div class="campo"><label for="cCloud">Chave do Google Cloud (opcional)</label><input id="cCloud" type="password" data-cfg="cloudChave" value="${esc(c.cloudChave || '')}" placeholder="vazio = tenta a mesma chave do AI Studio" autocomplete="off">
         <small>No console.cloud.google.com, no mesmo projeto da chave: ative a API "Cloud Text-to-Speech" (pede faturamento ativado, mas até 1 milhão de caracteres por mês não é cobrado) e use a chave dele aqui. Dica: crie um alerta de orçamento de R$ 1.</small></div>` : ''}`
+      : c.vozMotor !== 'navegador' && NAT ? `<div class="grade2"><div class="campo"><label for="cVel">Velocidade · ${c.velocidade.toFixed(2)}</label><input id="cVel" type="range" min="0.85" max="1.35" step="0.05" value="${Math.max(0.85, Math.min(1.35, c.velocidade))}" data-cfg="velocidade" data-num></div><div></div></div>`
       : `<div class="grade2"><div class="campo"><label for="cVoz">Voz</label><select id="cVoz" data-cfg="vozNome"><option value="">Automática</option>${vozes.map((v) => `<option value="${esc(v.name)}"${v.name === c.vozNome ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select></div><div></div>
       <div class="campo"><label for="cVel">Velocidade · ${c.velocidade.toFixed(2)}</label><input id="cVel" type="range" min="0.6" max="1.6" step="0.05" value="${c.velocidade}" data-cfg="velocidade" data-num></div>
       <div class="campo"><label for="cTom">Tom (mais alto = mais fofinho) · ${c.tom.toFixed(2)}</label><input id="cTom" type="range" min="0.5" max="2" step="0.05" value="${c.tom}" data-cfg="tom" data-num></div></div>`}
@@ -3631,6 +3705,7 @@ window.FRASES_ESTUDIO = [
     'est-ir': (el) => { if (R.estudio.gravando) return; const n = window.FRASES_ESTUDIO.length; R.estudio.i = (R.estudio.i + Number(el.dataset.d) + n) % n; },
     'est-ouvir': () => { const u = R.estudio.ouvir[R.estudio.i]; if (u) new Audio(u).play().catch(() => {}); },
     'est-voltar': () => { if (!R.estudio.gravando) R.view = 'ajustes'; },
+    'nat-baixar': () => { R.natural = null; baixarNatural(); },
     'cc-nova': async () => { if (CC) await CC.nova(); aviso('🧹 Comecei uma conversa nova'); },
     'cc-status': () => verificarCC(),
     'cc-terminal': async (el) => {
@@ -3728,6 +3803,8 @@ window.FRASES_ESTUDIO = [
     if (/^(vozMotor|gemini|cloud)/.test(k)) { avisouGoogle = false; cacheFala.clear(); for (const m in pausaMotor) delete pausaMotor[m]; }
     if (k === 'reconhecimento' || k === 'whisperModelo') { prepararWhisper(); renderPrincipal(); }
     if (k === 'vozMotor' || k === 'cerebro') renderPrincipal();
+    if (k === 'vozMotor' && v === 'natural') baixarNatural();
+    if (k === 'naturalVoz') falar(`Oi${S.cfg.usuario ? ' ' + S.cfg.usuario : ''}! Essa é a voz ${String(v).replace('F', '')}.`, true);
     if (k === 'ccChave') { if (CC) CC.nova(); verificarCC(); }
     if (k === 'tratamento') renderPrincipal();
     if (k === 'agendaLinks') { R.agenda = null; carregarAgenda(true).then(() => renderPrincipal()); }
@@ -3797,6 +3874,10 @@ window.FRASES_ESTUDIO = [
   function relogio() { const d = new Date(); $('#wHora').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`; $('#wData').textContent = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' }); }
 
   /* app de computador (Electron) */
+  if (NAT) {
+    NAT.aoMudar((e) => { R.natural = e; if (R.view === 'ajustes' && R.aberto) { const a = document.activeElement; if (!(a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))) renderPrincipal(); } });
+    NAT.estado().then((e) => { R.natural = e; if (!e.pronto) { R.natural = null; baixarNatural(); } }).catch(() => {}); // baixa sozinha na primeira abertura: é a reserva de todas as vozes
+  }
   if (PIPER) PIPER.vozes().then((v) => { R.piperVozes = v || []; if (!S.cfg.piperVoz && R.piperVozes[0]) S.cfg.piperVoz = R.piperVozes[0]; }).catch(() => {});
   if (WH) {
     WH.aoMudar((e) => { R.whisper = e; if (R.view === 'ajustes' && R.aberto) { const a = document.activeElement; if (!(a && /^(INPUT|SELECT)$/.test(a.tagName))) renderPrincipal(); } });

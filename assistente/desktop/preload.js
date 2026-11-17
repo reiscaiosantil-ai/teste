@@ -5,6 +5,12 @@ contextBridge.exposeInMainWorld('lumiDesktop', {
   aberto: (aberto) => ipcRenderer.send('lumi:aberto', !!aberto),
   aoAtalho: (fn) => ipcRenderer.on('lumi:atalho', (_e, qual) => fn(qual)),
   vozInfo: () => ipcRenderer.invoke('lumi:voz-info'),
+  vozNatural: {
+    estado: () => ipcRenderer.invoke('lumi:nat-estado'),
+    baixar: () => ipcRenderer.invoke('lumi:nat-baixar'),
+    falar: (texto, op) => ipcRenderer.invoke('lumi:nat-falar', texto, op),
+    aoMudar: (fn) => ipcRenderer.on('lumi:natural', (_e, estado) => fn(estado)),
+  },
   piper: {
     vozes: () => ipcRenderer.invoke('lumi:piper-vozes'),
     falar: (texto, nome, op) => ipcRenderer.invoke('lumi:piper-falar', texto, nome, op),
