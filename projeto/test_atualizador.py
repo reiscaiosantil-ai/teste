@@ -34,7 +34,7 @@ def test_update_replaces_modules_and_keeps_backup(tmp_path):
         assert (app / name).read_bytes() == (HERE / name).read_bytes()
     assert (backup / "processing.py").read_text(encoding="utf-8") == "ai_sharp = 0\n"
     assert not (backup / "capture_devices.py").exists()
-    assert "0.3.11" in (tmp_path / "VERSAO_ROV_LIVE.txt").read_text(encoding="utf-8")
+    assert "0.3.12" in (tmp_path / "VERSAO_ROV_LIVE.txt").read_text(encoding="utf-8")
     assert (tmp_path / "logs").is_dir()
 
 

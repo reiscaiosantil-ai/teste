@@ -512,3 +512,35 @@ lentas voltavam a sobrar em 48–51%.
 
 **A validar no Windows:** qual nível aparece no rodapé no PC com GPU
 integrada (esperado 4 ou 5) e se o vídeo deixou de engasgar.
+
+---
+
+# 0.3.12: economia extra opcional (rastro fantasma na 0.3.11)
+
+Retorno do usuário: na 0.3.11 “voltou o rastro branco fantasma”.
+
+**Investigação.** A única mudança entre 0.3.10 e 0.3.11 foram os níveis 4–5
+(fusão temporal em 384 × 216 / 320 × 180; o nível 5 sem o teste de ida e
+volta do fluxo). Ensaios realizados aqui:
+- objeto claro/escuro em movimento sobre fundo fixo;
+- vídeo real em panorâmica, medindo a diferença saída−entrada junto às bordas;
+- perfil de correção atrás × à frente do objeto;
+- governador alternando níveis.
+
+**Nenhum reproduziu um rastro novo nos níveis 4–5:** as medidas ficaram
+iguais à 0.3.10 dentro do ruído. Viu-se apenas, em todas as versões, um
+halo/mancha da própria correção da IA perto de estruturas claras. A causa
+no PC do usuário não está confirmada.
+
+**Mudanças:**
+- Níveis 4–5 agora são **opcionais**, em “Ajustes finos da IA” > “Economia
+  extra (níveis 4 e 5)”, desligado por padrão. Desligado, o comportamento é
+  igual ao da 0.3.10 (máximo nível 3). Ao desmarcar com nível acima de 3, ele
+  volta na hora.
+- Uma mudança só de resolução interna (troca de nível) não zera mais o
+  ajuste de luminância, o que evita um salto de brilho a cada troca.
+- 97 testes passam.
+
+**Pedido ao usuário para fechar a causa:** comparar com a opção ligada e
+desligada e enviar um print ou um vídeo curto (celular serve) do rastro,
+dizendo o que se move (câmera, estrutura, partícula) e o nível no rodapé.

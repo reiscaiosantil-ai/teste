@@ -172,6 +172,9 @@ class TemporalRestorer:
         guide = cv2.GaussianBlur(guide, (5, 5), 1.2)
         if self.overlay is not None and self.overlay.shape != (h, w):
             self.overlay = None
+        # A size change alone (performance level) restarts the fusion but is
+        # not a new scene: the luminance levels are kept (no brightness jump).
+        resized = self.previous is not None and self.previous.shape != frame.shape
         restart = (self.previous is None or self.previous.shape != frame.shape or
                    dt <= 0 or dt > .25 or self.previous_guide.shape != guide.shape or
                    float(cv2.absdiff(guide, self.previous_guide).mean()) > 28)
@@ -293,7 +296,8 @@ class TemporalRestorer:
             self.metrics = {'temporal_fraction': float(np.mean(alpha > 0)),
                             'particle_fraction': float(np.mean(particles & (alpha > 0)))}
         else:
-            self.levels = None
+            if not resized:
+                self.levels = None
             self.flow = None
         self.previous = frame.copy()
         self.history = older if isinstance(older, list) else ([older] if older is not None else [])

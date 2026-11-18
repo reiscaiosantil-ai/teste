@@ -30,6 +30,7 @@ class Governor:
         self.raise_at, self.lower_at, self.window = raise_at, lower_at, window
         self.hold_raise, self.hold_lower = hold_raise, hold_lower
         self.level = 0
+        self.max_level = MAX_LEVEL   # 3 = 0.3.10 behaviour (levels 4–5 opt-in)
         self.drop = 0.
         self.samples = deque()
         self.changed = None
@@ -40,6 +41,8 @@ class Governor:
         """Record a shown frame; return the economy level to use."""
         if self.changed is None:
             self.changed = now
+        if self.level > self.max_level:   # Extra levels switched off: obey now.
+            self._set(self.max_level, now)
         self.samples.append((now, seq))
         while self.samples and now - self.samples[0][0] > self.window:
             self.samples.popleft()
@@ -50,7 +53,7 @@ class Governor:
             return self.level
         self.drop = max(0., 1 - (len(self.samples) - 1) / span)
         since = now - self.changed
-        if self.drop > self.raise_at and since >= self.hold_raise and self.level < MAX_LEVEL:
+        if self.drop > self.raise_at and since >= self.hold_raise and self.level < self.max_level:
             if self.lowered_at is not None and now - self.lowered_at < 8:
                 self.hold_lower = min(64., self.hold_lower * 2)  # Failed probe.
             self.lowered_at = None

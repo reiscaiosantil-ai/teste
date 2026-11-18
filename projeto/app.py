@@ -25,7 +25,7 @@ from processing import Settings
 import capture_devices
 from rov_ai import list_adapters, adapter_label
 
-VERSION = "0.3.11"
+VERSION = "0.3.12"
 
 STYLE = """
 QWidget { background: #0b1420; color: #d9e6ef; font-family: 'Segoe UI'; font-size: 13px; }
@@ -334,6 +334,12 @@ class Window(QMainWindow):
         self.ai_realtime.setChecked(True)
         self.ai_realtime.setToolTip("Analisa em paralelo e reaplica correções com verificação de movimento. Quando a correção neural não serve, usa a restauração temporal, se ativada; caso contrário mostra o original. Desmarque para analisar cada quadro exibido.")
         ai.addRow(self.ai_realtime)
+        self.perf_extra = QCheckBox("Economia extra (níveis 4 e 5)")
+        self.perf_extra.setChecked(False)
+        self.perf_extra.setToolTip("Para PCs muito fracos: fusão temporal mais leve quando o vídeo não acompanha. "
+                                   "Desligado = comportamento da 0.3.10 (máximo nível 3). Ligue para comparar.")
+        ai.addRow(self.perf_extra)
+        self.perf_extra.toggled.connect(self.update_settings)
         self.ai_restore = fit(self.number(0, 100, 35, 5, " %"))
         self.ai_restore.setToolTip("Combina observações de quadros anteriores com verificação de movimento e realça a luminância. Partículas claras pequenas e passageiras, confirmadas em dois quadros anteriores alinhados, são limitadas ao nível observado nesses quadros. Pode atenuar pequenos objetos claros em movimento ou criar rastros se a correspondência falhar. Zero desativa. Protege as faixas superior e inferior da mistura temporal.")
         self.ai_specks = fit(self.number(0, 100, 0, 5, " %"))
@@ -500,7 +506,8 @@ class Window(QMainWindow):
             "fast" if self.ai_quality.currentIndex()==0 else "detail",
             "auto" if self.ai_backend.currentIndex()==0 else "cpu",int(self.ai_device.currentData()),self.ai_noise.value()/100,self.ai_sharp.value()/100,self.ai_realtime.isChecked(),self.ai_specks.value()/100,self.ai_restore.value()/100,
             self.ai_color.value()/100,self.ai_contrast.value()/100,
-            self.visual.currentIndex()==0, 1.0 if self.stabilize.isChecked() else 0.0)
+            self.visual.currentIndex()==0, 1.0 if self.stabilize.isChecked() else 0.0,
+            5 if self.perf_extra.isChecked() else 3)
 
     def update_settings(self, *_):
         classic=self.motor.currentIndex()==1

@@ -110,3 +110,44 @@ def test_economy_levels_4_and_5_lighten_temporal_fusion_but_keep_it_working():
             assert live.temporal.economy == economy
     finally:
         live.close()
+
+
+def test_extra_economy_levels_are_opt_in_and_resize_keeps_luminance_levels():
+    import cv2
+    from temporal_restore import TemporalRestorer
+    g = Governor()
+    g.max_level = 3                       # Default in the app (0.3.10 behaviour).
+    level, now = feed(g, 0., 8., 2)
+    assert level == 3
+    g.max_level = 5
+    level, now = feed(g, now, 4., 2)
+    assert level > 3
+    g.max_level = 3                       # Unticked while above: comes back down.
+    level, now = feed(g, now, .5, 2)
+    assert level == 3
+    assert Settings().perf_max == 3
+    _, noisy = pan_sequence(frames=6)
+    noisy = [cv2.normalize(f, None, 10, 245, cv2.NORM_MINMAX) for f in noisy]
+    r = TemporalRestorer()
+    for frame in noisy[:4]:
+        r.clarify(r.clean(frame, .35, 1 / 30), .35, 1 / 30)
+    levels = r.levels.copy()
+    r.economy = 2                         # Internal size changes: fusion restarts...
+    r.clean(noisy[4], .35, 1 / 30)
+    assert r.levels is not None and np.allclose(r.levels, levels)   # ...levels kept.
+
+
+def test_gui_extra_economy_checkbox_off_by_default():
+    import os
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+    import app as A
+    qt = QApplication.instance() or QApplication([])
+    w = A.Window()
+    w.timer.stop()
+    try:
+        assert w.settings().perf_max == 3
+        w.perf_extra.setChecked(True)
+        assert w.settings().perf_max == 5
+    finally:
+        w.close()

@@ -28,6 +28,7 @@ class Settings:
     ai_contrast: float = 0.5   # 0.3.6: limited local contrast on luminance
     ai_auto: bool = False      # 0.3.9: fine controls follow the scene
     stabilize: float = 0.0     # 0.3.9: digital stabilization of the treated view
+    perf_max: int = 3          # 0.3.12: highest automatic economy level (5 = extra levels)
 
 
 class Enhancer:

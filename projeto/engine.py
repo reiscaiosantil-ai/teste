@@ -357,6 +357,7 @@ class Session:
                 return  # A slower job finished after a newer frame was shown.
             self._published_seq = seq
             # Economy level follows how many source frames are being skipped.
+            self.governor.max_level = getattr(settings, "perf_max", 3)
             level = self.governor.update(now, seq)
             self.live_ai.perf_level = level
             rate = self._rate
