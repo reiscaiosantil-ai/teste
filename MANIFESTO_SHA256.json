@@ -1,0 +1,282 @@
+{
+  "ARQUITETURA_E_ALGORITMOS.md": {
+    "bytes": 11844,
+    "sha256": "44d4b137d100627f3b6c58432d5e221d8a4513cf222d640d19d5b4b82971fc05"
+  },
+  "ARQUIVOS_E_REFERENCIAS.md": {
+    "bytes": 7576,
+    "sha256": "6556c95c3272054341104e0251d2eb54c4dca9883e0eebe8cf673deed9c33aad"
+  },
+  "CONTEXTO_COMPLETO_PARA_CODEX.md": {
+    "bytes": 48186,
+    "sha256": "93b2a8694c9df745089b080f5b45fe45f64758d903d6579dce9c306363c0f8d7"
+  },
+  "HISTORICO_E_DECISOES.md": {
+    "bytes": 11473,
+    "sha256": "d61e4ca692742b6abc9d57dc1baebcd0dbc27e72126e56aecec1e8cb6e2b6077"
+  },
+  "LEIA_PRIMEIRO_CONTEXTO.md": {
+    "bytes": 10293,
+    "sha256": "56ef0dd1df9395beadfd2f3ab369564e23dbb74277fb6536d339957369a58378"
+  },
+  "PROMPT_PARA_CODEX.txt": {
+    "bytes": 2279,
+    "sha256": "746b4d5814bb8c35a634f808d55ce0a168cdee72dc63283a2fa52a65aa1fe52b"
+  },
+  "VALIDACAO_E_GARGALOS.md": {
+    "bytes": 6527,
+    "sha256": "282034d62cd41de7039639094cadb1088ddcb8e6003eb40a2140ce5eafd8ea19"
+  },
+  "VERIFICACAO_DESTA_TRANSFERENCIA.json": {
+    "bytes": 520,
+    "sha256": "f0be156cd3c1dbc8420c266a0b9c554bca5368c58f9cbf74d44dff571990c12e"
+  },
+  "evidencias/REFERENCIA_PEIXES.mp4": {
+    "bytes": 6279735,
+    "sha256": "b76201cdbb7f0fae7c6b4647b1a098f055d2a29882fbdbe3cb348086ca6712d6"
+  },
+  "evidencias/ULTIMO_RESULTADO_APROVADO.png": {
+    "bytes": 671244,
+    "sha256": "fb5622e529c724b0231a14d29b26f9874ff1d8cfa6ca5e162feb38d1ed2fbfe5"
+  },
+  "evidencias/exemplos_0.3.4/1029_comparacao_034.mp4": {
+    "bytes": 3230549,
+    "sha256": "1724c79862627835e27c82e945e9295b03251fe56d11521431c1fd24190d9c3c"
+  },
+  "evidencias/exemplos_0.3.4/comparacao_121s.png": {
+    "bytes": 499125,
+    "sha256": "69d8cb8248cb617ac0a350ac6faa5ac4efed3bc0d0a271f3105d137814d782b4"
+  },
+  "evidencias/exemplos_0.3.4/comparacao_1s.png": {
+    "bytes": 674004,
+    "sha256": "82484d455c975bec87af7be2096c8b72aa2566dc00cc95593c42f4cdb8d5e308"
+  },
+  "evidencias/exemplos_0.3.4/comparacao_241s.png": {
+    "bytes": 829390,
+    "sha256": "ea82dba3ea74dc008074e385a51649275fbb2d6dd1a552adfddc93475cb040ae"
+  },
+  "evidencias/validacao_0.3.4/LEIA.txt": {
+    "bytes": 309,
+    "sha256": "dec2aa045c9b40c0f05048a7ab1bcefd805c592eda72e24b85f6c50c33b03a0c"
+  },
+  "evidencias/validacao_0.3.4/desempenho_full_hd.json": {
+    "bytes": 703,
+    "sha256": "659fcc2f156c470cd2842e57b00f1ecbb8686deeb8eccd229b7d0f10f310bd8d"
+  },
+  "evidencias/validacao_0.3.4/ruido_sintetico.json": {
+    "bytes": 147,
+    "sha256": "ca3d5c8699621b11e45c9960b359ec8e37a0c43f805e4750295702274af3d262"
+  },
+  "evidencias/validacao_0.3.4/test_ai.py": {
+    "bytes": 3538,
+    "sha256": "fbbabfe911592033d883c2760726f98e300efb65754d5f15e4df7f36fb7947a0"
+  },
+  "evidencias/validacao_0.3.4/test_capture_freshness.py": {
+    "bytes": 2957,
+    "sha256": "245f443b2bcc8b66c38729c1583348f8c8a67950b5d035d52d377d7c7c13b4e9"
+  },
+  "evidencias/validacao_0.3.4/test_classic_protection.py": {
+    "bytes": 1188,
+    "sha256": "753a057d7cba0a6052ca35b0f9b3a5b3658205ac273f759eef712c7451b7dbcb"
+  },
+  "evidencias/validacao_0.3.4/test_finishing.py": {
+    "bytes": 1406,
+    "sha256": "ffa60c377579db6a3bbd1940d70aac2afd1dcfd647f2d1c8c1663dd5082275b7"
+  },
+  "evidencias/validacao_0.3.4/test_live_ai.py": {
+    "bytes": 6002,
+    "sha256": "6aa0f3154371be274153dd14c3ff4e59499dcb8c02ab0df7608b19b496af50b4"
+  },
+  "evidencias/validacao_0.3.4/test_rov.py": {
+    "bytes": 7000,
+    "sha256": "b3ee56632a2d29e641f5d68f8dc60fded03b2db9a1e58709591d599288b8fd72"
+  },
+  "evidencias/validacao_0.3.4/test_temporal_restore.py": {
+    "bytes": 6287,
+    "sha256": "71fe41bba65367d42b37a32b9e43ffecf9a5d0e4503ec44f3a3a55e1382dcb5c"
+  },
+  "historico/CONTEXTO_ORIGINAL_28_10_2026.md": {
+    "bytes": 9252,
+    "sha256": "e76b8ed7e190b1bc8ee5bf56ff24acefb93dca936c5ad673494a17932501983a"
+  },
+  "historico/ENTREGA_0.3.4_LEIA_PRIMEIRO.txt": {
+    "bytes": 4797,
+    "sha256": "a9e17a4a1997a91ea0710185486c7648877982d265326979f978029650d5fdb7"
+  },
+  "historico/ENTREGA_0.3.4_VALIDACAO.txt": {
+    "bytes": 3028,
+    "sha256": "a89bfa70657afb327fa668be9c0c5163ccb706cbd03e21e7aff50cfec2e98c07"
+  },
+  "historico/Transferencia_ROV_Live_INICIAL.zip": {
+    "bytes": 761021,
+    "sha256": "bb0b07cd5aca214a76e4c69e20f1d8a28da33436e759285d9c2b18077cee74b0"
+  },
+  "iniciador_windows/ATUALIZAR_PORTATIL.cmd": {
+    "bytes": 625,
+    "sha256": "13eed177251e055c19d8f73fe36795356d041f7e44aa72707b200a57b7cd562d"
+  },
+  "iniciador_windows/INICIAR_PORTATIL.cmd": {
+    "bytes": 665,
+    "sha256": "bd7806770c493b766bfdd6988d7300c06a56ad7758f868ac1905e0ae4a8b5efc"
+  },
+  "iniciador_windows/ROV_Live_IA.exe": {
+    "bytes": 1728512,
+    "sha256": "fbd3e8b3620f47663621b22575e82ef2a3c53d72e49b26f92394cbdaae32b182"
+  },
+  "iniciador_windows/aplicar_atualizacao.py": {
+    "bytes": 2416,
+    "sha256": "321461fcad52ffcea54affcebef341aac474dc2a046788e18cd7da0dd2674546"
+  },
+  "iniciador_windows/suporte/LICENSE_GO.txt": {
+    "bytes": 1453,
+    "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+  },
+  "iniciador_windows/suporte/launcher.go": {
+    "bytes": 2528,
+    "sha256": "f1fecbbab16f834ffd66b39dafee00fc1f08aa79965f1a336ca58085ebf0ade9"
+  },
+  "projeto/INICIAR.cmd": {
+    "bytes": 373,
+    "sha256": "27ca23d8da35a650655386f0ed7e03d6543c7e4419c311c17d3f56a62ed83753"
+  },
+  "projeto/INSTALAR.cmd": {
+    "bytes": 1456,
+    "sha256": "82d4a756e0a948f124663265c43fc11447c0760fd8bea21b8b3d20554e885ba8"
+  },
+  "projeto/INSTALAR_CPU.cmd": {
+    "bytes": 1529,
+    "sha256": "6f8f6624e06989d76a04a4e40f1560e49d9ba1c12a0c9a8d956d388a3fcf0661"
+  },
+  "projeto/LICENSE.txt": {
+    "bytes": 1078,
+    "sha256": "05d08e7d85a3845f7cb582aa6183db0774e4473454176dd94fac5cb97db1f948"
+  },
+  "projeto/LICENSE_WATERNET.txt": {
+    "bytes": 1062,
+    "sha256": "ad455d3ac2bb823c724c7fb849c65391c16c0ae79765640d8f34690bb9518a7d"
+  },
+  "projeto/README.md": {
+    "bytes": 3026,
+    "sha256": "a511c42dd95d8220c1afecaf38febee31f119b587e1860b84e078912eeeeaf0e"
+  },
+  "projeto/app.py": {
+    "bytes": 32008,
+    "sha256": "57adab945f540316d0b3ae627fb28307ab0a7a73f7756cd174d18fb587f01f63"
+  },
+  "projeto/documentacao_anterior/ATUALIZAR_0.3.1.txt": {
+    "bytes": 1372,
+    "sha256": "cb80d3ab29e0217b08216baef8a75aa06ddb0f6050f2d7ed9b1b3e724dfb7811"
+  },
+  "projeto/documentacao_anterior/ATUALIZAR_0.3.2.txt": {
+    "bytes": 1802,
+    "sha256": "9a25fa42f387ba1939c15d32de48f352a6d442a4dbadc0f0e46b60f942eb3bf9"
+  },
+  "projeto/documentacao_anterior/COMECE_AQUI.txt": {
+    "bytes": 2538,
+    "sha256": "c89d8b44f63e428f9ba469a0e7a5ec1cbce7b20e2ac58a38238b67f7a98da8dd"
+  },
+  "projeto/documentacao_anterior/VALIDACAO.txt": {
+    "bytes": 2916,
+    "sha256": "821ec218f19fe35f09a781bd0875eb81a8837c7a6787a4ecbc4799c26de72c8c"
+  },
+  "projeto/engine.py": {
+    "bytes": 9742,
+    "sha256": "1061b75158bb99cdf97e1b9d2f2db4d705ae5d6ccd80416eeef408c6b49916f7"
+  },
+  "projeto/exemplos/01_original_recorte.mp4": {
+    "bytes": 246618,
+    "sha256": "1a00be10c2accdd8a729c9626e58f7ef87fb67c285d10026791ebdeee128caf9"
+  },
+  "projeto/exemplos/02_tratado_IA.mp4": {
+    "bytes": 278100,
+    "sha256": "9e89151bb4e03c0cd8cec5258d058cacbd61b033ad43abc3b0fc1ce2f083c882"
+  },
+  "projeto/exemplos/03_tratado_acabamento.mp4": {
+    "bytes": 273524,
+    "sha256": "600e278192ae4fb40a6443a337b16dc9f4bcf8bb5c8686a7b9d776dfe0f7fd86"
+  },
+  "projeto/exemplos/ORIGEM.txt": {
+    "bytes": 371,
+    "sha256": "cf6ae16ada6f6be9bf1f7d1073af9f6ba5f3ad202e4a6e02d9f2b112d85ce99a"
+  },
+  "projeto/exemplos/acabamento_ia.png": {
+    "bytes": 877155,
+    "sha256": "548cad1d78e0a001a86e7d3f570f1b38ed350dd89f8a741deb0a6da94675c549"
+  },
+  "projeto/exemplos/correcao_classico.png": {
+    "bytes": 688583,
+    "sha256": "8e812730bcb63d737b67d5b3ad2e719d9d75e2f925d9d693e4e1216214d46052"
+  },
+  "projeto/exemplos/interface.png": {
+    "bytes": 461706,
+    "sha256": "41fd02a6c8efaf06ccb7aa714ec4c2dbcce7fb08c8615436cca37a8c93fab875"
+  },
+  "projeto/export_video.py": {
+    "bytes": 3053,
+    "sha256": "706ee4591b67d14f92ef1ed1fb4d8190b10b8ff78e800591c2381b2fae95b715"
+  },
+  "projeto/live_ai.py": {
+    "bytes": 9599,
+    "sha256": "1f20c5cc1c6cadc6bc829a0409fef26a0ea20fcb941e06afdffa159240e6f147"
+  },
+  "projeto/models/proveniencia.json": {
+    "bytes": 530,
+    "sha256": "956a3989656e7a11bf25db388e6f62b3845d334ac3da919a3d9b4aa533c4c1cd"
+  },
+  "projeto/models/waternet.onnx": {
+    "bytes": 4370418,
+    "sha256": "509aab504d8fc0c99dde6d6e400e07798fe9a197efe7cd70c40f3347d2832932"
+  },
+  "projeto/models/waternet_fast.onnx": {
+    "bytes": 4370413,
+    "sha256": "2b9cc30dcc4cd2c4b1c8328f98f42e3aecc582cb787fe87d7e72417e359fb7b4"
+  },
+  "projeto/processing.py": {
+    "bytes": 10602,
+    "sha256": "4a3a57d8f5cb8e44c9c5e18d961c8d1de91070dc383172a1db991761154db4dd"
+  },
+  "projeto/requirements.txt": {
+    "bytes": 161,
+    "sha256": "0614242579820466eeeec9b548ecc6ce07b469c7bbab3e28e555f20262dfec74"
+  },
+  "projeto/requirements_cpu.txt": {
+    "bytes": 82,
+    "sha256": "652e3e9009ca03c049013a23936d4c92fd592508178379feb61d4157d07357be"
+  },
+  "projeto/rov_ai.py": {
+    "bytes": 4686,
+    "sha256": "89e599f74b41aef45c359409e28645d811d5f53347b5f1083263bc681760b2d0"
+  },
+  "projeto/temporal_restore.py": {
+    "bytes": 8578,
+    "sha256": "90c3b5e7e9269ad5b005cc533495725dc1deadb25803c7eab6293a31d84cadb0"
+  },
+  "projeto/test_ai.py": {
+    "bytes": 3538,
+    "sha256": "fbbabfe911592033d883c2760726f98e300efb65754d5f15e4df7f36fb7947a0"
+  },
+  "projeto/test_capture_freshness.py": {
+    "bytes": 2957,
+    "sha256": "245f443b2bcc8b66c38729c1583348f8c8a67950b5d035d52d377d7c7c13b4e9"
+  },
+  "projeto/test_classic_protection.py": {
+    "bytes": 1188,
+    "sha256": "753a057d7cba0a6052ca35b0f9b3a5b3658205ac273f759eef712c7451b7dbcb"
+  },
+  "projeto/test_finishing.py": {
+    "bytes": 1406,
+    "sha256": "ffa60c377579db6a3bbd1940d70aac2afd1dcfd647f2d1c8c1663dd5082275b7"
+  },
+  "projeto/test_live_ai.py": {
+    "bytes": 6002,
+    "sha256": "6aa0f3154371be274153dd14c3ff4e59499dcb8c02ab0df7608b19b496af50b4"
+  },
+  "projeto/test_rov.py": {
+    "bytes": 7000,
+    "sha256": "b3ee56632a2d29e641f5d68f8dc60fded03b2db9a1e58709591d599288b8fd72"
+  },
+  "projeto/test_temporal_restore.py": {
+    "bytes": 6287,
+    "sha256": "71fe41bba65367d42b37a32b9e43ffecf9a5d0e4503ec44f3a3a55e1382dcb5c"
+  }
+}

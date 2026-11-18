@@ -1,0 +1,37 @@
+Continue o desenvolvimento do ROV Live da Underwater/Underocean a partir deste pacote.
+
+Leia primeiro LEIA_PRIMEIRO_CONTEXTO.md, ARQUITETURA_E_ALGORITMOS.md,
+HISTORICO_E_DECISOES.md e VALIDACAO_E_GARGALOS.md. O código completo atual
+está em projeto/. A imagem de referência aprovada está em
+evidencias/ULTIMO_RESULTADO_APROVADO.png. Há modelos ONNX e exemplos incluídos.
+
+A baseline é a versão 0.3.4 experimental. O usuário disse "ta muito melhor"
+da qualidade visual, mas o último print no PC dele ainda mostra 6,5 FPS,
+aplicação 116,4 ms e análise da IA 77 ms. A principal tarefa é melhorar
+fluidez/atraso sem perder essa qualidade. A análise Rápida 128x72 foi
+considerada insuficiente; preserve a Detalhada 256x144 como baseline.
+
+Comece conferindo o projeto e reproduzindo a baseline. Instrumente os estágios,
+identifique gargalos e implemente otimizações com comparações reproduzíveis.
+Não assuma que a GPU está efetivamente usada só porque a opção é Automático.
+Não assuma NVIDIA/CUDA: o fabricante/modelo da GPU não foi confirmado.
+
+Depois avalie melhorias de restauração: partículas, contraste útil,
+nitidez sem halos, estabilidade de cor, rastros em movimento, oclusões e
+proteção da telemetria. Não apresente geração plausível como detalhe real.
+A IA atual usa WaterNet pré-treinada e algoritmos tradicionais; não houve
+treinamento de pesos próprios nem reconstrução generativa validada.
+
+O destino é Windows, inclusive computador do simulador sem internet, com
+transferência por pendrive. Preserve abertura por CMD funcional, original
+comparável, captura independente, exportação e tratamento de falhas.
+Teste Windows/DirectML/captura quando o ambiente permitir. Se não permitir,
+declare o alcance dos testes em vez de afirmar que foi validado.
+
+Para testar na cena real completa, peça o arquivo 1029.mp4 apenas se ele
+não estiver disponível localmente; consulte ARQUIVOS_E_REFERENCIAS.md.
+Os IDs da Library não são caminhos locais que o Codex deva presumir acessar.
+
+Entregue alterações de código, validação apropriada, comparação visual,
+medidas antes/depois e instruções de execução/atualização simples. Converse
+em português e avance sobre o trabalho autorizado sem parar apenas em um plano.
