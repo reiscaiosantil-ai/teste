@@ -4,6 +4,7 @@
   const C = window.CEREBRO, M = window.MASCOTE;
   const $ = (s, r = document) => r.querySelector(s);
   const U = window.LUMI_UTIL; // utilidades puras (js/util.js), testadas no Node
+  const O = window.LUMI_ORGANIZADOR; // compras, gastos e estudo (js/organizador.js)
   const { esc, pick, uid, espera, hojeStr, pad, mmss, brl, cap, tamanho, listaE, embaralhar, textoFalavel, fatiarFala, basePalavra, distancia, similar, descTempo, horaTxt, doDia, eventoTxt } = U;
   let mx = innerWidth / 2, my = 0, rafOlhar = 0; // posição do ponteiro, para os olhos
   const DESKTOP = !!window.lumiDesktop || new URLSearchParams(location.search).has('desktop');
@@ -19,11 +20,12 @@
     },
     xp: 0, tarefas: [], notas: [], timers: [], copiados: [], chat: [], aprendido: [], memoria: [], rotinas: [], placar: { dia: '', v: 0, d: 0, e: 0, seq: [] }, modoJogo: false, ultimosNomes: [], resumoDia: '', dormir: { dia: '', proximo: 0 }, desejos: [], desejosChecado: 0, espontaneo: { ultimo: 0, dia: '', ditos: [] },
     habitos: { dia: hojeStr(), agua: 0, meta: 8, leitura: 0, exercicio: 0 },
+    compras: [], gastos: [], estudo: { sessoes: [], ultima: null, ciclos: { dia: '', n: 0 } },
   });
   function carregar() {
     try {
       const d = JSON.parse(localStorage.getItem(CHAVE) || 'null');
-      if (d && typeof d === 'object') { const p = PADRAO(); return { ...p, ...d, cfg: { ...p.cfg, ...(d.cfg || {}) }, habitos: { ...p.habitos, ...(d.habitos || {}) } }; }
+      if (d && typeof d === 'object') { const p = PADRAO(); return { ...p, ...d, cfg: { ...p.cfg, ...(d.cfg || {}) }, habitos: { ...p.habitos, ...(d.habitos || {}) }, estudo: { ...p.estudo, ...(d.estudo || {}) } }; }
     } catch (_) { /* armazenamento indisponível: segue com o padrão */ }
     return PADRAO();
   }
@@ -430,7 +432,7 @@
     const passos = String(rot.comandos || '').split(/\n+/).map((x) => x.trim()).filter(Boolean).slice(0, 15);
     const feitos = [];
     for (const cmd of passos) {
-      const a = C.interpretar(cmd, { agora: Date.now(), nome: S.cfg.nome, jogo: S.modoJogo });
+      const a = interpretar(cmd, { agora: Date.now(), nome: S.cfg.nome, jogo: S.modoJogo });
       if (a.tipo === 'desconhecido' || a.tipo === 'pergunta') { feitos.push(`⚠️ não entendi "${cmd}"`); continue; }
       try { const r = await executar(a, cmd, porVoz); feitos.push(r && r.texto ? r.texto : cmd); } catch (e) { feitos.push(`⚠️ ${cmd}: ${e && e.message ? e.message : e}`); }
       R.pendente = null; // rotinas não deixam perguntas no ar
@@ -1050,7 +1052,7 @@
       return comPrefixo(`${Trat()} quis dizer "${achou.ap.para}". `, await decidirTexto(achou.ap.para, porVoz, pend));
     }
     const x = await decidirTexto(t, porVoz, pend, true);
-    if (achou && C.interpretar(achou.ap.para, { agora: Date.now(), nome: S.cfg.nome }).tipo !== x.acao.tipo) {
+    if (achou && interpretar(achou.ap.para, { agora: Date.now(), nome: S.cfg.nome }).tipo !== x.acao.tipo) {
       R.pendente = { tipo: 'confirmar', texto: achou.ap.para, de: t, ate: Date.now() + 60e3 };
       return { acao: { tipo: 'pendente' }, r: { texto: `${Trat()} quis dizer "${achou.ap.para}"?`, humor: 'think', escutar: true } };
     }
@@ -1058,7 +1060,7 @@
   }
   // `adiar`: só interpreta (para checar antes se é uma frase parecida com uma aprendida)
   async function decidirTexto(texto, porVoz, pend, adiar) {
-    let acao = C.interpretar(texto, { agora: Date.now(), nome: S.cfg.nome, jogo: S.modoJogo });
+    let acao = interpretar(texto, { agora: Date.now(), nome: S.cfg.nome, jogo: S.modoJogo });
     // completa a pergunta anterior ("quando eu te lembro?" → "em 10 minutos")
     if (pend && pend.tipo === 'lembrete' && ['desconhecido', 'pergunta'].includes(acao.tipo)) {
       const junto = C.interpretar(`me lembra de ${pend.texto} ${texto}`, { agora: Date.now(), nome: S.cfg.nome });
@@ -1086,6 +1088,31 @@
   }
   const durTxt = (s) => { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60; return [h && `${h} hora${h > 1 ? 's' : ''}`, m && `${m} minuto${m > 1 ? 's' : ''}`, ss && `${ss} segundo${ss > 1 ? 's' : ''}`].filter(Boolean).join(' e ') || '0 segundos'; };
 
+  // o organizador (compras, gastos, estudo) tem a vez; se não for com ele, o cérebro normal decide
+  function interpretar(texto, op) { return (O && O.interpretar(texto, { nome: S.cfg.nome, compras: S.compras })) || C.interpretar(texto, op); }
+
+  /* ================= modo estudo (pomodoro) ================= */
+  const estudoAtivo = () => S.timers.find((t) => t.estudo);
+  const pausaAtiva = () => S.timers.find((t) => t.pausa);
+  function registrarEstudo(materia, min) {
+    if (!(min >= 1)) return;
+    S.estudo.sessoes.push({ id: uid(), materia: materia || 'Estudo', min: Math.round(min), ts: Date.now() });
+    S.estudo.sessoes = S.estudo.sessoes.slice(-3000); salvar();
+  }
+  function iniciarEstudo(materia, min) {
+    S.timers = S.timers.filter((t) => !t.pausa);
+    const t = criarTimer(min * 60, `📚 ${materia}`); t.estudo = { materia, min };
+    S.estudo.ultima = { materia, min }; salvar(); return t;
+  }
+  function pararEstudo() {
+    const at = estudoAtivo(), pausa = pausaAtiva();
+    let feito = 0;
+    if (at) { feito = Math.floor((Date.now() - (at.fim - at.total * 1000)) / 60000); registrarEstudo(at.estudo.materia, feito); }
+    S.timers = S.timers.filter((t) => !t.estudo && !t.pausa); salvar();
+    return { at, pausa, feito };
+  }
+  const estudoHojeTxt = () => { const r = O.resumoEstudo(S.estudo.sessoes, 'hoje'); return r.total ? `Hoje você já estudou ${O.horasTxt(r.total)}.` : ''; };
+
   function criarTimer(segundos, nome) {
     const t = { id: uid(), nome: nome || 'Timer', fim: Date.now() + segundos * 1000, total: segundos };
     S.timers.push(t); salvar(); pedirNotificacoes(); return t;
@@ -1103,8 +1130,8 @@
       case 'parar': calar(); pararAlarme(); return { texto: 'Ok, fiquei quietinho. 🤫', humor: 'idle', mudo: true };
       case 'ajuda': return {
         texto: 'Eu sei fazer um monte de coisa!', humor: 'happy',
-        html: `Eu sei fazer um monte de coisa! Experimente:<br>⏱ <b>timer de 10 minutos para a pizza</b><br>⏰ <b>me lembra de ligar pro cliente em 30 minutos</b> · <b>alarme às 7h</b><br>✅ <b>cria uma tarefa comprar pão</b> · <b>minhas tarefas</b><br>🎵 <b>toca uma música</b> · <b>próxima</b> · <b>volume 50</b><br>🌤️ <b>vai chover hoje?</b> · 💵 <b>quanto está o dólar?</b><br>🧮 <b>quanto é 15% de 230</b> · 🌍 <b>traduz para inglês bom dia</b><br>📝 <b>anota que preciso comprar café</b> · 💧 <b>bebi um copo de água</b><br>🔐 <b>gera uma senha de 20</b> · 📋 <b>copia meu pix</b> · 🪙 <b>cara ou coroa</b><br>🎄 <b>quantos dias faltam pro Natal?</b> · 😂 <b>conta uma piada</b><br>🎨 <b>coloca a coroa</b> · <b>muda sua cor para rosa</b>${SIS ? '<br>💻 <b>o que está gastando memória?</b> · <b>verifica se tem vírus</b><br>🪟 <b>abre o Word</b> · <b>fecha o Chrome</b> · <b>abre a conversa com o Bernardo</b><br>📞 <b>sai da ligação</b> · ⏻ <b>desliga o computador</b> (pede a senha)<br>🎮 <b>modo jogo</b> · <b>clipa isso</b> · <b>abre o Valorant</b> · <b>qual meu ping?</b> · <b>muta</b><br>🎲 <b>sorteia dois times com …</b> · <b>escolhe um mapa do Valorant</b> · <b>quem paga o lanche entre …</b><br>🏆 <b>ganhei</b> / <b>perdi</b> · <b>como tá meu placar?</b> · 🎁 <b>tem jogo de graça na Epic?</b> · <b>quanto tá o Elden Ring na Steam?</b><br>📅 <b>minha agenda de hoje</b> · <b>entra na reunião</b> · ✉️ <b>escreve um e-mail pro cliente sobre …</b> · <b>faz o relatório da semana</b><br>💬 <b>manda pro Bernardo: chego em 10 minutos</b> · <b>escreve: …</b> · 🔎 <b>acha a planilha de vendas</b> · <b>abre o último download</b> · <b>limpa a pasta downloads</b><br>🔊 <b>volume do PC no 30</b> · ☀️ <b>brilho no 50</b><br>🧠 <b>lembra que …</b> · 🌙 <b>minha hora de dormir é 1h</b> · ☀️ <b>resumo do dia</b>' : ''}`,
-        fala: 'Eu marco timers, lembretes, alarmes e tarefas, toco música, vejo o clima e o dólar, faço contas, traduzo, anoto coisas e conto piadas. Os exemplos estão na tela.',
+        html: `Eu sei fazer um monte de coisa! Experimente:<br>⏱ <b>timer de 10 minutos para a pizza</b><br>⏰ <b>me lembra de ligar pro cliente em 30 minutos</b> · <b>alarme às 7h</b><br>✅ <b>cria uma tarefa comprar pão</b> · <b>minhas tarefas</b><br>🎵 <b>toca uma música</b> · <b>próxima</b> · <b>volume 50</b><br>🌤️ <b>vai chover hoje?</b> · 💵 <b>quanto está o dólar?</b><br>🧮 <b>quanto é 15% de 230</b> · 🌍 <b>traduz para inglês bom dia</b><br>📝 <b>anota que preciso comprar café</b> · 💧 <b>bebi um copo de água</b><br>🔐 <b>gera uma senha de 20</b> · 📋 <b>copia meu pix</b> · 🪙 <b>cara ou coroa</b><br>🎄 <b>quantos dias faltam pro Natal?</b> · 😂 <b>conta uma piada</b><br>📚 <b>vamos estudar cálculo</b> · <b>quanto estudei hoje?</b><br>🛒 <b>adiciona leite e pão na lista</b> · <b>comprei leite</b> · <b>manda a lista pro Bernardo</b><br>💰 <b>gastei 30 reais no mercado</b> · <b>quanto gastei essa semana?</b><br>🎨 <b>coloca a coroa</b> · <b>muda sua cor para rosa</b>${SIS ? '<br>💻 <b>o que está gastando memória?</b> · <b>verifica se tem vírus</b><br>🪟 <b>abre o Word</b> · <b>fecha o Chrome</b> · <b>abre a conversa com o Bernardo</b><br>📞 <b>sai da ligação</b> · ⏻ <b>desliga o computador</b> (pede a senha)<br>🎮 <b>modo jogo</b> · <b>clipa isso</b> · <b>abre o Valorant</b> · <b>qual meu ping?</b> · <b>muta</b><br>🎲 <b>sorteia dois times com …</b> · <b>escolhe um mapa do Valorant</b> · <b>quem paga o lanche entre …</b><br>🏆 <b>ganhei</b> / <b>perdi</b> · <b>como tá meu placar?</b> · 🎁 <b>tem jogo de graça na Epic?</b> · <b>quanto tá o Elden Ring na Steam?</b><br>📅 <b>minha agenda de hoje</b> · <b>entra na reunião</b> · ✉️ <b>escreve um e-mail pro cliente sobre …</b> · <b>faz o relatório da semana</b><br>💬 <b>manda pro Bernardo: chego em 10 minutos</b> · <b>escreve: …</b> · 🔎 <b>acha a planilha de vendas</b> · <b>abre o último download</b> · <b>limpa a pasta downloads</b><br>🔊 <b>volume do PC no 30</b> · ☀️ <b>brilho no 50</b><br>🧠 <b>lembra que …</b> · 🌙 <b>minha hora de dormir é 1h</b> · ☀️ <b>resumo do dia</b>' : ''}`,
+        fala: 'Eu marco timers, lembretes, alarmes e tarefas, faço pomodoro, cuido da lista de compras e dos gastos, toco música, vejo o clima e o dólar, faço contas, traduzo, anoto coisas e conto piadas. Os exemplos estão na tela.',
       };
       case 'desktop': if (motorCerebro() === 'cc') return perguntarClaudeCode(original); return { texto: 'Isso mexe direto nos arquivos e programas do seu PC, e por segurança eu ainda não faço. Posso criar uma tarefa ou um lembrete pra você não esquecer?', humor: 'think' };
       case 'pergunta': if (a.pendente) R.pendente = a.pendente; return { texto: a.texto, humor: 'think' };
@@ -1157,6 +1184,86 @@
         if (a.habito === 'agua') { h.agua = Math.min(h.meta, h.agua + a.qtd); salvar(); return { texto: h.agua >= h.meta ? `Meta batida! ${h.agua}/${h.meta} copos hoje 🎉💧` : `Boa! ${h.agua}/${h.meta} copos hoje. 💧`, humor: 'love' }; }
         if (a.habito === 'exercicio') { h.exercicio++; salvar(); return { texto: 'Mandou bem no exercício! 💪', humor: 'success' }; }
         h.leitura++; salvar(); return { texto: 'Leitura registrada! 📖', humor: 'love' };
+      }
+      case 'estudo_iniciar': {
+        const at = estudoAtivo();
+        if (at) return { texto: `Já tem um pomodoro de ${at.estudo.materia} rodando: faltam ${mmss((at.fim - Date.now()) / 1000)}. Diga "para o pomodoro" se quiser encerrar.`, humor: 'think' };
+        const ult = S.estudo.ultima || {};
+        const materia = a.materia || (a.continuar && ult.materia) || 'Estudo', min = a.minutos || (a.continuar && ult.min) || 25;
+        iniciarEstudo(materia, min); setHumor('cool', 2000);
+        return { texto: `Modo estudo ligado: ${min} minuto${min > 1 ? 's' : ''} de ${materia === 'Estudo' ? 'foco' : materia}. 📚 Eu aviso quando for hora da pausa. Bons estudos!`, fala: `Modo estudo ligado: ${min} minuto${min > 1 ? 's' : ''}${materia === 'Estudo' ? '' : ' de ' + materia}. Bons estudos!`, humor: 'cool' };
+      }
+      case 'estudo_parar': {
+        const { at, pausa, feito } = pararEstudo();
+        if (!at && !pausa) return { texto: 'Não tem nenhum pomodoro rodando.', humor: 'idle' };
+        if (!at) return { texto: 'Pausa encerrada. Quando quiser, diga "continua estudando". ☕', humor: 'idle' };
+        return { texto: `Parei o pomodoro.${feito >= 1 ? ` Contei ${O.horasTxt(feito)} de ${at.estudo.materia}.` : ''} ${estudoHojeTxt()}`.trim(), humor: 'idle' };
+      }
+      case 'estudo_add': registrarEstudo(a.materia, a.minutos); ganharXp(5); return { texto: `Registrei ${O.horasTxt(a.minutos)} de ${a.materia}. 📚 ${estudoHojeTxt()}`.trim(), humor: 'success' };
+      case 'estudo_ver': {
+        const r = O.resumoEstudo(S.estudo.sessoes, a.periodo), seq = O.sequenciaEstudo(S.estudo.sessoes);
+        const quando = O.NOME_PERIODO[a.periodo] || 'hoje';
+        if (!r.total) return { texto: `Ainda não tem estudo registrado ${quando}. Diga "vamos estudar" para começar um pomodoro.`, humor: 'think' };
+        const det = r.materias.length > 1 ? ` (${listaE(r.materias.slice(0, 4).map(([m, v]) => `${O.horasTxt(v)} de ${m}`))})` : r.materias[0][0] !== 'Estudo' ? ` de ${r.materias[0][0]}` : '';
+        return { texto: `${cap(quando)} você estudou ${O.horasTxt(r.total)}${det}.${seq > 1 ? ` Já são ${seq} dias seguidos! 🔥` : ''}`, humor: 'love' };
+      }
+
+      case 'compras_add': {
+        const novos = [], ja = [];
+        for (const nm of a.itens) {
+          const ex = O.acharItem(S.compras, nm);
+          if (ex && !ex.feito && U.basePalavra(ex.t) === U.basePalavra(nm)) { ja.push(ex.t); continue; }
+          if (ex && ex.feito && U.basePalavra(ex.t) === U.basePalavra(nm)) { ex.feito = false; novos.push(ex.t); continue; }
+          S.compras.push({ id: uid(), t: nm, feito: false, ts: Date.now() }); novos.push(nm);
+        }
+        salvar();
+        if (!novos.length) return { texto: `${listaE(ja)} já ${ja.length > 1 ? 'estão' : 'está'} na lista. 🛒`, humor: 'happy' };
+        const falta = S.compras.filter((i) => !i.feito).length;
+        return { texto: `Coloquei ${listaE(novos.map((x) => x.toLowerCase()))} na lista. 🛒 ${falta > novos.length ? `Agora são ${falta} itens.` : ''}`.trim(), humor: 'success' };
+      }
+      case 'compras_del': {
+        const tirados = a.itens.map((nm) => O.acharItem(S.compras, nm)).filter(Boolean);
+        S.compras = S.compras.filter((i) => !tirados.includes(i)); salvar();
+        return { texto: tirados.length ? `Tirei ${listaE(tirados.map((x) => x.t.toLowerCase()))} da lista.` : 'Isso não estava na lista.', humor: 'idle' };
+      }
+      case 'compras_ok': {
+        a.itens.forEach((nm) => { const ex = O.acharItem(S.compras, nm); if (ex) ex.feito = true; }); salvar();
+        const falta = S.compras.filter((i) => !i.feito);
+        return { texto: falta.length ? `Marcado! ✅ Ainda falta: ${listaE(falta.slice(0, 6).map((x) => x.t.toLowerCase()))}${falta.length > 6 ? '…' : ''}.` : 'Marcado! ✅ Lista completa, pode ir pro caixa! 🎉', humor: 'success' };
+      }
+      case 'compras_ver': {
+        const falta = S.compras.filter((i) => !i.feito);
+        if (!falta.length) return { texto: S.compras.length ? 'Já pegou tudo da lista! 🎉' : 'A lista de compras está vazia. Diga "adiciona leite na lista".', humor: 'happy' };
+        return { texto: `Na lista: ${listaE(falta.map((x) => x.t.toLowerCase()))}.`, html: `🛒 <b>Lista de compras</b><br>${falta.map((x) => '• ' + esc(x.t)).join('<br>')}`, humor: 'happy' };
+      }
+      case 'compras_limpar': {
+        const n = S.compras.length; S.compras = a.soComprados ? S.compras.filter((i) => !i.feito) : []; salvar();
+        return { texto: a.soComprados ? `Tirei ${n - S.compras.length} ${n - S.compras.length === 1 ? 'item comprado' : 'itens comprados'} da lista.` : 'Lista de compras zerada. 🧹', humor: 'idle' };
+      }
+      case 'compras_copiar': {
+        const t = O.listaTexto(S.compras); if (!t) return { texto: 'A lista de compras está vazia.', humor: 'think' };
+        await copiar(t, 'lista de compras'); return { texto: 'Copiei a lista de compras: é só colar. 📋', humor: 'cool' };
+      }
+      case 'compras_enviar': {
+        const t = O.listaTexto(S.compras); if (!t) return { texto: 'A lista de compras está vazia, não tem o que mandar.', humor: 'think' };
+        return escreverMensagem({ contato: a.contato, texto: t });
+      }
+
+      case 'gasto_add': {
+        S.gastos.push({ id: uid(), valor: a.valor, desc: a.desc, cat: a.cat, ts: Date.now() }); salvar();
+        const mes = O.resumoGastos(S.gastos, 'mes');
+        return { texto: `Anotei ${brl(a.valor)}${a.desc !== 'Gasto' ? ` em ${a.desc.toLowerCase()}` : ''} ${O.iconeCategoria(a.cat)}${U.basePalavra(a.desc) !== U.basePalavra(a.cat) && a.cat !== 'Outros' ? ` (${a.cat})` : ''}. No mês: ${brl(mes.total)}.`, humor: 'cool' };
+      }
+      case 'gasto_desfazer': {
+        if (!S.gastos.length) return { texto: 'Não tem nenhum gasto anotado.', humor: 'think' };
+        const g = S.gastos.reduce((x, y) => (y.ts > x.ts ? y : x)); S.gastos = S.gastos.filter((x) => x !== g); salvar();
+        return { texto: `Apaguei o gasto de ${brl(g.valor)} (${g.desc.toLowerCase()}).`, humor: 'idle' };
+      }
+      case 'gastos_ver': {
+        const r = O.resumoGastos(S.gastos, a.periodo, Date.now(), a.cat), quando = O.NOME_PERIODO[a.periodo] || 'neste mês';
+        if (!r.qtd) return { texto: `Nenhum gasto${a.cat ? ' com ' + a.cat.toLowerCase() : ''} anotado ${quando}. Diga "gastei 30 reais no mercado" para anotar.`, humor: 'think' };
+        const det = !a.cat && r.categorias.length > 1 ? ` Onde mais foi: ${listaE(r.categorias.slice(0, 3).map(([c, v]) => `${c.toLowerCase()} (${brl(v)})`))}.` : '';
+        return { texto: `${cap(quando)} você gastou ${brl(r.total)}${a.cat ? ' com ' + a.cat.toLowerCase() : ''} em ${r.qtd} ${r.qtd === 1 ? 'compra' : 'compras'}.${det}`, humor: 'cool' };
       }
       case 'habitos_ver': return { texto: `Hoje: ${S.habitos.agua}/${S.habitos.meta} copos de água 💧, ${S.habitos.exercicio} exercício(s) e ${S.habitos.leitura} leitura(s).`, humor: 'happy' };
 
@@ -1610,6 +1717,19 @@
     if (vencidos.length) {
       S.timers = S.timers.filter((t) => t.fim > agora); mudou = true;
       for (const t of vencidos) {
+        if (t.estudo) { // pomodoro concluído: conta o tempo e começa a pausa
+          registrarEstudo(t.estudo.materia, t.estudo.min);
+          const c = S.estudo.ciclos && S.estudo.ciclos.dia === hojeStr() ? S.estudo.ciclos : { dia: hojeStr(), n: 0 }; c.n++; S.estudo.ciclos = c;
+          const p = O.pausaDepois(c.n); const pt = criarTimer(p * 60, '☕ Pausa'); pt.pausa = true;
+          const msg = `Pomodoro de ${t.estudo.materia === 'Estudo' ? 'foco' : t.estudo.materia} concluído! 🎉 Hora de uma pausa de ${p} minutos.`;
+          aviso('📚 ' + msg); notificar('📚 Pomodoro', msg); addChat('k', msg); melodia(SOM_NIVEL); setHumor('love', 3000); ganharXp(15); falar(msg);
+          continue;
+        }
+        if (t.pausa) {
+          const ult = S.estudo.ultima || {}; const msg = `A pausa acabou! Diga "continua estudando" para mais um pomodoro${ult.materia && ult.materia !== 'Estudo' ? ' de ' + ult.materia : ''}.`;
+          aviso('☕ ' + msg); notificar('☕ Pausa', msg); addChat('k', msg); melodia(SOM_TIMER); setHumor('happy', 2500); falar(msg); R.escutarDepois = true;
+          continue;
+        }
         const msg = `O timer "${t.nome}" terminou!`;
         aviso('⏰ ' + msg); notificar('⏱ Timer', msg); addChat('k', '⏱ ' + msg); melodia(SOM_TIMER); setTimeout(() => melodia(SOM_TIMER), 900);
         setHumor('surprised', 2500); ganharXp(10); falar(msg);
@@ -1642,18 +1762,18 @@
   const cronoSeg = () => (R.crono.acum + (R.crono.rodando ? Date.now() - R.crono.inicio : 0)) / 1000;
 
   /* ================= desenho: lateral ================= */
-  const NAV = [['inicio', '🏠', 'Início'], ['tarefas', '✅', 'Tarefas'], ['habitos', '💧', 'Hábitos'], ['timers', '⏱', 'Timers'], ['musica', '🎵', 'Música'], ['notas', '📝', 'Notas'], ['visual', '🎨', 'Visual'], ['ajustes', '⚙️', 'Ajustes']];
+  const NAV = [['inicio', '🏠', 'Início'], ['tarefas', '✅', 'Tarefas'], ['habitos', '💧', 'Hábitos'], ['timers', '⏱', 'Timers'], ['musica', '🎵', 'Música'], ['notas', '📝', 'Notas'], ['estudo', '📚', 'Estudo'], ['compras', '🛒', 'Compras'], ['gastos', '💰', 'Gastos'], ['visual', '🎨', 'Visual'], ['ajustes', '⚙️', 'Ajustes']];
   if (SIS) NAV.splice(NAV.length - 1, 0, ['sistema', '🛡️', 'Sistema']);
   function renderLado() {
     const nv = Math.floor(S.xp / 50) + 1, pct = (S.xp % 50) * 2;
-    const cont = { tarefas: S.tarefas.filter((t) => !t.feito).length || '', habitos: `${S.habitos.agua}/${S.habitos.meta}`, timers: S.timers.length + (R.crono.rodando ? 1 : 0) || '', musica: R.musica.lista.length || (spotTocando() ? '♪' : ''), notas: S.notas.length || '' };
+    const cont = { tarefas: S.tarefas.filter((t) => !t.feito).length || '', habitos: `${S.habitos.agua}/${S.habitos.meta}`, timers: S.timers.length + (R.crono.rodando ? 1 : 0) || '', musica: R.musica.lista.length || (spotTocando() ? '♪' : ''), notas: S.notas.length || '', estudo: estudoAtivo() ? '●' : '', compras: S.compras.filter((i) => !i.feito).length || '' };
     const estado = R.ouvindo ? '● Ouvindo' : R.falando ? '● Falando' : R.pensando ? '● Pensando' : S.cfg.sempreOuvindo ? '● Esperando "Ei, ' + esc(S.cfg.nome) + '"' : '● Pronta';
     lado.innerHTML = `<div class="eu" data-v="visual" title="Mudar o visual"><span id="euMascote">${K(46)}</span><div><b>${esc(S.cfg.nome)}</b><small class="${S.cfg.sempreOuvindo ? 'on' : ''}">${estado}</small><div class="nivel"><em>Nv ${nv}</em><i><b style="width:${pct}%"></b></i></div></div></div>` +
       NAV.map(([k, i, l]) => `<button class="nv${R.view === k ? ' on' : ''}" data-v="${k}">${i} ${l}${cont[k] ? `<span class="c">${cont[k]}</span>` : ''}</button>`).join('');
   }
 
   /* ================= desenho: telas ================= */
-  const SUGESTOES = ['toca uma música', 'timer de 1 minuto para o chá', 'me lembra de beber água em 30 minutos', 'vai chover hoje?', 'quanto está o dólar?', 'quanto é 15% de 230', 'traduz para inglês bom dia', 'conta uma piada', 'bebi um copo de água', 'gera uma senha de 16', 'quantos dias faltam pro Natal?', 'coloca a coroa'];
+  const SUGESTOES = ['vamos estudar', 'adiciona leite na lista', 'gastei 30 reais no mercado', 'toca uma música', 'timer de 1 minuto para o chá', 'me lembra de beber água em 30 minutos', 'vai chover hoje?', 'quanto está o dólar?', 'quanto é 15% de 230', 'traduz para inglês bom dia', 'conta uma piada', 'bebi um copo de água', 'gera uma senha de 16', 'quantos dias faltam pro Natal?', 'coloca a coroa'];
   const MIC = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 
   // capa do álbum (quando houver) com o equalizador por cima enquanto toca
@@ -1758,6 +1878,39 @@
       <form class="form" id="formNota"><textarea id="novaNota" rows="2" placeholder="Escreva uma nota…" aria-label="Nova nota"></textarea><button class="btn" type="submit">Salvar</button></form>
       <div class="rolar">${S.notas.length ? S.notas.map((n) => `<div class="linha"><div class="t">${esc(n.t)}<small>${quandoTxt(n.ts)}</small></div><button class="rb" data-acao="copiar-nota" data-id="${n.id}" aria-label="Copiar">📋</button><button class="rb x" data-acao="nota-del" data-id="${n.id}" aria-label="Apagar">✕</button></div>`).join('') : '<div class="sub">Nenhuma nota ainda.</div>'}
       ${S.copiados.length ? `<div class="secao">Copiados pela ${esc(S.cfg.nome)}</div>${S.copiados.map((c) => `<div class="linha"><div class="t"><span style="font-family:var(--f-mono);font-size:12.5px">${esc(c.t.length > 80 ? c.t.slice(0, 80) + '…' : c.t)}</span><small>${esc(c.r)} · ${quandoTxt(c.ts)}</small></div><button class="rb" data-acao="copiar-de-novo" data-id="${c.id}" aria-label="Copiar de novo">📋</button></div>`).join('')}<button class="btn fantasma" data-acao="limpar-copiados">Limpar histórico</button>` : ''}</div>`;
+  }
+  function vEstudo() {
+    const at = estudoAtivo(), pausa = pausaAtiva(), ult = S.estudo.ultima || {};
+    const hoje = O.resumoEstudo(S.estudo.sessoes, 'hoje'), sem = O.resumoEstudo(S.estudo.sessoes, 'semana'), seq = O.sequenciaEstudo(S.estudo.sessoes);
+    const ativo = at || pausa;
+    const topo = ativo
+      ? `<div class="foco${pausa && !at ? ' pausa' : ''}"><div class="foco-t">${at ? `📚 ${esc(at.estudo.materia === 'Estudo' ? 'Foco' : at.estudo.materia)}` : '☕ Pausa'}</div><div class="foco-tempo" data-timer="${ativo.id}">${mmss((ativo.fim - Date.now()) / 1000)}</div>
+          <div class="barra"><i data-timerbar="${ativo.id}" style="width:${100 - (ativo.fim - Date.now()) / 1000 / ativo.total * 100}%"></i></div>
+          <div class="foco-bt">${at ? '<button class="btn fantasma" data-acao="estudo-parar">Parar e contar o tempo</button>' : '<button class="btn" data-acao="estudo-iniciar" data-continuar="1">Pular pausa e continuar</button><button class="btn fantasma" data-acao="estudo-parar">Encerrar</button>'}</div></div>`
+      : `<form class="form" id="formEstudo"><input class="grow" id="estudoMateria" placeholder="Matéria (opcional)" value="${esc(R.rascunhos.estudoMateria ?? (ult.materia && ult.materia !== 'Estudo' ? ult.materia : ''))}" aria-label="Matéria"><button class="btn" type="submit">▶ 25 min</button><button class="btn fantasma" type="button" data-acao="estudo-iniciar" data-min="50">50 min</button></form>`;
+    const max = Math.max(1, ...sem.materias.map(([, v]) => v));
+    return `<h4>Modo estudo</h4><div class="sub">Pomodoro: foco, pausa de 5 min, e 15 min a cada 4 · diga "vamos estudar cálculo"</div>${topo}
+      <div class="placas"><div class="placa"><b>${O.horasTxt(hoje.total)}</b><span>hoje</span></div><div class="placa"><b>${O.horasTxt(sem.total)}</b><span>nesta semana</span></div><div class="placa"><b>${seq}${seq ? ' 🔥' : ''}</b><span>${seq === 1 ? 'dia seguido' : 'dias seguidos'}</span></div></div>
+      <div class="rolar">${sem.materias.length ? `<div class="secao">Nesta semana</div>${sem.materias.map(([m, v]) => `<div class="linha"><div class="t">${esc(m)}<small>${O.horasTxt(v)}</small><div class="barra"><i style="width:${v / max * 100}%"></i></div></div></div>`).join('')}` : '<div class="sub">Nenhum estudo nesta semana ainda. Bora começar? 💪</div>'}</div>`;
+  }
+  function vCompras() {
+    const falta = S.compras.filter((i) => !i.feito), pegos = S.compras.filter((i) => i.feito);
+    const linha = (i) => `<div class="linha${i.feito ? ' feita' : ''}"><button class="ck${i.feito ? ' on' : ''}" data-acao="compra-ok" data-id="${i.id}" aria-label="${i.feito ? 'Desmarcar' : 'Peguei'}"></button><div class="t">${esc(i.t)}</div><button class="rb x" data-acao="compra-del" data-id="${i.id}" aria-label="Tirar da lista">✕</button></div>`;
+    return `<h4>Lista de compras</h4><div class="sub">Diga "adiciona leite na lista" · "comprei leite" · "manda a lista pro Bernardo"</div>
+      <form class="form" id="formCompra"><input class="grow" id="novaCompra" placeholder="Ex.: leite, pão e café" value="${esc(R.rascunhos.novaCompra || '')}" aria-label="Itens para comprar"><button class="btn" type="submit">Adicionar</button></form>
+      <div class="rolar">${falta.length ? falta.map(linha).join('') : `<div class="sub">${pegos.length ? 'Tudo no carrinho! 🎉' : 'A lista está vazia.'}</div>`}
+      ${pegos.length ? `<div class="secao">No carrinho (${pegos.length})</div>${pegos.map(linha).join('')}` : ''}
+      ${S.compras.length ? `<div class="acoes-lista">${falta.length ? '<button class="btn fantasma" data-acao="compras-copiar">📋 Copiar lista</button>' : ''}${pegos.length ? '<button class="btn fantasma" data-acao="compras-limpar">Tirar os comprados</button>' : ''}</div>` : ''}</div>`;
+  }
+  function vGastos() {
+    const hoje = O.resumoGastos(S.gastos, 'hoje'), sem = O.resumoGastos(S.gastos, 'semana'), mes = O.resumoGastos(S.gastos, 'mes');
+    const max = Math.max(1, ...mes.categorias.map(([, v]) => v));
+    const recentes = S.gastos.slice().sort((a, b) => b.ts - a.ts).slice(0, 40);
+    return `<h4>Gastos</h4><div class="sub">Diga "gastei 30 reais no mercado" · "quanto gastei essa semana?"</div>
+      <form class="form" id="formGasto"><input id="gastoValor" inputmode="decimal" placeholder="R$ 0,00" style="width:96px" value="${esc(R.rascunhos.gastoValor || '')}" aria-label="Valor"><input class="grow" id="gastoDesc" placeholder="Com o quê? (ex.: mercado, uber)" value="${esc(R.rascunhos.gastoDesc || '')}" aria-label="Descrição"><button class="btn" type="submit">Anotar</button></form>
+      <div class="placas"><div class="placa"><b>${brl(hoje.total)}</b><span>hoje</span></div><div class="placa"><b>${brl(sem.total)}</b><span>nesta semana</span></div><div class="placa"><b>${brl(mes.total)}</b><span>neste mês</span></div></div>
+      <div class="rolar">${mes.categorias.length ? `<div class="secao">Neste mês por categoria</div>${mes.categorias.map(([c, v]) => `<div class="linha"><span style="font-size:18px">${O.iconeCategoria(c)}</span><div class="t">${c}<small>${brl(v)} · ${Math.round(v / mes.total * 100)}%</small><div class="barra"><i style="width:${v / max * 100}%"></i></div></div></div>`).join('')}` : ''}
+      ${recentes.length ? `<div class="secao">Últimos</div>${recentes.map((g) => `<div class="linha"><span style="font-size:16px">${O.iconeCategoria(g.cat)}</span><div class="t">${esc(g.desc)}<small>${quandoTxt(g.ts)} · ${g.cat}</small></div><b class="valor">${brl(g.valor)}</b><button class="rb x" data-acao="gasto-del" data-id="${g.id}" aria-label="Apagar gasto">✕</button></div>`).join('')}` : '<div class="sub">Nenhum gasto anotado ainda.</div>'}</div>`;
   }
   // looks prontos: [nome, corpo, cor dos olhos, estilo dos olhos, acessório, cílios, blush, batom, cabelo, cor do cabelo]
   const LOOKS = [
@@ -1996,7 +2149,7 @@
       <div class="nota-aviso">As gravações ficam em <b>Documentos\\Lumi\\estudio-voz</b> (pasta wavs + metadata.csv). Compacte a pasta em .zip e siga o roteiro "Treinar a voz" (arquivo <b>treino/README.md</b> do projeto): o treino roda de graça numa placa de vídeo na nuvem e gera a voz .onnx, que você adiciona em Ajustes → Voz offline.</div>
       <div class="form"><button class="btn fantasma" data-acao="pasta" data-qual="estudio">📁 Abrir pasta das gravações</button><button class="btn fantasma" data-acao="est-voltar">← Voltar aos Ajustes</button></div></div>`;
   }
-  const VIEWS = { sistema: vSistema, estudio: vEstudio, inicio: vInicio, tarefas: vTarefas, habitos: vHabitos, timers: vTimers, musica: vMusica, notas: vNotas, visual: vVisual, ajustes: vAjustes };
+  const VIEWS = { sistema: vSistema, estudio: vEstudio, inicio: vInicio, tarefas: vTarefas, habitos: vHabitos, timers: vTimers, musica: vMusica, notas: vNotas, estudo: vEstudo, compras: vCompras, gastos: vGastos, visual: vVisual, ajustes: vAjustes };
 
   function renderPrincipal() {
     const ativo = document.activeElement;
@@ -2079,6 +2232,17 @@
     faixa: (el) => tocarFaixa(Number(el.dataset.i)),
     vol: (el) => { setVolume(S.cfg.volume + Number(el.dataset.d)); aviso(`🔊 Volume ${S.cfg.volume}%`); },
     'copiar-nota': async (el) => { const n = S.notas.find((x) => x.id === el.dataset.id); if (n) { await copiar(n.t, 'Nota'); aviso('📋 Copiado'); render(); } },
+    'estudo-iniciar': (el) => {
+      if (el.dataset.continuar) { S.timers = S.timers.filter((t) => !t.pausa); const u = S.estudo.ultima || { materia: 'Estudo', min: 25 }; iniciarEstudo(u.materia, u.min); }
+      else { const mt = ($('#estudoMateria') && $('#estudoMateria').value.trim()) || 'Estudo'; iniciarEstudo(U.cap(mt), Number(el.dataset.min) || 25); delete R.rascunhos.estudoMateria; }
+      aviso('📚 Modo estudo ligado'); setHumor('cool', 1500);
+    },
+    'estudo-parar': () => { const { feito, at } = pararEstudo(); aviso(at && feito >= 1 ? `📚 ${O.horasTxt(feito)} contados` : 'Pomodoro encerrado'); },
+    'compra-ok': (el) => { const i = S.compras.find((x) => x.id === el.dataset.id); if (!i) return; i.feito = !i.feito; salvar(); if (i.feito && !S.compras.some((x) => !x.feito)) { aviso('🎉 Lista completa!'); setHumor('success', 2000); } },
+    'compra-del': (el) => { S.compras = S.compras.filter((x) => x.id !== el.dataset.id); salvar(); },
+    'compras-limpar': () => { S.compras = S.compras.filter((x) => !x.feito); salvar(); },
+    'compras-copiar': async () => { const t = O.listaTexto(S.compras); if (t && await copiar(t, 'lista de compras')) aviso('📋 Lista copiada'); },
+    'gasto-del': (el) => { S.gastos = S.gastos.filter((x) => x.id !== el.dataset.id); salvar(); },
     'nota-del': (el) => { S.notas = S.notas.filter((x) => x.id !== el.dataset.id); salvar(); },
     'copiar-de-novo': async (el) => { const c = S.copiados.find((x) => x.id === el.dataset.id); if (c) { try { await navigator.clipboard.writeText(c.t); aviso('📋 Copiado de novo'); } catch (_) { aviso('Não consegui copiar.'); } } },
     'limpar-copiados': () => { S.copiados = []; salvar(); },
@@ -2185,6 +2349,17 @@
       const nome = $('#rotNome').value.trim(), comandos = $('#rotCmds').value.trim(); if (!nome || !comandos) return;
       S.rotinas = S.rotinas.filter((r) => basePalavra(r.nome) !== basePalavra(nome)); S.rotinas.push({ id: uid(), nome, comandos }); salvar();
       aviso(`✅ Rotina "${nome}" salva. É só dizer "${nome}"`); delete R.rascunhos.rotNome; delete R.rascunhos.rotCmds; render(); return;
+    }
+    if (f.id === 'formEstudo') { const mt = $('#estudoMateria').value.trim() || 'Estudo'; iniciarEstudo(U.cap(mt), 25); delete R.rascunhos.estudoMateria; aviso('📚 Modo estudo ligado'); setHumor('cool', 1500); render(); return; }
+    if (f.id === 'formCompra') {
+      const t = $('#novaCompra').value.trim(); if (!t) return;
+      executar({ tipo: 'compras_add', itens: O.itens(t) }).then((r) => aviso(r.texto)); delete R.rascunhos.novaCompra; render(); $('#novaCompra') && $('#novaCompra').focus(); return;
+    }
+    if (f.id === 'formGasto') {
+      const v = O.valorBR($('#gastoValor').value.replace(/r\$/i, '')), d = U.cap($('#gastoDesc').value.trim());
+      if (!(v > 0)) { aviso('Qual foi o valor?'); $('#gastoValor').focus(); return; }
+      S.gastos.push({ id: uid(), valor: v, desc: d || 'Gasto', cat: O.categoria(d), ts: Date.now() }); salvar();
+      delete R.rascunhos.gastoValor; delete R.rascunhos.gastoDesc; aviso(`💰 ${brl(v)} anotado`); setHumor('cool', 1200); render(); $('#gastoValor') && $('#gastoValor').focus(); return;
     }
     if (f.id === 'formNota') { const t = $('#novaNota').value.trim(); if (!t) return; S.notas.unshift({ id: uid(), t, ts: Date.now() }); delete R.rascunhos.novaNota; salvar(); setHumor('success', 1500); render(); return; }
     if (f.id === 'formSpotify') { const q = $('#buscaSpotify').value.trim(); if (!q) return; const url = 'https://open.spotify.com/search/' + encodeURIComponent(q); abrirLink(url); delete R.rascunhos.buscaSpotify; aviso('🎵 Abrindo o Spotify'); }
@@ -2315,5 +2490,5 @@
   if (S.cfg.sempreOuvindo && !window.lumiDesktop) iniciarEscuta();
 
   // para testes e depuração no console
-  window.LUMI = { processar, estado: S, sessao: R, abrir, fechar, ouvir, iniciarEscuta, tirarChamado, interpretar: (t) => C.interpretar(t, { agora: Date.now(), nome: S.cfg.nome }) };
+  window.LUMI = { processar, estado: S, sessao: R, abrir, fechar, ouvir, iniciarEscuta, tirarChamado, interpretar: (t) => interpretar(t, { agora: Date.now(), nome: S.cfg.nome }) };
 })();

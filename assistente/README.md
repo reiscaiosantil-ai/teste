@@ -1,6 +1,6 @@
 # Lumi — a assistente que mora no topo da tela
 
-Assistente virtual em português inspirado no conceito de "assistente no entalho" (como o Kobi): um mascote fica numa pílula preta no alto da tela, mostra o que está acontecendo (timer, música, alarme, "ouvindo…") e, ao passar o mouse, abre um painel com conversa, tarefas, hábitos, timers, música, notas, visual e ajustes.
+Assistente virtual em português inspirado no conceito de "assistente no entalho" (como o Kobi): um mascote fica numa pílula preta no alto da tela, mostra o que está acontecendo (timer, música, alarme, "ouvindo…") e, ao passar o mouse, abre um painel com conversa, tarefas, hábitos, timers, música, notas, estudo, compras, gastos, visual e ajustes.
 
 Nome, mascote, cores e textos são originais. A Lumi fala no feminino. O nome da assistente pode ser trocado em **Ajustes** (ou dizendo "seu nome agora é …").
 
@@ -39,6 +39,9 @@ Atalhos: `Alt+K` abre/fecha · `Alt+L` fala com ela · `Esc` fecha, cala ou para
 | Contas | "quanto é 15% de 230", "quanto é a raiz de 81", "calcula (2 + 3) vezes 4" |
 | Tradução | "traduz para inglês bom dia", "como se diz obrigado em espanhol" |
 | Notas e copiados | "anota que preciso comprar café", "gera uma senha de 20", "copia meu pix" |
+| Modo estudo | "vamos estudar cálculo", "começa um pomodoro de 50 minutos de física", "continua estudando", "para o pomodoro", "estudei 2 horas de inglês", "quanto estudei essa semana?" · pomodoro de 25 min com pausa de 5 (15 a cada 4), tempo por matéria e dias seguidos na aba Estudo |
+| Lista de compras | "adiciona leite, pão e 2 ovos na lista", "comprei leite", "tira o café da lista", "minha lista de compras", "copia a lista", "manda a lista pro Bernardo" (WhatsApp) |
+| Gastos | "gastei 30 reais no mercado", "paguei R$ 120 na conta de luz", "quanto gastei essa semana?", "quanto gastei com mercado no mês?", "apaga o último gasto" · categoria automática e totais de hoje, semana e mês na aba Gastos |
 | Diversão | "conta uma piada", "cara ou coroa", "joga um dado", "quantos dias faltam pro Natal?" |
 | Navegação | "pesquisa receita de bolo", "abre o youtube", "notícias de hoje" |
 | Visual | "coloca a coroa", "muda sua cor para rosa", "tira o chapéu" |

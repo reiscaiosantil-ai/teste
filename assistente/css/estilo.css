@@ -260,3 +260,17 @@ body.arrastando .gota { display: grid; place-items: center; position: fixed; ins
 .pilula.dancando .lumi { animation: dancaLumi .55s ease-in-out infinite alternate; transform-origin: 50% 90%; }
 @keyframes dancaLumi { 0% { transform: translateY(0) rotate(-7deg); } 100% { transform: translateY(-2px) rotate(7deg); } }
 @media (prefers-reduced-motion: reduce) { .pilula.dancando .lumi { animation: none; } }
+
+/* ================= estudo, compras e gastos ================= */
+.placas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+.placa { background: var(--caixa); border: 1px solid rgba(255, 255, 255, .07); border-radius: 12px; padding: 8px 10px; min-width: 0; }
+.placa b { display: block; font: 800 16px var(--f-titulo, inherit); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.placa span { color: var(--nevoa); font-size: 11.5px; font-weight: 600; }
+.foco { background: linear-gradient(135deg, rgba(70, 227, 200, .16), rgba(70, 227, 200, .04)); border: 1px solid rgba(70, 227, 200, .3); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; text-align: center; }
+.foco.pausa { background: linear-gradient(135deg, rgba(255, 179, 64, .16), rgba(255, 179, 64, .04)); border-color: rgba(255, 179, 64, .3); }
+.foco.pausa .barra i { background: var(--ouro); }
+.foco-t { font-weight: 800; font-size: 13.5px; }
+.foco-tempo { font: 800 38px var(--f-mono); letter-spacing: -.02em; line-height: 1.15; margin: 2px 0 6px; font-variant-numeric: tabular-nums; }
+.foco-bt { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+.acoes-lista { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.linha .valor { font-variant-numeric: tabular-nums; white-space: nowrap; }
