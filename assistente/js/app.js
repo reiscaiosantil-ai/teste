@@ -1111,7 +1111,7 @@
 
       case 'timer': {
         const t = criarTimer(a.segundos, a.nome);
-        return { texto: `Timer "${t.nome}" de ${durTxt(a.segundos)} iniciado! Olha ele lá no topo. ⏱`, humor: 'success' };
+        return { texto: `Timer${t.nome && t.nome !== 'Timer' ? ` "${t.nome}"` : ''} de ${durTxt(a.segundos)} iniciado! Olha ele lá no topo. ⏱`, humor: 'success' };
       }
       case 'timer_cancelar': { const n = S.timers.length; S.timers = []; salvar(); return { texto: n ? `Cancelei ${n > 1 ? 'os ' + n + ' timers' : 'o timer'}.` : 'Não tem nenhum timer rodando.', humor: 'idle' }; }
       case 'crono':
@@ -1680,13 +1680,16 @@
   }
   function vInicio() {
     const h = new Date().getHours(); const per = h < 5 ? 'Boa madrugada' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+    // só a mensagem que acabou de chegar ganha animação (a tela é redesenhada várias vezes)
+    const fim = S.chat[S.chat.length - 1], nova = !!fim && fim !== R.chatUltima; R.chatUltima = fim;
+    const ultimas = S.chat.slice(-30);
     const conversa = S.chat.length
-      ? S.chat.slice(-30).map((m) => `<div class="msg ${m.q}">${m.h || esc(m.t)}</div>`).join('') + (R.pensando ? '<div class="digitando"><i></i><i></i><i></i></div>' : '')
+      ? ultimas.map((m, i) => `<div class="msg ${m.q}${nova && i === ultimas.length - 1 ? ' nova' : ''}">${m.h || esc(m.t)}</div>`).join('') + (R.pensando ? '<div class="digitando"><i></i><i></i><i></i></div>' : '')
       : `<div class="vazio">${K(64, 'happy')}<br>Oi! Eu sou a ${esc(S.cfg.nome)} 👋<br>Toque numa sugestão, escreva ou fale comigo.</div>`;
     return `<h4>${per}${S.cfg.usuario ? ', ' + esc(S.cfg.usuario) : ''}!</h4><div class="sub">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} · diga "ajuda" para ver tudo que eu faço</div>
       <form class="perguntar" id="formPergunta" autocomplete="off"><input id="campo" placeholder="${R.ouvindo ? 'Ouvindo…' : `Escreva ou fale com a ${esc(S.cfg.nome)}…`}" aria-label="Mensagem para a assistente" enterkeyhint="send">
         <button type="button" class="mic${R.ouvindo ? ' on' : ''}" data-acao="ouvir" aria-label="Falar" ${temVoz() ? '' : `disabled title="${window.lumiDesktop ? 'A voz offline não foi encontrada neste app' : 'Use o Chrome ou o Edge para falar'}"`}>${MIC}</button><button type="submit" class="enviar" aria-label="Enviar">➤</button></form>
-      <div class="chips">${SUGESTOES.map((s) => `<button class="chip" data-diz="${esc(s)}">${esc(s)}</button>`).join('')}</div>
+      <div class="chips${S.chat.length ? ' em-linha' : ''}">${SUGESTOES.map((s) => `<button class="chip" data-diz="${esc(s)}">${esc(s)}</button>`).join('')}</div>
       <div class="meio"><div class="conversa" id="conversa">${conversa}</div>${mini()}</div>`;
   }
   function linhaTarefa(t) {

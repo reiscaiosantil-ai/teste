@@ -94,12 +94,16 @@ button.widget:hover { border-color: rgba(70, 227, 200, .45); }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .chip { padding: 5px 10px; border-radius: 14px; background: rgba(255, 255, 255, .08); font-size: 12px; font-weight: 700; white-space: nowrap; } .chip:hover { background: rgba(70, 227, 200, .2); color: var(--brilho); }
 .chip.on { background: rgba(70, 227, 200, .22); color: var(--brilho); }
+.chips.em-linha { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); } .chips.em-linha::-webkit-scrollbar { display: none; }
 .meio { display: flex; gap: 10px; flex: 1; min-height: 0; margin-top: 10px; }
 .conversa { flex: 1; min-height: 0; overflow-y: auto; background: var(--caixa); border: 1px solid rgba(255, 255, 255, .07); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .15) transparent; }
 .msg { max-width: 86%; font-size: 13.5px; line-height: 1.4; padding: 7px 11px; border-radius: 13px; white-space: pre-wrap; word-wrap: break-word; }
 .msg.u { align-self: flex-end; background: rgba(70, 227, 200, .2); border-bottom-right-radius: 4px; }
 .msg.k { align-self: flex-start; background: #1b2140; border-bottom-left-radius: 4px; }
 .msg a { color: var(--brilho); }
+.msg.nova { animation: msgEntra .28s ease-out; } .msg.u.nova { transform-origin: right bottom; } .msg.k.nova { transform-origin: left bottom; }
+@keyframes msgEntra { from { opacity: 0; transform: translateY(6px) scale(.97); } }
+.conversa { -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14px); mask-image: linear-gradient(180deg, transparent 0, #000 14px); }
 .vazio { margin: auto; color: var(--nevoa); font-size: 13px; text-align: center; }
 .vazio .lumi { margin: 0 auto 8px; }
 .digitando { align-self: flex-start; display: flex; gap: 4px; padding: 10px 12px; background: #1b2140; border-radius: 13px; }
@@ -2751,7 +2755,7 @@ window.FRASES_ESTUDIO = [
 
       case 'timer': {
         const t = criarTimer(a.segundos, a.nome);
-        return { texto: `Timer "${t.nome}" de ${durTxt(a.segundos)} iniciado! Olha ele lá no topo. ⏱`, humor: 'success' };
+        return { texto: `Timer${t.nome && t.nome !== 'Timer' ? ` "${t.nome}"` : ''} de ${durTxt(a.segundos)} iniciado! Olha ele lá no topo. ⏱`, humor: 'success' };
       }
       case 'timer_cancelar': { const n = S.timers.length; S.timers = []; salvar(); return { texto: n ? `Cancelei ${n > 1 ? 'os ' + n + ' timers' : 'o timer'}.` : 'Não tem nenhum timer rodando.', humor: 'idle' }; }
       case 'crono':
@@ -3320,13 +3324,16 @@ window.FRASES_ESTUDIO = [
   }
   function vInicio() {
     const h = new Date().getHours(); const per = h < 5 ? 'Boa madrugada' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+    // só a mensagem que acabou de chegar ganha animação (a tela é redesenhada várias vezes)
+    const fim = S.chat[S.chat.length - 1], nova = !!fim && fim !== R.chatUltima; R.chatUltima = fim;
+    const ultimas = S.chat.slice(-30);
     const conversa = S.chat.length
-      ? S.chat.slice(-30).map((m) => `<div class="msg ${m.q}">${m.h || esc(m.t)}</div>`).join('') + (R.pensando ? '<div class="digitando"><i></i><i></i><i></i></div>' : '')
+      ? ultimas.map((m, i) => `<div class="msg ${m.q}${nova && i === ultimas.length - 1 ? ' nova' : ''}">${m.h || esc(m.t)}</div>`).join('') + (R.pensando ? '<div class="digitando"><i></i><i></i><i></i></div>' : '')
       : `<div class="vazio">${K(64, 'happy')}<br>Oi! Eu sou a ${esc(S.cfg.nome)} 👋<br>Toque numa sugestão, escreva ou fale comigo.</div>`;
     return `<h4>${per}${S.cfg.usuario ? ', ' + esc(S.cfg.usuario) : ''}!</h4><div class="sub">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} · diga "ajuda" para ver tudo que eu faço</div>
       <form class="perguntar" id="formPergunta" autocomplete="off"><input id="campo" placeholder="${R.ouvindo ? 'Ouvindo…' : `Escreva ou fale com a ${esc(S.cfg.nome)}…`}" aria-label="Mensagem para a assistente" enterkeyhint="send">
         <button type="button" class="mic${R.ouvindo ? ' on' : ''}" data-acao="ouvir" aria-label="Falar" ${temVoz() ? '' : `disabled title="${window.lumiDesktop ? 'A voz offline não foi encontrada neste app' : 'Use o Chrome ou o Edge para falar'}"`}>${MIC}</button><button type="submit" class="enviar" aria-label="Enviar">➤</button></form>
-      <div class="chips">${SUGESTOES.map((s) => `<button class="chip" data-diz="${esc(s)}">${esc(s)}</button>`).join('')}</div>
+      <div class="chips${S.chat.length ? ' em-linha' : ''}">${SUGESTOES.map((s) => `<button class="chip" data-diz="${esc(s)}">${esc(s)}</button>`).join('')}</div>
       <div class="meio"><div class="conversa" id="conversa">${conversa}</div>${mini()}</div>`;
   }
   function linhaTarefa(t) {
