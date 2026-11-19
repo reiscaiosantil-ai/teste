@@ -134,8 +134,17 @@ Se ela entender errado, diga **"não, eu quis dizer …"** (ou "errou" e depois 
 Os comandos acima funcionam sempre, sem cérebro. Para o resto (perguntas, pesquisas, textos, procurar arquivos), escolha em **Ajustes → Cérebro**:
 
 - **Claude Code (assinatura de quem usa)** — só no app instalado. Usa o Claude Code do computador, logado com a conta do Claude de quem está usando, sem pagar API (conta nos limites do plano dessa pessoa). Em **Ajustes → Cérebro** dá para **instalar o Claude Code** (abre o instalador oficial `irm https://claude.ai/install.ps1 | iex` numa janela do PowerShell), **entrar com a conta do Claude** ou **com o Console**, **trocar de conta** e **sair**, e ver com qual conta está conectado (`claude auth status`). Para usar no computador de outra pessoa, ela entra com a conta dela: a opção **Conta separada só da assistente** guarda esse login à parte (`CLAUDE_CONFIG_DIR` próprio), sem mexer no Claude Code que já estiver logado no PC. Também aceita uma **chave de API do Console** (`ANTHROPIC_API_KEY`, cobrada no Console de quem criou). Não compartilhe a sua assinatura com outras pessoas. Mesmo esquema do Jarvis: `claude -p` com resposta em JSON e `--resume` para continuar a conversa; o pedido vai pela entrada padrão, nunca pela linha de comando. Ferramentas liberadas: ler arquivos (Área de Trabalho, Documentos, Downloads), pesquisar na web e escrever notas em `Documentos/Lumi/cerebro/Notas`. Ela não apaga, move nem altera seus arquivos. Cada resposta leva alguns segundos (cerca de 8 s no teste). Modelo padrão: Sonnet.
+- **Gemini (cota grátis do Google)** — funciona no navegador e no celular. Usa a mesma **Chave do Google AI Studio** da voz (crie grátis em [aistudio.google.com/apikey](https://aistudio.google.com/apikey) e cole em Ajustes → Cérebro). Modelo `gemini-3.8-flash`, com `gemini-3.5-flash-lite` de reserva quando a cota do primeiro acaba. Quando a cota grátis do dia acaba, ela avisa, pausa o Gemini por 1 hora e usa a API do Claude se houver chave; os comandos continuam funcionando. A chave fica só no aparelho e vai só para o Google.
 - **API do Claude (chave)** — funciona também no navegador; cobrada à parte na conta do Console (padrão `claude-opus-5-5`, com fallback automático do servidor se o modelo recusar). A chave fica só no armazenamento local.
-- **Automático** (padrão) — usa o Claude Code se estiver instalado; senão a API, se houver chave; senão só os comandos.
+- **Automático** (padrão) — usa o Claude Code se estiver instalado; senão o Gemini, se houver chave do Google; senão a API do Claude, se houver chave; senão só os comandos (e explica onde pegar a chave grátis).
+
+## No celular
+
+A versão de navegador é publicada em **https://reiscaiosantil-ai.github.io/teste/** a cada atualização (workflow `.github/workflows/lumi-pages.yml`; precisa, uma vez, de Settings → Pages → Source: **GitHub Actions**). No Chrome do Android, abra o endereço e toque em **⋮ → Adicionar à tela inicial**; no iPhone, Safari → Compartilhar → **Adicionar à Tela de Início**. Depois da primeira vez, abre sem internet.
+
+- **Funciona:** conversa (com o Gemini), timers, lembretes, tarefas, notas, hábitos, estudo, lista de compras, gastos, clima, dólar, contas, tradução, mascote. Falar com ela funciona no Chrome do Android; no iPhone a voz depende do Safari.
+- **Não funciona:** o que mexe no computador (apps, Defender, desligar, Spotify do PC, WhatsApp automático, modo jogo, Discord) e o "Ei, Sexta-feira" ouvindo o tempo todo.
+- **Dados separados:** o que é anotado no celular fica no celular, e o do PC no PC. A chave do Gemini também precisa ser colada em cada aparelho.
 
 ## Serviços externos (gratuitos, sem chave)
 
