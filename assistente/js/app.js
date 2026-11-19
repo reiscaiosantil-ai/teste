@@ -3,14 +3,8 @@
   'use strict';
   const C = window.CEREBRO, M = window.MASCOTE;
   const $ = (s, r = document) => r.querySelector(s);
-  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const pick = (a) => a[Math.floor(Math.random() * a.length)];
-  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
-  const hojeStr = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
-  const pad = (n) => String(n).padStart(2, '0');
-  const mmss = (s) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600); return h ? `${h}:${pad(Math.floor(s % 3600 / 60))}:${pad(s % 60)}` : `${pad(Math.floor(s / 60))}:${pad(s % 60)}`; };
-  const brl = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: v < 1 ? 4 : 2 });
+  const U = window.LUMI_UTIL; // utilidades puras (js/util.js), testadas no Node
+  const { esc, pick, uid, espera, hojeStr, pad, mmss, brl, cap, tamanho, listaE, embaralhar, textoFalavel, fatiarFala, basePalavra, distancia, similar, descTempo, horaTxt, doDia, eventoTxt } = U;
   let mx = innerWidth / 2, my = 0, rafOlhar = 0; // posição do ponteiro, para os olhos
   const DESKTOP = !!window.lumiDesktop || new URLSearchParams(location.search).has('desktop');
   if (DESKTOP) document.body.classList.add('desktop');
@@ -154,13 +148,6 @@
   }
 
   /* ================= clima (Open-Meteo, sem chave) ================= */
-  const TEMPO = {
-    0: ['céu limpo', '☀️'], 1: ['poucas nuvens', '🌤️'], 2: ['parcialmente nublado', '⛅'], 3: ['nublado', '☁️'], 45: ['neblina', '🌫️'], 48: ['neblina', '🌫️'],
-    51: ['garoa fraca', '🌦️'], 53: ['garoa', '🌦️'], 55: ['garoa forte', '🌦️'], 56: ['garoa congelante', '🌧️'], 57: ['garoa congelante', '🌧️'],
-    61: ['chuva fraca', '🌧️'], 63: ['chuva', '🌧️'], 65: ['chuva forte', '🌧️'], 66: ['chuva congelante', '🌧️'], 67: ['chuva congelante', '🌧️'],
-    71: ['neve fraca', '🌨️'], 73: ['neve', '🌨️'], 75: ['neve forte', '❄️'], 77: ['grãos de neve', '🌨️'], 80: ['pancadas de chuva', '🌦️'], 81: ['pancadas de chuva', '🌧️'], 82: ['temporal', '⛈️'],
-    85: ['pancadas de neve', '🌨️'], 86: ['pancadas de neve', '❄️'], 95: ['trovoadas', '⛈️'], 96: ['trovoadas com granizo', '⛈️'], 99: ['trovoadas com granizo', '⛈️'],
-  };
   async function geocodificar(nome) {
     const d = await pegarJson(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(nome)}&count=1&language=pt&format=json`);
     const r = d.results && d.results[0]; if (!r) return null;
@@ -182,7 +169,6 @@
     const d = await pegarJson(`https://api.open-meteo.com/v1/forecast?latitude=${lugar.lat}&longitude=${lugar.lon}&current=temperature_2m,apparent_temperature,weather_code,is_day,relative_humidity_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=2`);
     return { lugar, d };
   }
-  function descTempo(cod, dia = 1) { const [t, i] = TEMPO[cod] || ['tempo variável', '🌡️']; return [t, cod === 0 && !dia ? '🌙' : i]; }
   async function atualizarWidgetClima(dados) {
     try {
       const r = dados || (S.cfg.cidade || R.lugar ? await previsao() : null); if (!r) return;
@@ -326,8 +312,6 @@
   const Trat = () => trat().charAt(0).toUpperCase() + trat().slice(1);
   const voc = () => ({ 'o senhor': 'senhor', 'a senhora': 'senhora' }[trat()] || S.cfg.usuario || ''); // vocativo: "Desculpa, senhor!"
   const comVoc = (t, fim) => (voc() ? `${t}, ${voc()}${fim}` : t + fim);
-  const tamanho = (mb) => (mb >= 1024 ? `${(mb / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} GB` : `${mb} MB`);
-  const listaE = (a) => a.length > 1 ? a.slice(0, -1).join(', ') + ' e ' + a[a.length - 1] : (a[0] || '');
   async function carregarMemoria() {
     if (!SIS || R.sis.carregando.mem) return R.sis.mem;
     R.sis.carregando.mem = true; if (R.view === 'sistema') render();
@@ -403,8 +387,6 @@
 
   /* ================= jogos, zoeira, rotinas e resumo ================= */
   const JOGO = window.lumiDesktop && window.lumiDesktop.jogos ? window.lumiDesktop.jogos : null;
-  const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
-  function embaralhar(a) { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; }
   const MAPAS = {
     valorant: ['Ascent', 'Bind', 'Haven', 'Split', 'Icebox', 'Breeze', 'Fracture', 'Pearl', 'Lotus', 'Sunset', 'Abyss', 'Corrode'],
     valo: ['Ascent', 'Bind', 'Haven', 'Split', 'Icebox', 'Breeze', 'Fracture', 'Pearl', 'Lotus', 'Sunset', 'Abyss', 'Corrode'],
@@ -542,9 +524,6 @@
     try { const r = await DSK.agenda(linksAgenda()); R.agenda = { ...r, quando: Date.now() }; } catch (e) { R.agenda = { eventos: [], erros: [String(e && e.message || e)], quando: Date.now() }; }
     return R.agenda;
   }
-  const horaTxt = (ms) => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
-  const doDia = (eventos, dia) => { const a = new Date(dia); a.setHours(0, 0, 0, 0); const b = a.getTime() + 864e5; return eventos.filter((e) => e.inicio < b && e.fim > a.getTime() && (!e.diaInteiro || e.inicio >= a.getTime() - 864e5)); };
-  const eventoTxt = (e) => (e.diaInteiro ? `${e.titulo} (o dia todo)` : `${horaTxt(e.inicio)} ${e.titulo}`);
   function reuniaoAgora() { // a que está rolando ou começa nos próximos 15 minutos, com link
     const ag = R.agenda; if (!ag) return null; const t = Date.now();
     return ag.eventos.filter((e) => e.link && !e.diaInteiro && e.inicio - t < 15 * 60e3 && e.fim > t).sort((a, b) => Math.abs(a.inicio - t) - Math.abs(b.inicio - t))[0] || null;
@@ -608,13 +587,7 @@
   }
 
   /* ================= aprender com as correções ================= */
-  function similar(a, b) { if (!a || !b) return 0; return 1 - distancia(a, b) / Math.max(a.length, b.length); }
-  function acharAprendido(texto) {
-    const n = basePalavra(texto); if (!n) return null;
-    let melhor = null, nota = 0;
-    for (const ap of S.aprendido) { const v = ap.de === n ? 1 : (Math.abs(ap.de.length - n.length) > 8 ? 0 : similar(ap.de, n)); if (v > nota) { nota = v; melhor = ap; } }
-    return nota >= 0.82 ? { ap: melhor, exato: nota === 1 } : null;
-  }
+  function acharAprendido(texto) { return U.acharAprendido(S.aprendido, texto); }
   function aprender(de, para) {
     const d = basePalavra(de), p = String(para || '').trim();
     if (!d || !p || d === basePalavra(p)) return;
@@ -653,9 +626,6 @@
     const br = vozes.filter((v) => /pt-BR/i.test(v.lang));
     return vozes.find((v) => v.name === S.cfg.vozNome) || br.find((v) => FEM.test(v.name) && /natural|online|neural/i.test(v.name)) || br.find((v) => FEM.test(v.name))
       || br.find((v) => /google/i.test(v.name)) || br.find((v) => !MASC.test(v.name)) || vozes.find((v) => FEM.test(v.name)) || br[0] || vozes[0] || null;
-  }
-  function textoFalavel(t) {
-    return String(t).replace(/<[^>]+>/g, ' ').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}\u{20E3}]/gu, '').replace(/https?:\/\/\S+/g, 'o link').replace(/\s+/g, ' ').trim();
   }
   // estilo de fala da voz do Google conforme a personalidade
   const ESTILOS_FALA = { fofo: 'alegre, doce e animada', divertido: 'animada e brincalhona', profissional: 'calma e profissional', sarcastico: 'irônica e bem-humorada', zen: 'calma, suave e serena' };
@@ -712,12 +682,6 @@
   const NAT = window.lumiDesktop && window.lumiDesktop.vozNatural ? window.lumiDesktop.vozNatural : null;
   const temNatural = () => !!(NAT && R.natural && R.natural.pronto);
   let falaSolta = null; // resolve a espera da frase atual quando alguém manda calar
-  function fatiarFala(t) {
-    const out = []; let atual = '';
-    for (const f of String(t).split(/(?<=[.!?…])\s+/).filter(Boolean)) { if (atual && (atual + ' ' + f).length > 160) { out.push(atual); atual = f; } else atual = (atual + ' ' + f).trim(); }
-    if (atual) out.push(atual);
-    return out;
-  }
   async function tocarParte(dados, seq) {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') await audioCtx.resume();
@@ -872,24 +836,7 @@
     try { rec.start(); } catch (_) { R.ouvindo = false; voz.rec = null; voz.modo = null; setHumor('idle'); render(); }
   }
   // acha o chamado ("ei, sexta-feira") na frase e devolve o resto; null se não chamaram
-  const basePalavra = (t) => C.normalizar(t).normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
-  function distancia(a, b) {
-    const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
-    for (let j = 1; j <= b.length; j++) d[0][j] = j;
-    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-    return d[a.length][b.length];
-  }
-  function tirarChamado(frase) {
-    const nome = basePalavra(S.cfg.nome).split(' ').filter(Boolean);
-    // cada palavra "simplificada" lembra de qual palavra original veio ("sexta-feira," vira "sexta" e "feira")
-    const orig = String(frase).trim().split(/\s+/).filter(Boolean), base = [], dono = [];
-    orig.forEach((o, i) => basePalavra(o).split(' ').filter(Boolean).forEach((b) => { base.push(b); dono.push(i); }));
-    const parecido = (a, b) => a === b || (b.length >= 4 && distancia(a, b) <= 1);
-    for (let i = 0; i + nome.length <= base.length; i++) {
-      if (nome.every((w, k) => parecido(base[i + k], w))) return orig.slice(dono[i + nome.length - 1] + 1).join(' ').replace(/^[,\s]+/, '');
-    }
-    return null;
-  }
+  function tirarChamado(frase) { return U.tirarChamado(frase, S.cfg.nome); }
   function iniciarEscuta() {
     if (usarOffline()) { iniciarEscutaOffline(); return; }
     if (!SR || !S.cfg.sempreOuvindo || voz.modo || R.falando) return;
