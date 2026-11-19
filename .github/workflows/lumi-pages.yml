@@ -1,6 +1,7 @@
 # Publica a Sexta-feira (versão de navegador) no GitHub Pages, para instalar no celular.
 # Endereço: https://reiscaiosantil-ai.github.io/teste/
-# Precisa, uma vez: Settings → Pages → Source: GitHub Actions.
+# Precisa, uma vez: Settings → Pages → Source: GitHub Actions; e, como publica de uma branch que não é a main,
+# Settings → Environments → github-pages → Deployment branches and tags → adicionar claude/kobi-virtual-assistant-8xc699.
 name: Lumi no celular (GitHub Pages)
 
 on:

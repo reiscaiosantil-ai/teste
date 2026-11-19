@@ -96,3 +96,36 @@ test('erro do servidor', async () => {
   assert.ok(/[ãçéó]|erro|Google/.test(r.texto), r.texto);
   assert.equal(f.pedidos.length, 1);
 });
+
+test('modelo não encontrado tenta o próximo', async () => {
+  const f = falso({ status: 404, corpo: { error: { message: 'models/gemini-3.8-flash is not found' } } }, { status: 200, corpo: ok('Oi!') });
+  const r = await pergunta(f);
+  assert.deepEqual(r, { texto: 'Oi!', modelo: 'gemini-3.5-flash-lite' });
+});
+
+test('erro do servidor sem código cru', async () => {
+  const r = await pergunta(falso({ status: 503, corpo: {} }));
+  assert.equal(r.erro, true);
+  assert.ok(!/\d{3}/.test(r.texto), r.texto);
+});
+
+test('limite por minuto devolve quanto esperar', async () => {
+  const corpo = { error: { message: 'Resource exhausted', details: [{ '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '27s' }] } };
+  const r = await pergunta(falso({ status: 429, corpo }, { status: 429, corpo }));
+  assert.equal(r.erro, true); assert.equal(r.cota, true);
+  assert.equal(r.espera, 27);
+  assert.ok(!r.texto.includes('acabou'), r.texto);
+  assert.ok(r.texto.includes('minutinho'), r.texto);
+});
+
+test('demora demais vira sem internet', async () => {
+  const f = (_url, op) => (!op.signal ? Promise.resolve({ ok: true, status: 200, json: async () => ok('sem limite de tempo') }) : new Promise((_res, rej) => op.signal.addEventListener('abort', () => { const e = new Error('abortado'); e.name = 'AbortError'; rej(e); })));
+  const r = await pergunta(f, { limiteMs: 50 });
+  assert.equal(r.erro, true); assert.equal(r.semRede, true);
+});
+
+test('todos os modelos não encontrados não fala de cota', async () => {
+  const r = await pergunta(falso({ status: 404, corpo: {} }, { status: 404, corpo: {} }));
+  assert.equal(r.erro, true); assert.ok(!r.cota);
+  assert.ok(!r.texto.includes('acabou'), r.texto);
+});

@@ -140,7 +140,7 @@ Os comandos acima funcionam sempre, sem cérebro. Para o resto (perguntas, pesqu
 
 ## No celular
 
-A versão de navegador é publicada em **https://reiscaiosantil-ai.github.io/teste/** a cada atualização (workflow `.github/workflows/lumi-pages.yml`; precisa, uma vez, de Settings → Pages → Source: **GitHub Actions**). No Chrome do Android, abra o endereço e toque em **⋮ → Adicionar à tela inicial**; no iPhone, Safari → Compartilhar → **Adicionar à Tela de Início**. Depois da primeira vez, abre sem internet.
+A versão de navegador é publicada em **https://reiscaiosantil-ai.github.io/teste/** a cada atualização (workflow `.github/workflows/lumi-pages.yml`; precisa, uma vez, de Settings → Pages → Source: **GitHub Actions** e, em Settings → Environments → **github-pages** → Deployment branches and tags, adicionar a branch `claude/kobi-virtual-assistant-8xc699`, porque o GitHub só deixa publicar da `main` por padrão). No Chrome do Android, abra o endereço e toque em **⋮ → Adicionar à tela inicial**; no iPhone, Safari → Compartilhar → **Adicionar à Tela de Início**. Depois da primeira vez, abre sem internet.
 
 - **Funciona:** conversa (com o Gemini), timers, lembretes, tarefas, notas, hábitos, estudo, lista de compras, gastos, clima, dólar, contas, tradução, mascote. Falar com ela funciona no Chrome do Android; no iPhone a voz depende do Safari.
 - **Não funciona:** o que mexe no computador (apps, Defender, desligar, Spotify do PC, WhatsApp automático, modo jogo, Discord) e o "Ei, Sexta-feira" ouvindo o tempo todo.

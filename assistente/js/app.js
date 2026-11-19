@@ -311,7 +311,8 @@
     const { sistema, historico } = contextoConversa();
     const r = await window.IA_GEMINI.perguntar({ chave: S.cfg.geminiChave, sistema, historico, nome: S.cfg.nome });
     if (r.cota) {
-      R.geminiPausa = Date.now() + 60 * 60e3; // tenta de novo daqui a 1 hora
+      // limite por minuto: espera o que o Google pediu; cota do dia: tenta de novo daqui a 1 hora
+      R.geminiPausa = Date.now() + (r.espera ? r.espera * 1000 : 60 * 60e3);
       if (S.cfg.iaChave && window.IA && (S.cfg.cerebro || 'auto') !== 'local') return perguntarClaudeApi();
     }
     return { texto: r.texto, humor: r.erro ? (r.semRede || r.cota ? 'think' : 'cry') : 'happy', erro: !!r.erro };
@@ -1697,7 +1698,12 @@
         if (motorCerebro() === 'cc') return perguntarClaudeCode(original);
         if (motorCerebro() === 'gemini') return trabalhar('💭', 'Pensando', perguntarGemini);
         if (motorCerebro() === 'api') return trabalhar('💭', 'Pensando', perguntarClaudeApi);
-        if (!CC && (S.cfg.cerebro || 'auto') !== 'local' && !String(S.cfg.geminiChave || '').trim() && !S.cfg.iaChave) {
+        const querGemini = ['auto', 'gemini'].includes(S.cfg.cerebro || 'auto') && !!String(S.cfg.geminiChave || '').trim();
+        if (querGemini && R.geminiPausa > Date.now()) { // o Gemini está pausado esperando a cota voltar
+          const min = Math.ceil((R.geminiPausa - Date.now()) / 60e3);
+          return { texto: `A conversa grátis do Google acabou por agora e volta em ${min <= 1 ? 'um minutinho' : `até ${min} minutos`}. Enquanto isso, os comandos continuam funcionando.`, humor: 'think', erro: true };
+        }
+        if (!CC && ['auto', 'gemini'].includes(S.cfg.cerebro || 'auto') && !String(S.cfg.geminiChave || '').trim() && !S.cfg.iaChave) {
           return { texto: `${pick(p.nao)} Para eu conversar sobre qualquer coisa, crie uma chave grátis em aistudio.google.com/apikey e cole em Ajustes → Cérebro.`, html: `${esc(pick(p.nao))} Para eu conversar sobre qualquer coisa, crie uma chave grátis em ${linkHtml('https://aistudio.google.com/apikey', 'aistudio.google.com/apikey')} e cole em <b>Ajustes → Cérebro</b>.`, fala: 'Para eu conversar sobre qualquer coisa, crie uma chave grátis no Google AI Studio e cole em Ajustes.', humor: 'think', erro: true };
         }
         return { texto: `${pick(p.nao)} Diga "ajuda" pra ver o que eu sei — ou conecte uma IA em Ajustes pra conversar sobre qualquer coisa.`, humor: 'think', erro: true };
