@@ -283,8 +283,38 @@
     const c = S.cfg.cerebro || 'auto';
     if (c === 'local') return null;
     if (CC && (c === 'claudecode' || (c === 'auto' && R.cc && R.cc.instalado))) return 'cc';
-    if ((c === 'api' || c === 'auto') && S.cfg.iaChave && window.IA) return 'api';
+    if ((c === 'gemini' || c === 'auto') && temGemini()) return 'gemini';
+    if ((c === 'api' || c === 'auto' || c === 'gemini') && S.cfg.iaChave && window.IA) return 'api';
     return null;
+  }
+  // Gemini: chave do Google AI Studio (a mesma da voz) e não está pausado por falta de cota
+  const temGemini = () => !!(window.IA_GEMINI && String(S.cfg.geminiChave || '').trim() && !(R.geminiPausa > Date.now()));
+  // prompt de sistema e histórico recente, iguais para qualquer IA de conversa
+  function contextoConversa() {
+    const p = P(), nome = S.cfg.nome;
+    const historico = []; for (const m of S.chat.slice(-12)) { const role = m.q === 'u' ? 'user' : 'assistant'; if (historico.length && historico[historico.length - 1].role === role) historico[historico.length - 1].content += '\n' + m.t; else historico.push({ role, content: m.t }); }
+    while (historico.length && historico[0].role !== 'user') historico.shift();
+    const d = new Date();
+    const sistema = `Você é ${nome}, uma assistente virtual (mulher, fale no feminino) que mora no topo da tela${DESKTOP ? ' do computador' : ''}${S.cfg.usuario ? ' de ' + S.cfg.usuario : ''}. Personalidade: ${p.desc}. ` +
+      'Responda sempre em português do Brasil, com no máximo 3 frases curtas, porque a resposta pode ser lida em voz alta. Não use markdown, listas nem títulos. ' +
+      'Se pedirem algo que você não consegue fazer, diga isso com honestidade e sugira um comando simples como "me lembra de…", "timer de…" ou "cria uma tarefa…". ' +
+      `Hoje é ${d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${pad(d.getHours())}:${pad(d.getMinutes())}.` +
+      (S.memoria.length ? ` O que você já sabe sobre ${S.cfg.usuario || 'o usuário'}: ${S.memoria.map((x) => x.t).join('; ')}.` : '');
+    return { sistema, historico };
+  }
+  async function perguntarClaudeApi() {
+    const { sistema, historico } = contextoConversa();
+    const r = await window.IA.perguntar({ chave: S.cfg.iaChave, modelo: S.cfg.iaModelo, sistema, historico });
+    return { texto: r.texto, humor: r.erro ? 'cry' : r.recusa ? 'think' : 'happy', erro: !!r.erro };
+  }
+  async function perguntarGemini() {
+    const { sistema, historico } = contextoConversa();
+    const r = await window.IA_GEMINI.perguntar({ chave: S.cfg.geminiChave, sistema, historico, nome: S.cfg.nome });
+    if (r.cota) {
+      R.geminiPausa = Date.now() + 60 * 60e3; // tenta de novo daqui a 1 hora
+      if (S.cfg.iaChave && window.IA && (S.cfg.cerebro || 'auto') !== 'local') return perguntarClaudeApi();
+    }
+    return { texto: r.texto, humor: r.erro ? (r.semRede || r.cota ? 'think' : 'cry') : 'happy', erro: !!r.erro };
   }
   function perguntarClaudeCode(pedido) {
     return trabalhar('💭', 'Pensando', async () => {
@@ -1665,19 +1695,10 @@
       case 'desconhecido':
       default:
         if (motorCerebro() === 'cc') return perguntarClaudeCode(original);
-        if (motorCerebro() === 'api') {
-          return trabalhar('💭', 'Pensando', async () => {
-            const hist = []; for (const m of S.chat.slice(-12)) { const role = m.q === 'u' ? 'user' : 'assistant'; if (hist.length && hist[hist.length - 1].role === role) hist[hist.length - 1].content += '\n' + m.t; else hist.push({ role, content: m.t }); }
-            while (hist.length && hist[0].role !== 'user') hist.shift();
-            const d = new Date();
-            const sistema = `Você é ${nome}, uma assistente virtual (mulher, fale no feminino) que mora no topo da tela do computador${S.cfg.usuario ? ' de ' + S.cfg.usuario : ''}. Personalidade: ${p.desc}. ` +
-              'Responda sempre em português do Brasil, com no máximo 3 frases curtas, porque a resposta pode ser lida em voz alta. Não use markdown, listas nem títulos. ' +
-              'Se pedirem algo que você não consegue fazer no computador, diga isso com honestidade e sugira um comando simples como "me lembra de…", "timer de…" ou "cria uma tarefa…". ' +
-              `Hoje é ${d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${pad(d.getHours())}:${pad(d.getMinutes())}.` +
-              (S.memoria.length ? ` O que você já sabe sobre ${S.cfg.usuario || 'o usuário'}: ${S.memoria.map((x) => x.t).join('; ')}.` : '');
-            const r = await window.IA.perguntar({ chave: S.cfg.iaChave, modelo: S.cfg.iaModelo, sistema, historico: hist });
-            return { texto: r.texto, humor: r.erro ? 'cry' : r.recusa ? 'think' : 'happy', erro: !!r.erro };
-          });
+        if (motorCerebro() === 'gemini') return trabalhar('💭', 'Pensando', perguntarGemini);
+        if (motorCerebro() === 'api') return trabalhar('💭', 'Pensando', perguntarClaudeApi);
+        if (!CC && (S.cfg.cerebro || 'auto') !== 'local' && !String(S.cfg.geminiChave || '').trim() && !S.cfg.iaChave) {
+          return { texto: `${pick(p.nao)} Para eu conversar sobre qualquer coisa, crie uma chave grátis em aistudio.google.com/apikey e cole em Ajustes → Cérebro.`, html: `${esc(pick(p.nao))} Para eu conversar sobre qualquer coisa, crie uma chave grátis em ${linkHtml('https://aistudio.google.com/apikey', 'aistudio.google.com/apikey')} e cole em <b>Ajustes → Cérebro</b>.`, fala: 'Para eu conversar sobre qualquer coisa, crie uma chave grátis no Google AI Studio e cole em Ajustes.', humor: 'think', erro: true };
         }
         return { texto: `${pick(p.nao)} Diga "ajuda" pra ver o que eu sei — ou conecte uma IA em Ajustes pra conversar sobre qualquer coisa.`, humor: 'think', erro: true };
     }
@@ -1980,9 +2001,10 @@
       <div class="chave"><div>Notificações do sistema<small>${perm === 'granted' ? 'Ativadas ✅' : perm === 'denied' ? 'Bloqueadas no navegador. Libere nas configurações do site.' : 'Para avisar timers e lembretes mesmo com a janela em segundo plano'}</small></div>${perm === 'default' ? '<button class="btn fantasma" data-acao="notificacoes">Ativar</button>' : ''}</div>
       <div class="secao">Cérebro (para conversar e pesquisar)</div>
       <div class="nota-aviso">Os comandos do dia a dia funcionam sempre, sem cérebro. O cérebro responde o resto: perguntas, pesquisas na internet, textos e procurar arquivos no seu PC.</div>
-      <div class="grade2"><div class="campo"><label for="cCerebro">Cérebro</label><select id="cCerebro" data-cfg="cerebro">${[['auto', 'Automático'], ['claudecode', 'Claude Code (sua assinatura)'], ['api', 'API do Claude (chave paga à parte)'], ['local', 'Só os comandos da ' + esc(c.nome)]].map(([v, n]) => `<option value="${v}"${v === (c.cerebro || 'auto') ? ' selected' : ''}>${n}</option>`).join('')}</select>
-        <small>${(() => { const m = motorCerebro(); return m === 'cc' ? '✅ Usando o Claude Code' : m === 'api' ? '✅ Usando a API do Claude' : 'Sem cérebro: só os comandos'; })()}</small></div>
+      <div class="grade2"><div class="campo"><label for="cCerebro">Cérebro</label><select id="cCerebro" data-cfg="cerebro">${[['auto', 'Automático'], ['claudecode', 'Claude Code (sua assinatura)'], ['gemini', 'Gemini (cota grátis do Google)'], ['api', 'API do Claude (chave paga à parte)'], ['local', 'Só os comandos da ' + esc(c.nome)]].map(([v, n]) => `<option value="${v}"${v === (c.cerebro || 'auto') ? ' selected' : ''}>${n}</option>`).join('')}</select>
+        <small>${(() => { const m = motorCerebro(); return m === 'cc' ? '✅ Usando o Claude Code' : m === 'gemini' ? '✅ Usando o Gemini' : m === 'api' ? '✅ Usando a API do Claude' : R.geminiPausa > Date.now() ? '⏸ Cota grátis do Gemini acabou; volta em até 1 hora' : 'Sem cérebro: só os comandos'; })()}</small></div>
       <div class="campo"><span>&nbsp;</span><button class="btn fantasma" data-acao="cc-nova">🧹 Nova conversa</button></div></div>
+      ${['auto', 'gemini'].includes(c.cerebro || 'auto') ? `<div class="campo"><label for="cGeminiCerebro">Chave do Google AI Studio (a mesma da voz)</label><input id="cGeminiCerebro" type="password" data-cfg="geminiChave" value="${esc(c.geminiChave)}" placeholder="AIza…" autocomplete="off"><small>Grátis, com limite diário. Crie em ${linkHtml('https://aistudio.google.com/apikey', 'aistudio.google.com/apikey')}. Fica guardada só neste aparelho.</small></div>` : ''}
       ${(c.cerebro || 'auto') !== 'api' && (c.cerebro || 'auto') !== 'local' ? (CC ? (() => {
         const st = R.cc, conta = st && st.conta;
         const situacao = st === null ? 'Procurando…' : !st.instalado ? 'Não está instalado neste computador.'
