@@ -94,12 +94,16 @@ class Enhancer:
                 frame = self.temporal.denoise(frame, settings.ai_noise)
                 correction = (self.stabilizer.update(work, dt, settings.stabilize)
                               if settings.stabilize > 0 else None)
-                enhanced = self.ai.process(cleaned, settings.strength)
+                correction_ai, _ = self.ai.estimate(cleaned)
+                enhanced = self.ai.apply(cleaned, correction_ai, settings.strength)
                 enhanced = self.temporal.natural(work, enhanced, settings.ai_color,
                                                  settings.ai_contrast * settings.strength, dt)
                 enhanced = self.temporal.clarify(enhanced, settings.ai_restore * settings.strength, dt)
                 enhanced = finish_ai(enhanced, settings.ai_noise, 0., settings.ai_specks)
-                result = sharpen_detail(lift_change(frame, work, enhanced), settings.ai_sharp)
+                from rov_ai import detail_gain
+                result = detail_gain(lift_change(frame, work, enhanced), frame, correction_ai,
+                                     settings.strength)
+                result = sharpen_detail(result, settings.ai_sharp)
                 if correction is not None:
                     result = self.stabilizer.warp(result, correction,
                                                   min(self.stabilizer.width, work.shape[1]))

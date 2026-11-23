@@ -90,6 +90,87 @@ def keep_brightness(delta, keep=.3, sigma=12):
     return delta - lift[:, :, None]
 
 
+def resize_channels(image, size, interpolation=cv2.INTER_LINEAR):
+    """cv2.resize for any number of channels (OpenCV handles at most 4)."""
+    if image.ndim == 2 or image.shape[2] <= 4:
+        return cv2.resize(image, size, interpolation=interpolation)
+    parts = [cv2.resize(np.ascontiguousarray(image[:, :, i:i + 4]), size, interpolation=interpolation)
+             for i in range(0, image.shape[2], 4)]
+    return np.dstack([p if p.ndim == 3 else p[:, :, None] for p in parts])
+
+
+def affine_correction(guide, delta, radius=4, eps=25., low=.6, high=2.5):
+    """0.3.13: the network's correction as a local affine map per channel,
+    output ≈ a·input + b, fitted in (2r+1)² windows of the analysis grid
+    (guided-filter regression). Stored as [a − 1, b] (6 channels) so that
+    zero means "no correction" and scaling/fading stay linear.
+
+    WaterNet raises local contrast about 2× in veiled regions; an additive
+    delta carried that only as a level shift. The affine map applies the same
+    gain to the real pixels at full resolution (fine detail included)."""
+    I = guide.astype(np.float32)
+    O = I + delta.astype(np.float32)
+    mean_i, mean_o = _box(I, radius), _box(O, radius)
+    var_i = _box(I * I, radius) - mean_i * mean_i
+    cov = _box(I * O, radius) - mean_i * mean_o
+    # Ridge regression toward a = 1 (no contrast change) where the window has
+    # too little variation to estimate a gain (plain guided-filter shrinkage
+    # would pull a toward 0 and flatten veiled, low-contrast regions).
+    a = np.clip((cov + eps) / (var_i + eps), low, high)
+    b = mean_o - a * mean_i
+    return np.ascontiguousarray(np.dstack([_box(a, radius) - 1, _box(b, radius)]).astype(np.float32))
+
+
+def apply_affine(frame, correction, strength=1., protect=1.5, sigma=1.5):
+    """out = f + s·((a−1)·f' + b), where f' is f without its noise-sized fine
+    detail (below `protect`·σ_noise, robust MAD): textures above the noise get
+    the contrast gain, sensor noise keeps gain 1."""
+    h, w = frame.shape[:2]
+    gain = resize_channels(correction[:, :, :3], (w, h))
+    offset = resize_channels(correction[:, :, 3:], (w, h))
+    f = frame.astype(np.float32)
+    if protect > 0:
+        detail = cv2.subtract(f, cv2.GaussianBlur(f, (0, 0), sigma))
+        noise = 1.4826 * float(np.median(np.abs(detail[::4, ::4])))
+        # Per-channel scalar: a bare number would only affect channel 0.
+        t = (float(protect * noise),) * 3 + (0.,)
+        kept = cv2.add(cv2.max(cv2.subtract(detail, t), (0., 0., 0., 0.)),
+                       cv2.min(cv2.add(detail, t), (0., 0., 0., 0.)))
+        base = cv2.subtract(f, cv2.subtract(detail, kept))
+    else:
+        base = f
+    change = cv2.add(cv2.multiply(gain, base), offset)
+    return cv2.add(f, change * np.float32(strength), dtype=cv2.CV_8U)
+
+
+def detail_gain(output, original, correction, strength=1., protect=1.5, sigma=1.5):
+    """Full-resolution part of the affine correction, cheaply: the colour,
+    level and mid-scale contrast reach full resolution through lift_change;
+    only the FINE luminance detail of the original (finer than the working
+    resolution) still needs the network's contrast gain a. Detail below
+    `protect`·σ_noise keeps gain 1. Returns a new array."""
+    if correction is None or correction.shape[2] != 6 or strength <= 0:
+        return output
+    h, w = original.shape[:2]
+    gain = correction[:, :, 2] * .299 + correction[:, :, 1] * .587 + correction[:, :, 0] * .114
+    # Only amplification: fine detail is never attenuated here.
+    # 8-bit gain in steps of 1/64 (gain ≤ 1.5 → ≤ 96): uint8 × uint8 stays on
+    # the fast integer path (a float gain made this step 3× slower at 1080p).
+    gain = np.clip(np.rint(np.maximum(gain, 0) * (64 * float(strength))), 0, 255).astype(np.uint8)
+    gain = cv2.resize(gain, (w, h), interpolation=cv2.INTER_LINEAR)
+    # Saturated uint8 layers (positive / negative detail), as in sharpening:
+    # stays on OpenCV's fast integer paths at 1080p.
+    y = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(y, (7, 7), sigma)
+    above, below = cv2.subtract(y, blur), cv2.subtract(blur, y)
+    sample = cv2.max(above[::4, ::4], below[::4, ::4])
+    t = float(protect * 1.4826 * np.median(sample))
+    up = cv2.multiply(cv2.subtract(above, t), gain, scale=1 / 64)
+    down = cv2.multiply(cv2.subtract(below, t), gain, scale=1 / 64)
+    out = cv2.add(output, cv2.merge([up, up, up]))
+    return cv2.subtract(out, cv2.merge([down, down, down]), dst=out)
+
+
 def _box(image, radius):
     return cv2.boxFilter(image, -1, (2 * radius + 1, 2 * radius + 1), borderType=cv2.BORDER_REFLECT)
 
@@ -182,7 +263,8 @@ class RovAI:
         # 0.3.6: a 5 × 5 median drops the network's response to isolated
         # points (it became dark discs around particles once enlarged).
         delta=cv2.merge([cv2.medianBlur(np.ascontiguousarray(delta[:, :, c]),5) for c in range(3)])
-        return keep_brightness(delta), np.ascontiguousarray(small[:, :, ::-1])
+        guide = np.ascontiguousarray(small[:, :, ::-1])
+        return affine_correction(guide, keep_brightness(delta)), guide
 
     @staticmethod
     def apply(frame, delta, strength=.8):
@@ -190,6 +272,9 @@ class RovAI:
             raise ValueError('Intensidade entre 0 e 1.')
         if strength == 0:
             return frame.copy()
+        if delta.shape[2] == 6:
+            return apply_affine(frame, delta, strength)
+        # Legacy additive correction (3 channels).
         # Edge-aware enlargement: the small correction follows the edges of
         # the current frame instead of glowing across them (halos).
         large = guided_upsample(frame, delta * np.float32(strength))

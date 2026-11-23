@@ -112,3 +112,36 @@ def test_live_pipeline_with_auto_and_stabilization_runs():
         assert info['auto'].startswith('Auto:')
     finally:
         live.close()
+
+
+def test_affine_correction_recovers_contrast_gain_and_protects_noise():
+    """0.3.13: correction = local map out ≈ a·in + b; full-resolution detail
+    gets the gain only above the noise level and is never attenuated."""
+    import rov_ai
+    rng = np.random.default_rng(7)
+    guide = cv2.GaussianBlur(rng.integers(40, 140, (144, 256, 3), dtype=np.uint8), (0, 0), 1)
+    true_out = np.clip(2.0 * guide.astype(np.float32) - 90, 0, 255)     # a = 2, b = -90
+    corr = rov_ai.affine_correction(guide, true_out - guide.astype(np.float32))
+    assert corr.shape == (144, 256, 6)
+    # A window with no variation keeps a = 1 (no contrast change), not 0.
+    flat_corr = rov_ai.affine_correction(np.full((40, 40, 3), 90, np.uint8), np.full((40, 40, 3), 10., np.float32))
+    assert np.allclose(flat_corr[:, :, :3], 0, atol=1e-4) and np.allclose(flat_corr[:, :, 3:], 10, atol=1e-3)
+    a = corr[20:-20, 20:-20, :3] + 1
+    assert 1.6 < float(np.median(a)) <= 2.5                               # gain found (regularized)
+    # Applied to the real frame: texture above noise grows, flat noise does not.
+    flat = np.clip(rng.normal(100, 2, (288, 512, 3)), 0, 255).astype(np.uint8)
+    gain_only = np.zeros((144, 256, 6), np.float32)
+    gain_only[:, :, :3] = 1.0                                              # a = 2, b = 0
+    gain_only[:, :, 3:] = -100.0                                           # keep level ~100
+    out = rov_ai.apply_affine(flat, gain_only, 1.)
+    assert float(out.astype(float).std()) < float(flat.astype(float).std()) * 1.3
+    edge = np.full((288, 512, 3), 90, np.uint8)
+    edge[:, 256:] = 110
+    out = rov_ai.apply_affine(edge, gain_only, 1.)
+    assert int(out[100, 300, 0]) - int(out[100, 200, 0]) > 30             # real step ×2
+    # Fine-detail stage never attenuates and is a no-op without gain.
+    none = np.zeros((144, 256, 6), np.float32)
+    assert np.array_equal(rov_ai.detail_gain(edge, edge, none, 1.), edge)
+    shrink = np.zeros((144, 256, 6), np.float32)
+    shrink[:, :, :3] = -.4
+    assert np.array_equal(rov_ai.detail_gain(edge, edge, shrink, 1.), edge)

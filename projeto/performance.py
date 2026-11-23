@@ -19,7 +19,7 @@ from collections import deque
 
 MAX_LEVEL = 5
 LEVEL_TEXT = {0: "", 1: "economia 1 (sem ruído em resolução cheia)",
-              2: "economia 2 (sem ruído/nitidez em resolução cheia)",
+              2: "economia 2 (sem ruído/nitidez/detalhe em resolução cheia)",
               3: "economia 3 (resolução interna menor)",
               4: "economia 4 (fusão temporal mais leve)",
               5: "economia 5 (máxima)"}

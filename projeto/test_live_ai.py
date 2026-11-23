@@ -159,7 +159,8 @@ def test_detailed_estimate_apply_matches_sync_path():
     delta,guide=m.estimate(f)
     direct=m.process(f,.8)
     assert np.array_equal(direct,m.apply(f,delta,.8))
-    assert guide.dtype==np.uint8 and delta.shape==guide.shape
+    # 0.3.13: affine correction [a-1, b] per channel on the guide grid.
+    assert guide.dtype==np.uint8 and delta.shape==guide.shape[:2]+(6,)
 
 
 def test_ui_detailed_fluid_default_and_optional_specks():

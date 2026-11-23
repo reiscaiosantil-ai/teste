@@ -10,7 +10,7 @@ import time
 import cv2
 import numpy as np
 
-from rov_ai import RovAI
+from rov_ai import RovAI, resize_channels, detail_gain
 from auto_visual import AutoVisual
 from stabilize import Stabilizer
 from processing import finish_ai, detail_layers, apply_detail
@@ -36,7 +36,7 @@ GLOBAL_AGE = 3.0   # seconds the coarse (veil) correction stays usable
 def coarse_map(delta, size=(8, 5)):
     """Low-frequency part of a correction: the water veil/tint changes slowly
     across the image, so a coarse grid stays valid while the camera moves."""
-    return cv2.resize(delta, size, interpolation=cv2.INTER_AREA)
+    return resize_channels(delta, size, interpolation=cv2.INTER_AREA)
 
 
 def similarity(analyzed, current):
@@ -72,7 +72,7 @@ def transfer(frame, correction, now, strength, coarse=None, return_delta=False):
     age = max(0., now - correction.received)
     gh, gw = correction.delta.shape[:2]
     coarse = coarse_map(correction.delta) if coarse is None else coarse
-    smooth = cv2.resize(coarse, (gw, gh), interpolation=cv2.INTER_CUBIC)
+    smooth = resize_channels(coarse, (gw, gh), interpolation=cv2.INTER_CUBIC)
     # Full-detail budget; after it the detail fades out gradually (below) and
     # the coarse veil correction stays up to GLOBAL_AGE.
     max_age = min(1.2, max(.5, correction.milliseconds / 1000 * 3 + .15))
@@ -298,6 +298,7 @@ class LiveAI:
             if state in ('expired', 'changed'):
                 state = 'global'
             output = RovAI.apply(cleaned, delta, settings.strength)
+            job['correction'] = delta
         else:
             output = cleaned
         info['transfer_ms'] = (time.perf_counter() - transfer_start) * 1000
@@ -309,7 +310,10 @@ class LiveAI:
             output = self.temporal.clarify(output, restore, dt)
             output = finish_ai(output, settings.ai_noise, 0., settings.ai_specks)
             output = lift_change(original, frame, output)
-            # Sharpening at the output resolution, where detail actually is.
+            # Fine detail finer than the working resolution gets the network's
+            # contrast gain (affine correction), then the halo-free sharpening.
+            if self.perf_level < 2:  # Economy 2+: no full-resolution detail work.
+                output = detail_gain(output, original, job.get('correction'), settings.strength)
             output = apply_detail(output, job['detail'])
         elif settings.ai_restore > 0:
             info['ai_reason'] = state

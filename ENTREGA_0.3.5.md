@@ -544,3 +544,80 @@ no PC do usuário não está confirmada.
 **Pedido ao usuário para fechar a causa:** comparar com a opção ligada e
 desligada e enviar um print ou um vídeo curto (celular serve) do rastro,
 dizendo o que se move (câmera, estrutura, partícula) e o nível no rodapé.
+
+---
+
+# 0.3.13: a IA aplicada como transformação local (mais detalhe e contraste)
+
+Pedido: sem a placa por agora, testar o ROV Live e ver o que pode melhorar.
+
+**Banco de testes com verdade conhecida** (`evidencias/validacao_0.3.13/cena.py`).
+Cenas sintéticas com textura de metal/ferrugem, vigas, cabos finos e texto,
+degradadas pelo modelo físico da água:
+- I = J·t + A·(1 − t), com t = e^(−β·distância) por canal (o vermelho some
+  primeiro);
+- espalhamento frontal e ruído de sensor.
+
+Medidas:
+- **SSIM** de estrutura;
+- **correlação e contraste do detalhe fino** em relação à verdade;
+- **“detalhe falso”**: textura onde a verdade é lisa;
+- **erro de cor ΔE**.
+
+**Achados:**
+1. O detalhe fino saía com só **27% do contraste real**.
+2. Rodar a WaterNet em resolução maior funciona: o ONNX é totalmente
+   convolucional e o resultado é idêntico em 256 × 144. Mas o ganho foi
+   pequeno (contraste 0,275 → 0,297 em 640 × 360) e o custo alto (5× em CPU).
+   **Não adotado por ora.**
+3. A rede **estica o contraste local ~2,1×** na grade de análise (o ideal
+   físico da cena era 2,6×). O invólucro desde a 0.3.6 convertia isso numa
+   soma suavizada, com inclinação limitada a ±0,5, e perdia esse ganho.
+
+**Mudança.** A correção da IA passa a ser uma **transformação local por
+canal, saída ≈ a·entrada + b**:
+- ajustada na grade da IA por regressão em janelas, regularizada para a = 1
+  (sem mudança) onde não há variação suficiente;
+- guardada como [a − 1, b];
+- aplicada aos pixels reais na resolução de trabalho;
+- em resolução cheia, só o **detalhe fino de luminância** recebe o ganho
+  a, e apenas acima do nível de ruído estimado (nunca atenua detalhe).
+
+É uma função linear dos pixels observados: não cria textura. Reaplicação com
+movimento, versão grossa, esmaecimento e suavização continuam iguais, porque
+zero = sem correção. Correções antigas aditivas ainda funcionam (a = 1).
+
+**Resultado na cena sintética** (média de 3 cenas):
+
+| Medida | Entrada | 0.3.12 | 0.3.13 |
+|---|---:|---:|---:|
+| Estrutura (SSIM) | 0,67 | 0,810 | **0,827** |
+| Correlação do detalhe | 0,40 | 0,498 | **0,541** |
+| Contraste do detalhe (1 = real) | 0,21 | 0,275 | **0,327** |
+| Detalhe falso | 1,28 | 1,29 | 1,31 |
+| Erro de cor ΔE | 39,7 | 30,0 | **29,2** |
+
+Na amostra real, a textura da viga fica mais visível e a água menos
+arroxeada, sem halos novos (`amostra_recortes_original_0312_0313.png`).
+
+**Custo** (IA fora da CPU, nível máximo 3):
+
+| Resolução | 0.3.12 | 0.3.13 |
+|---|---:|---:|
+| 960 × 540 | 28,7 FPS | 28,5 FPS |
+| 1080p | 28,9 FPS | 25,9 FPS |
+
+O detalhe em resolução cheia é desligado a partir do nível de economia 2.
+
+**Também nesta rodada:**
+- Corrigido um defeito em que a regularização do ganho atenuava regiões
+  veladas.
+- O teste de rastro (perfil atrás × frente de objeto em movimento) não
+  piorou.
+- 98 testes passam.
+
+**Limites:**
+- A cor (ΔE ~29) continua longe da verdade. O vermelho perdido na água não
+  volta sem arriscar cor inventada, e o limite de cor foi mantido por
+  decisão anterior (evitar violeta e neon).
+- O detalhe abaixo do ruído não é recuperável.
