@@ -1,0 +1,49 @@
+VALIDAÇÃO — ROV LIVE IA 0.3.4
+
+Arquivo recebido: 1029.mp4, 1920 × 1080, 30 FPS, 8872 quadros,
+aproximadamente 4 minutos e 56 segundos. O arquivo completo não foi exportado.
+Foram inspecionados quadros em várias partes e processados trechos escolhidos.
+A amostra exportada tem 180 quadros: três trechos de 2 segundos, sem áudio.
+Foi conferida a decodificação completa, dimensão, duração e taxa da amostra.
+
+59 TESTES AUTOMATIZADOS PASSARAM
+56 testes do aplicativo/processamento + 3 do atualizador.
+Incluem preservação do original, desligamento, quadro preto, ruído sintético,
+ponto claro transitório e persistente, sobreposições de telemetria,
+movimento/oclusão de bordas, corte de cena, intervalo de captura, troca de
+resolução, correção neural antiga, fallback identificado como temporal,
+falha da IA, interface, exportação de todos os quadros, backup e rollback.
+
+TESTE SINTÉTICO COM REFERÊNCIA CONHECIDA
+Região plana com ruído gaussiano independente, restauração 80%:
+MSE antes 9,31; depois 5,52, aproximadamente 40,7% menor.
+Isso valida redução de ruído nessa condição controlada. Não mede remoção
+real de turbidez, recuperação de estruturas ou superioridade sobre outro sistema.
+
+DESEMPENHO DO TESTE AO VIVO SIMULADO COM ARQUIVO
+Ambiente Linux, somente CPU, fonte Full HD a 30 FPS, análise detalhada,
+intensidade 80%, ruído 30%, nitidez 15%, restauração temporal 35%.
+Janela medida após aquecimento: 108 quadros, aproximadamente 17,8 FPS.
+Aplicação mediana 56,7 ms; percentil 95 aproximadamente 80,9 ms.
+Rede/preparação mediana aproximadamente 521 ms por análise.
+60 quadros receberam correção neural; 48 usaram somente restauração temporal
+porque a correção neural não correspondia suficientemente à imagem atual.
+Saída preservada em 1920 × 1080; acabamento até 640 × 360 e fusão até 480 × 270.
+Os FPS mostrados no vídeo MP4 exportado não são essa medição ao vivo.
+A carga do ambiente varia; outros ensaios tiveram resultados diferentes.
+
+A interface Qt foi verificada fora de tela com o arquivo e modelo reais em CPU.
+Windows, DirectML, GPU de teste e placa de captura física não foram executados
+neste ambiente. Não há garantia de 30 FPS no computador de destino.
+O iniciador EXE incluído foi compilado para Windows x64 e inspecionado,
+mas sua abertura ainda depende da validação no Windows do usuário.
+
+QUALIDADE OBSERVADA
+A diferença mais visível é em contraste e na contenção de cor excessiva.
+A supressão de partículas é parcial e conservadora; as maiores continuam.
+A sequência real não possui referência limpa pareada, portanto não foi
+possível medir fidelidade da reconstrução nem ganho de distância de visão.
+Não houve treinamento de novos pesos WaterNet. O módulo temporal é um
+algoritmo tradicional combinado com essa rede; não é geração de texturas.
+Movimento rápido pode causar suavização ou correspondência incorreta.
+Não se comprovou recuperação de áreas que permaneceram totalmente ocultas.

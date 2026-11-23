@@ -1,0 +1,27 @@
+CORRECAO 0.3.1 — 28/10/2026
+
+Para quem JA instalou a 0.3:
+Feche o programa. Copie o CONTEUDO desta pasta para a pasta da 0.3,
+substituindo arquivos de mesmo nome. Mantenha .venv. Abra INICIAR.cmd.
+As dependencias e modelos NAO mudaram; nao precisa reinstalar.
+
+Para quem usa 0.1/0.2: instale em pasta nova seguindo COMECE_AQUI.txt.
+
+Mudancas no modo Classico:
+- Reconstrucao da nevoa altera luminancia e preserva crominancia original.
+- Ganho de inversao limitado a 2,5x (antes ate 6,25x).
+- Correcao de cor com ganhos limitados entre 0,85 e 1,15.
+- Contraste local limitado a 2,0, inclusive na interface.
+- Valores alterados manualmente mostram perfil Personalizado.
+
+Reproduzimos manchas vermelhas com o recorte do print e os ajustes informados.
+Na comparacao estatica incluida, o artefato de cor foi eliminado. Ainda ha
+amplificacao de ruido em ajustes fortes. O teste em webcam nao mede a eficacia
+em agua turva. A mudanca pode reduzir a forca da remocao de nevoa em cenas reais.
+
+Modo IA permanece o mesmo. Esta correcao NAO e uma melhoria nova da rede neural.
+Na webcam em ambiente sem nevoa, use Classico > Suave / pouca nevoa, ou desligue
+o tratamento. Para conferir a rede, escolha Processamento > IA.
+
+21 testes existentes passaram apos as mudancas; dois testes adicionais verificam
+preservacao de crominancia neutra e identificacao de ajustes personalizados.

@@ -1,0 +1,50 @@
+VERSAO 0.3.2: novos controles e testes documentados em ATUALIZAR_0.3.2.txt.
+
+Atualizacao 0.3.1: ver ATUALIZAR_0.3.1.txt e exemplos/correcao_classico.png.
+Resultados abaixo referem-se a validacao da base 0.3.
+
+ROV Live IA 0.3 — 28/10/2026
+
+Base funcional 0.2 + motor IA WaterNet adaptado + exportador MP4 em processo
+separado + interface gráfica de seleção do motor, qualidade e execução.
+
+TESTADO NESTE AMBIENTE
+Linux/Python3.12.14/OpenCV4.11/NumPy2.2.4/PySide6 6.8.3/ONNXRuntime1.23.2 CPU.
+AMD EPYC 9V74 virtualizado; OpenCV e ONNX limitados a duas threads.
+21 testes automatizados: 15 herdados (captura, controles, quadros extremos,
+reconexão, descarte, captura travada, sinal antigo) e 6 novos para IA real,
+bypass/preto, ausência de alteração do original, falha do modelo, processamento
+contínuo, exportação com todos os quadros, arquivo original preservado e exportação
+acionada pela interface. Falha da IA mostra original e informa erro.
+
+Exportação demonstrativa: 90/90 quadros, 306x350, 30FPS, 3s de vídeo, 12,3s de
+processamento CPU. IA rápida 128x72, intensidade80%. Não é tempo real em CPU.
+A exportação preserva a contagem de quadros decodificados e usa FPS constante
+informado pelo arquivo; não preserva timestamps variáveis nem áudio.
+A reprodução contínua prioriza quadros recentes e pode pular quadros quando lenta.
+Amostras são recortes de uma gravação de tela; não são validação da câmera real.
+Interface inspecionada visualmente em modo offscreen com IA e comparação.
+
+MODELO
+Rede WaterNet da réplica tnwei, pesos replicated-waternet-256x256-20220529.pt.
+Código MIT incluído; dados/pesos e condições de distribuição comercial devem ser
+avaliados antes de lançar produto. Não houve treinamento novo neste trabalho.
+Conversão ONNX opset17. Exportação detalhada comparada ao PyTorch: diferença
+máxima absoluta 5,96e-7 em entrada sintética. Modelos rápido128x72 e detalhado256x144.
+Nossa adaptação faz redimensionamento proporcional, balanceamento robusto,
+correção limitada +/-80 níveis, suavização espacial e aplicação ao original.
+Não faz geração de quadros, super-resolução, segmentação semântica nem treinamento
+online. Não mistura quadros anteriores; estabilidade temporal ainda não validada.
+Resultado depende da cena e pode mudar cores/ocultar ou enfatizar detalhes.
+
+NÃO TESTADO
+Windows/CMD em execução real; DirectML e placas físicas; latência câmera-monitor;
+RTSP real; turnos longos; precisão de inspeção; comparação controlada com Orphie.
+DirectML tenta adaptador0 (pode ser integrada); operador pode escolher outro índice.
+O status informa provedores da sessão, não comprova que toda operação executa na GPU.
+
+FONTES
+https://github.com/tnwei/waternet
+https://arxiv.org/abs/1901.05495
+https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html
+https://i2s-orphie.com/en/home/

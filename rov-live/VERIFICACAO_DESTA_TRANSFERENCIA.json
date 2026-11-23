@@ -1,0 +1,18 @@
+{
+  "data": "2026-10-29",
+  "tipo": "verificacao de transferencia, nao execucao de testes",
+  "modulos_iguais_a_entrega_034": [
+    "temporal_restore.py",
+    "processing.py",
+    "app.py",
+    "rov_ai.py",
+    "live_ai.py",
+    "engine.py",
+    "export_video.py"
+  ],
+  "modelos_iguais_a_base_032": true,
+  "sintaxe_python": "validada por AST",
+  "runtime_windows_incluido": false,
+  "video_1029_completo_incluido": false,
+  "consolidacao": "Base 0.3.2 + modulos e testes da atualizacao 0.3.4, sem alterar algoritmos"
+}

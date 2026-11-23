@@ -1,0 +1,93 @@
+{
+  "versao": "0.3.5",
+  "python": "3.13.17",
+  "opencv": "4.11.0",
+  "sistema": "Linux-6.18.44-fc-v185-x86_64-with-glibc2.39",
+  "cpu": "x86_64",
+  "nucleos": 4,
+  "fonte": "file",
+  "controles": {
+    "enabled": true,
+    "strength": 0.8,
+    "exposure": 0.0,
+    "color": 0.15,
+    "contrast": 1.3,
+    "haze": 0.8,
+    "denoise": false,
+    "mode": "ai",
+    "quality": "detail",
+    "backend": "cpu",
+    "device_id": 0,
+    "ai_noise": 0.3,
+    "ai_sharp": 0.15,
+    "ai_realtime": true,
+    "ai_specks": 0,
+    "ai_restore": 0.35
+  },
+  "quadros_exibidos": 525,
+  "fps_exibido": 26.22,
+  "estados": {
+    "applied": 525
+  },
+  "fracao_ia_aplicada": 1.0,
+  "aplicacao_ms": {
+    "p50": 61.33,
+    "p95": 85.49,
+    "n": 525
+  },
+  "latencia_no_app_ms": {
+    "p50": 79.29,
+    "p95": 113.59,
+    "n": 525
+  },
+  "estagio1_ms": {
+    "p50": 34.99,
+    "p95": 50.73,
+    "n": 525
+  },
+  "estagio2_ms": {
+    "p50": 24.89,
+    "p95": 40.2,
+    "n": 525
+  },
+  "temporal_ms": {
+    "p50": 28.26,
+    "p95": 43.09,
+    "n": 525
+  },
+  "transferencia_ms": {
+    "p50": 5.42,
+    "p95": 10.55,
+    "n": 525
+  },
+  "acabamento_ms": {
+    "p50": 18.87,
+    "p95": 32.44,
+    "n": 525
+  },
+  "analise_ia_ms": {
+    "p50": 428.87,
+    "p95": 515.94,
+    "n": 525
+  },
+  "analises_por_s": {
+    "p50": 2.38,
+    "p95": 2.76,
+    "n": 525
+  },
+  "idade_correcao_ms": {
+    "p50": 725.85,
+    "p95": 968.9,
+    "n": 525
+  },
+  "entrada": [
+    1920,
+    1080
+  ],
+  "tratada": [
+    540,
+    960,
+    3
+  ],
+  "executor": "IA WaterNet • CPUExecutionProvider • detail • vídeo fluido"
+}

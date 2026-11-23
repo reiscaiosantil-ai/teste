@@ -1,0 +1,3 @@
+IA com travamentos (12% das análises levam 0,9 s), movimento contínuo, 310 quadros:
+0.3.9:  {"estados": {"applied": 206, "temporal": 104}, "quadros_com_veu(<60%)": 83, "saltos_de_forca>5": 38, "salto_max": 43.4}
+0.3.10: {"estados": {"applied": 227, "global": 83}, "quadros_com_veu(<60%)": 4, "saltos_de_forca>5": 12, "salto_max": 8.6}

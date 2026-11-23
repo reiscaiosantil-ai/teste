@@ -1,0 +1,1 @@
+Fontes dos casos automatizados para revisão técnica. Execução feita em ambiente de desenvolvimento com pytest e PYTHONPATH nos módulos do app. Não precisa executar esses testes no computador offline. O teste sintético tem referência conhecida e não demonstra recuperação equivalente em água real.

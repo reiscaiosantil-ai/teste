@@ -1,0 +1,79 @@
+ROV LIVE IA 0.3.4 — RESTAURAÇÃO TEMPORAL EXPERIMENTAL
+
+INSTALAÇÃO OFFLINE
+1. Feche o ROV Live.
+2. Extraia este ZIP e copie TODO seu conteúdo para a pasta existente que
+   contém app, runtime e ROV_Live_IA.exe. Aceite substituir os arquivos de abertura.
+3. Execute ATUALIZAR_PORTATIL.cmd e aguarde a confirmação.
+4. Abra ROV_Live_IA.exe ou INICIAR_PORTATIL.cmd. Mantenha a janela de apoio aberta.
+O atualizador cria backup dos módulos anteriores. Não precisa reinstalar
+Python, modelos ou dependências. Aceita versões 0.3.2, 0.3.2a e 0.3.3.
+Também aceita a instalação com .venv: use a pasta onde ficam app.py e .venv.
+A correção do iniciador fornecida anteriormente está incluída; seu funcionamento
+no Windows ainda precisa ser confirmado. O CMD continua disponível.
+
+PARA COMEÇAR
+IA: Detalhada — 256 × 144. Vídeo fluido: marcado.
+Intensidade 80%, ruído 30%, nitidez 15%.
+Restauração temporal: 35% (padrão). Compare 0%, 35% e 50%.
+Suavizar pontos claros: deixe 0% inicialmente, pois o módulo temporal já
+atenua uma parte dos pontos transitórios. Esse ajuste extra aumenta o custo.
+Use 960 × 540 ou 1280 × 720 para começar a testar. Full HD exige mais recursos.
+
+O QUE MUDOU
+- Fusão de observações de até dois quadros anteriores, com compensação de
+  movimento e verificação de correspondência, para reduzir ruído e alguns
+  pontos claros transitórios. O histórico contém observações reais, sem
+  gerar geometria, objetos ou texturas novas.
+- Atenuação limitada: mesmo pontos identificados não são apagados totalmente.
+- Realce de luminância com limites e ajuste gradual dos parâmetros.
+- Limite conservador para excesso de cor adicionado em regiões originalmente
+  pouco saturadas. Pode também limitar a recuperação de cores legítimas.
+- Processamento pesado limitado internamente a até 640 × 360; a fusão temporal
+  usa até 480 × 270. A rede continua na análise detalhada 256 × 144.
+- O quadro de saída mantém as dimensões recebidas, inclusive Full HD: recebe
+  somente a diferença calculada. Isso preserva os pixels de detalhes finos
+  da entrada, mas não significa reconstrução de detalhes em resolução Full HD.
+- Menos cópias de imagens em ponto flutuante na aplicação da correção.
+
+LIMITES E CONTROLES
+É uma primeira restauração híbrida, usando WaterNet e algoritmos tradicionais.
+Não foram treinados novos pesos e não é uma IA generativa de reconstrução.
+Não consegue recuperar com certeza um ambiente completamente escondido.
+Partículas maiores, turbidez forte e compressão continuam limitando a imagem.
+Movimentos rápidos, reflexos e objetos que surgem podem causar falhas de
+correspondência ou suavização indevida. Pequenos objetos reais brilhantes
+podem ser atenuados como se fossem partículas. Compare sempre com o original.
+A fusão temporal não mistura as faixas superior (12%) e inferior (10%) para
+proteger profundidade/temperatura/horário de quadros diferentes. Essa proteção
+não cobre sobreposições colocadas em outras partes da imagem e não impede
+mudanças de cor/contraste nesses textos.
+
+SE A IA NÃO CORRESPONDER AO QUADRO ATUAL
+A correção neural continua com validade limitada de 0,9–2 segundos, conforme
+seu tempo de cálculo. Se estiver antiga ou não corresponder à cena:
+- com restauração temporal acima de zero, usa somente a restauração temporal
+  e informa "Somente restauração temporal — IA aguardando";
+- com restauração temporal em zero, mostra o original até a IA atualizar.
+Falhas da IA preservam o original com aviso. A perda real de captura continua
+retirando a imagem da tela. A imagem atual não é congelada para aguardar a IA.
+Essas transições ainda podem produzir variações de cor/contraste em movimento.
+
+EXPORTAÇÃO
+Exportar vídeo aceita o novo ajuste e processa todos os quadros decodificados
+individualmente com a rede, além da restauração temporal. Pode demorar muito
+mais que o vídeo. Saída MP4, taxa constante da fonte, sem áudio.
+
+EXEMPLOS DO ARQUIVO 1029.MP4
+A amostra comparativa tem 6 segundos: 0–2 s, 150–152 s e 240–242 s do original.
+Esquerda: original. Direita: rede detalhada + restauração temporal em 50%,
+intensidade 80%, ruído 30%, nitidez 15%, pontos claros extras em zero.
+Foi processada offline; os 30 FPS do arquivo exportado não são medição de
+velocidade ao vivo. O arquivo completo de quase cinco minutos não foi exportado.
+
+PARA VOLTAR À VERSÃO ANTERIOR
+Feche o programa. Copie os módulos de backup_antes_0.3.4_* para app (portátil)
+ou para a pasta principal (instalação .venv). Os módulos novos não usados pela
+versão anterior podem permanecer na pasta. Os modelos não foram substituídos.
+
+Veja VALIDACAO.txt para o alcance dos testes e as limitações da medição.

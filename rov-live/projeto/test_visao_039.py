@@ -1,0 +1,147 @@
+"""0.3.9: longer particle history, full-resolution denoise, stabilization, auto Visual."""
+import math
+import time
+
+import cv2
+import numpy as np
+
+from auto_visual import AutoVisual, measure, targets
+from processing import Settings
+from stabilize import Stabilizer
+from temporal_restore import TemporalRestorer, robust_reference
+
+
+def test_robust_reference_ignores_one_bright_observation():
+    base = np.full((4, 4, 3), 100, np.uint8)
+    spot = base.copy()
+    spot[1, 1] = 220  # A slow particle still visible in one earlier frame.
+    reference, spread = robust_reference([base, spot, base + 2, base + 1])
+    assert abs(int(reference[1, 1, 0]) - 101) <= 1
+    assert int(spread.max()) <= 2
+    reference, spread = robust_reference([base, spot, base])
+    assert int(reference[1, 1, 0]) == 100 and int(spread.max()) == 0
+    reference, spread = robust_reference([base, spot])  # two: plain mean, wide spread
+    assert int(spread[1, 1, 0]) == 120
+
+
+def pan_sequence(frames=6, noise=4, seed=2):
+    rng = np.random.default_rng(seed)
+    big = cv2.GaussianBlur(rng.integers(30, 220, (420, 760, 3), dtype=np.uint8), (0, 0), 4)
+    truths, noisy = [], []
+    for t in range(frames):
+        truth = big[30:390, 2 * t + 20:2 * t + 660].copy()
+        truths.append(truth)
+        noisy.append(cv2.add(truth, rng.normal(0, noise, truth.shape).astype(np.int16), dtype=cv2.CV_8U))
+    return truths, noisy
+
+
+def test_full_resolution_denoise_reduces_noise_without_trails():
+    truths, noisy = pan_sequence()
+    restorer = TemporalRestorer()
+    errors_in, errors_out = [], []
+    for truth, frame in zip(truths, noisy):
+        restorer.clean(frame, .35, 1 / 30)
+        out = restorer.denoise(frame, .3)
+        region = (slice(60, -50), slice(40, -40))
+        errors_in.append(np.mean((frame[region].astype(float) - truth[region]) ** 2))
+        errors_out.append(np.mean((out[region].astype(float) - truth[region]) ** 2))
+    assert np.mean(errors_out[2:]) < np.mean(errors_in[2:]) * .8
+    # HUD bands are never mixed in time.
+    assert np.array_equal(out[:40], frame[:40])
+    # A sudden change (moving object) is not averaged with the past.
+    moved = noisy[-1].copy()
+    cv2.rectangle(moved, (300, 150), (360, 210), (250, 250, 250), -1)
+    restorer.clean(moved, .35, 1 / 30)
+    out = restorer.denoise(moved, .3)
+    assert np.array_equal(out[160:200, 310:350], moved[160:200, 310:350])
+
+
+def test_stabilizer_removes_shake_but_follows_pan():
+    rng = np.random.default_rng(3)
+    big = cv2.GaussianBlur(rng.integers(0, 255, (700, 1300, 3), dtype=np.uint8), (0, 0), 2)
+    stab = Stabilizer()
+    corrections = []
+    for t in range(60):
+        shake = (6 * math.sin(t * 1.7), 5 * math.cos(t * 2.3))
+        x, y = int(100 + 3 * t + shake[0]), int(100 + shake[1])
+        frame = big[y:y + 360, x:x + 640].copy()
+        corrections.append(stab.update(frame, 1 / 30))
+    corrections = np.array(corrections[10:])
+    # Corrections oppose the shake and stay bounded by the margin (pan followed).
+    limit = stab.margin * min(stab.width, 640)
+    assert np.abs(corrections[:, 0]).max() <= limit + 1e-6
+    assert np.std(corrections[:, 0]) > 1.5
+    out = stab.warp(frame, corrections[-1], 320)
+    assert out.shape == frame.shape
+    keep = np.zeros(frame.shape[:2], np.uint8)
+    keep[:30] = 1
+    assert np.array_equal(stab.warp(frame, corrections[-1], 320, keep)[:30], frame[:30])
+
+
+def test_auto_visual_reacts_to_veil_and_noise_smoothly():
+    rng = np.random.default_rng(4)
+    clear = cv2.GaussianBlur(rng.integers(0, 255, (360, 640, 3), dtype=np.uint8), (0, 0), 3)
+    clear = cv2.normalize(clear, None, 10, 245, cv2.NORM_MINMAX)
+    hazy = cv2.addWeighted(clear, .3, np.full_like(clear, 140), .7, 0)
+    noisy = cv2.add(clear, rng.normal(0, 10, clear.shape).astype(np.int16), dtype=cv2.CV_8U)
+    t_clear, t_hazy, t_noisy = (targets(*measure(f)) for f in (clear, hazy, noisy))
+    assert t_hazy['ai_contrast'] > t_clear['ai_contrast'] + .1
+    assert t_noisy['ai_sharp'] < t_clear['ai_sharp'] and t_noisy['ai_noise'] > t_clear['ai_noise']
+    auto = AutoVisual()
+    s = Settings(mode='ai', ai_auto=True)
+    first = auto.apply(s, clear, 1 / 30)
+    second = auto.apply(s, hazy, 1 / 30)
+    # Smoothed: one frame moves only a little toward the new scene.
+    assert first.ai_contrast < second.ai_contrast < t_hazy['ai_contrast'] - .1
+    assert 'Auto:' in auto.summary()
+    off = Settings(mode='ai', ai_auto=False, ai_contrast=.5)
+    assert auto.apply(off, hazy, 1 / 30) is off
+
+
+def test_live_pipeline_with_auto_and_stabilization_runs():
+    from live_ai import LiveAI
+    _, frames = pan_sequence(frames=12)
+    live = LiveAI()
+    settings = Settings(True, .8, mode='ai', quality='fast', backend='cpu', ai_noise=.3,
+                        ai_sharp=.15, ai_realtime=True, ai_restore=.35, ai_auto=True, stabilize=1.)
+    try:
+        for i, frame in enumerate(frames * 3):
+            out, info = live.process(frame, settings, i + 1, time.perf_counter())
+            time.sleep(.03)
+        assert out.shape == frame.shape and info['ai_state'] in ('applied', 'temporal')
+        assert info['auto'].startswith('Auto:')
+    finally:
+        live.close()
+
+
+def test_affine_correction_recovers_contrast_gain_and_protects_noise():
+    """0.3.13: correction = local map out ≈ a·in + b; full-resolution detail
+    gets the gain only above the noise level and is never attenuated."""
+    import rov_ai
+    rng = np.random.default_rng(7)
+    guide = cv2.GaussianBlur(rng.integers(40, 140, (144, 256, 3), dtype=np.uint8), (0, 0), 1)
+    true_out = np.clip(2.0 * guide.astype(np.float32) - 90, 0, 255)     # a = 2, b = -90
+    corr = rov_ai.affine_correction(guide, true_out - guide.astype(np.float32))
+    assert corr.shape == (144, 256, 6)
+    # A window with no variation keeps a = 1 (no contrast change), not 0.
+    flat_corr = rov_ai.affine_correction(np.full((40, 40, 3), 90, np.uint8), np.full((40, 40, 3), 10., np.float32))
+    assert np.allclose(flat_corr[:, :, :3], 0, atol=1e-4) and np.allclose(flat_corr[:, :, 3:], 10, atol=1e-3)
+    a = corr[20:-20, 20:-20, :3] + 1
+    assert 1.6 < float(np.median(a)) <= 2.5                               # gain found (regularized)
+    # Applied to the real frame: texture above noise grows, flat noise does not.
+    flat = np.clip(rng.normal(100, 2, (288, 512, 3)), 0, 255).astype(np.uint8)
+    gain_only = np.zeros((144, 256, 6), np.float32)
+    gain_only[:, :, :3] = 1.0                                              # a = 2, b = 0
+    gain_only[:, :, 3:] = -100.0                                           # keep level ~100
+    out = rov_ai.apply_affine(flat, gain_only, 1.)
+    assert float(out.astype(float).std()) < float(flat.astype(float).std()) * 1.3
+    edge = np.full((288, 512, 3), 90, np.uint8)
+    edge[:, 256:] = 110
+    out = rov_ai.apply_affine(edge, gain_only, 1.)
+    assert int(out[100, 300, 0]) - int(out[100, 200, 0]) > 30             # real step ×2
+    # Fine-detail stage never attenuates and is a no-op without gain.
+    none = np.zeros((144, 256, 6), np.float32)
+    assert np.array_equal(rov_ai.detail_gain(edge, edge, none, 1.), edge)
+    shrink = np.zeros((144, 256, 6), np.float32)
+    shrink[:, :, :3] = -.4
+    assert np.array_equal(rov_ai.detail_gain(edge, edge, shrink, 1.), edge)

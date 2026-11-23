@@ -1,0 +1,28 @@
+{
+  "input": "1029.mp4 / 1920x1080 / 30 FPS",
+  "backend": "CPU",
+  "video_fps": 17.84589578212754,
+  "frames_measured": 108,
+  "applied_frames": 60,
+  "states": {
+    "temporal": 48,
+    "applied": 60
+  },
+  "median_ai_ms": 520.8841109997593,
+  "median_correction_age_ms": 859.425401999033,
+  "median_application_ms": 56.744758499917225,
+  "p95_application_ms": 80.88500790017859,
+  "median_temporal_ms": 19.934289499360602,
+  "median_transfer_ms": 3.7605775014526444,
+  "median_finish_ms": 29.157266000765958,
+  "work_size": [
+    640,
+    360
+  ],
+  "output_shape": [
+    1080,
+    1920,
+    3
+  ],
+  "last_provider": "IA WaterNet \u2022 CPUExecutionProvider \u2022 detail \u2022 v\u00eddeo fluido"
+}

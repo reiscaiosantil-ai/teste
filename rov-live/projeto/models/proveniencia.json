@@ -1,0 +1,11 @@
+{
+  "upstream": "https://github.com/tnwei/waternet",
+  "commit": "2091896881fe0dfa5fb96007f29021a6067259cb",
+  "weights_url": "https://www.dropbox.com/s/g3ttnbjgi1pjp0v/replicated-waternet-256x256-20220529.pt?dl=1",
+  "weights_sha256": "a1357478926034a9f55aae7197608aa06ad64094327f147b49adc301928083e6",
+  "new_training": false,
+  "models": {
+    "waternet_fast.onnx": "2b9cc30dcc4cd2c4b1c8328f98f42e3aecc582cb787fe87d7e72417e359fb7b4",
+    "waternet.onnx": "509aab504d8fc0c99dde6d6e400e07798fe9a197efe7cd70c40f3347d2832932"
+  }
+}
