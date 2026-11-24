@@ -8,7 +8,8 @@ so the look never jumps:
 * noise: robust (MAD) estimate of fine grain; more noise means less
   sharpening and more noise reduction;
 * darkness: a dark scene opens up with more local contrast;
-* particles: the measured particle fraction raises the restoration.
+* particles: the measured particle fraction raises the restoration;
+* veil also sets how much of the physical veil removal (veil.py) is used.
 
 Only the strengths of existing, bounded stages change; nothing new is drawn.
 """
@@ -54,6 +55,9 @@ def targets(span, noise, median, particles=0.):
         'ai_restore': float(np.clip(.3 + .15 * veil + min(.2, particles * 150), .25, .6)),
         'ai_sharp': float(np.clip(.25 - .12 * veil - .2 * grain, .06, .3)),
         'ai_noise': float(np.clip(.2 + .35 * grain, .2, .55)),
+        # 0.3.14: veil removal follows the measured haze. In clear water the
+        # dark-channel estimate itself finds little veil, so this is safe.
+        'ai_dehaze': float(np.clip(.35 + .45 * veil - .2 * grain, .25, .8)),
     }
 
 
@@ -85,4 +89,5 @@ class AutoVisual:
             return ''
         v = self.values
         return (f"Auto: contraste {v['ai_contrast'] * 100:.0f}% • nitidez {v['ai_sharp'] * 100:.0f}% • "
-                f"ruído {v['ai_noise'] * 100:.0f}% • restauração {v['ai_restore'] * 100:.0f}%")
+                f"ruído {v['ai_noise'] * 100:.0f}% • restauração {v['ai_restore'] * 100:.0f}% • "
+                f"véu {v.get('ai_dehaze', 0) * 100:.0f}%")
