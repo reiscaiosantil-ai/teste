@@ -96,6 +96,7 @@ def main():
     parser.add_argument("--sem-fluido", action="store_true")
     parser.add_argument("--sem-auto", action="store_true", help="Visual fixo (Natural)")
     parser.add_argument("--estabilizar", action="store_true")
+    parser.add_argument("--veu", type=float, default=0., help="Remoção de véu fixa (0–1), com --sem-auto")
     parser.add_argument("--saida", default="benchmark_rov_live.json")
     args = parser.parse_args()
     if args.dispositivo is None and not args.video:
@@ -109,9 +110,9 @@ def main():
     settings = Settings(True, .8, mode="ai", quality=args.qualidade, backend=args.execucao,
                         device_id=args.gpu, ai_noise=.3, ai_sharp=.15,
                         ai_realtime=not args.sem_fluido, ai_specks=0, ai_restore=.35,
-                        ai_auto=not args.sem_auto, stabilize=1. if args.estabilizar else 0.)
+                        ai_auto=not args.sem_auto, stabilize=1. if args.estabilizar else 0., ai_dehaze=args.veu)
     cv2.setNumThreads(2)
-    result = {"versao": "0.3.13", "python": sys.version.split()[0], "opencv": cv2.__version__,
+    result = {"versao": "0.3.14", "python": sys.version.split()[0], "opencv": cv2.__version__,
               "sistema": platform.platform(), "cpu": platform.processor(),
               "nucleos": os.cpu_count(), "fonte": source.kind,
               "controles": settings.__dict__, **run(source, settings, args.segundos, args.aquecimento)}

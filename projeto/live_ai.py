@@ -13,6 +13,7 @@ import numpy as np
 from rov_ai import RovAI, resize_channels, detail_gain
 from auto_visual import AutoVisual
 from stabilize import Stabilizer
+from veil import VeilRemover, restore
 from processing import finish_ai, detail_layers, apply_detail
 from temporal_restore import (TemporalRestorer, working_frame, lift_change,
                               pixel_grid, flow_map)
@@ -138,6 +139,7 @@ class LiveAI:
         self.temporal = TemporalRestorer()
         self.auto = AutoVisual()
         self.stabilizer = Stabilizer()
+        self.veil = VeilRemover()
         self.coarse = None          # (correction seq, smoothed coarse map)
         self.perf_level = 0         # economy level set by engine.Governor
         self.last_received = None
@@ -152,6 +154,7 @@ class LiveAI:
         self.previous_thumb = None
         self.temporal.reset()
         self.stabilizer.reset()
+        self.veil.reset()
         self.coarse = None
         self.applied = None
         self.last_received = None
@@ -275,12 +278,14 @@ class LiveAI:
         # Sharpening layers from the full-resolution input (particles clamped,
         # noise reduced). Computed here: stage 1 carries the heavier work.
         job['detail'] = None if self.perf_level >= 2 else detail_layers(original, settings.ai_sharp)
-        restore = settings.ai_restore * settings.strength
+        dehaze = getattr(settings, 'ai_dehaze', 0.)
+        clarity = settings.ai_restore * settings.strength
         if result is None:
             if settings.ai_restore > 0 and not job['error']:
+                cleaned, _, _ = restore(self.veil, cleaned, None, settings.strength, dehaze, dt)
                 output = self.temporal.natural(frame, cleaned, settings.ai_color,
                                                settings.ai_contrast * settings.strength, dt)
-                output = self.temporal.clarify(output, restore, dt)
+                output = self.temporal.clarify(output, clarity, dt)
                 output = finish_ai(output, settings.ai_noise, 0., settings.ai_specks)
                 info.update(ai_state='temporal', ai_reason='waiting',
                             processor='Restauração temporal • aguardando a IA')
@@ -297,8 +302,8 @@ class LiveAI:
             # out, instead of popping (brightness jumps read as flashes).
             if state in ('expired', 'changed'):
                 state = 'global'
-            output = RovAI.apply(cleaned, delta, settings.strength)
-            job['correction'] = delta
+            output, job['correction'], job['detail_strength'] = restore(
+                self.veil, cleaned, delta, settings.strength, dehaze, dt)
         else:
             output = cleaned
         info['transfer_ms'] = (time.perf_counter() - transfer_start) * 1000
@@ -307,20 +312,22 @@ class LiveAI:
             # Same look whether the network or only the temporal stage acted.
             output = self.temporal.natural(frame, output, settings.ai_color,
                                            settings.ai_contrast * settings.strength, dt)
-            output = self.temporal.clarify(output, restore, dt)
+            output = self.temporal.clarify(output, clarity, dt)
             output = finish_ai(output, settings.ai_noise, 0., settings.ai_specks)
             output = lift_change(original, frame, output)
             # Fine detail finer than the working resolution gets the network's
             # contrast gain (affine correction), then the halo-free sharpening.
             if self.perf_level < 2:  # Economy 2+: no full-resolution detail work.
-                output = detail_gain(output, original, job.get('correction'), settings.strength)
+                output = detail_gain(output, original, job.get('correction'),
+                                         job.get('detail_strength', settings.strength))
             output = apply_detail(output, job['detail'])
         elif settings.ai_restore > 0:
             info['ai_reason'] = state
             state = 'temporal'
+            cleaned, _, _ = restore(self.veil, cleaned, None, settings.strength, dehaze, dt)
             output = self.temporal.natural(frame, cleaned, settings.ai_color,
                                            settings.ai_contrast * settings.strength, dt)
-            output = self.temporal.clarify(output, restore, dt)
+            output = self.temporal.clarify(output, clarity, dt)
             output = finish_ai(output, settings.ai_noise, 0., settings.ai_specks)
             output = lift_change(original, frame, output)
             output = apply_detail(output, job['detail'])

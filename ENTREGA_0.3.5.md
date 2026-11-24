@@ -621,3 +621,47 @@ O detalhe em resolução cheia é desligado a partir do nível de economia 2.
   volta sem arriscar cor inventada, e o limite de cor foi mantido por
   decisão anterior (evitar violeta e neon).
 - O detalhe abaixo do ruído não é recuperável.
+
+# 0.3.14: remoção física do véu da água e visual "Máxima visibilidade"
+
+Preparada para o teste de visibilidade no tanque. **Não validada no Windows
+nem com a câmera do BlueROV**; a 0.3.13 continua disponível no visual
+"Natural" (véu 0 % = mesmo caminho de antes).
+
+**O que mudou** (`projeto/veil.py`):
+- A água turva soma um véu a cada ponto: `I = J·t + A·(1 − t)`. A inversão
+  `J = (I − A)/t + A` é um mapa afim ponto a ponto, guardado e aplicado como
+  a correção da IA (mesma proteção de ruído). Nada é desenhado.
+- `t` vem do canal escuro em azul/verde, refinado por filtro guiado e
+  limitado (ganho máximo 2,5). `A` é a cor da região mais velada, suavizada
+  no tempo (~1 s), sem usar as faixas de telemetria.
+- Tudo é estimado no quadro atual: não há mistura temporal nova, portanto
+  não há fonte nova de rastro.
+- Um fator global de exposição devolve o brilho mediano e é limitado para
+  não estourar áreas claras.
+- A correção da IA e o véu são fundidos em um único mapa, aplicado uma vez.
+- Controle novo "Remover véu da água" (ajustes finos) e visual novo
+  "Máxima visibilidade" (véu 90 %, contraste 70 %, nitidez 35 %).
+- O visual "Automático" passou a usar o véu (25–80 %, conforme a turbidez).
+
+**Medidas** (bancada sintética da 0.3.13, IA Detalhada, 3 cenas):
+
+| Medida | 0.3.13 Natural | 0.3.14 Automático | 0.3.14 Máxima visibilidade |
+|---|---:|---:|---:|
+| Estrutura (SSIM) | 0,833 | 0,835 | **0,843** |
+| Correlação do detalhe | 0,560 | 0,565 | **0,598** |
+| Contraste do detalhe (1 = real) | 0,302 | 0,424 | **0,480** |
+| Detalhe falso | 1,145 | 1,200 | 1,082 |
+| Erro de cor ΔE | 28,9 | 30,1 | 31,3 |
+
+Fluidez ao vivo (1080p, servidor de 4 núcleos, IA na CPU): 23,96 FPS sem
+véu e 22,88 FPS com véu 90 % (+3 a 4 ms no estágio 2). 104 testes passam.
+
+**Limites:**
+- O erro de cor piora um pouco: a água vazia escurece e fica mais azulada.
+- O ganho evidencia blocos de compressão do vídeo. Na amostra (vídeo muito
+  comprimido) eles ficam visíveis; aumente a taxa de bits da câmera.
+- A bancada usa o mesmo modelo físico da correção, então o ganho real pode
+  ser menor. Em água limpa o efeito é pequeno.
+- Paredes claras e uniformes do tanque podem ser lidas como véu; o
+  contraste em torno delas aumenta, sem escurecê-las.

@@ -25,7 +25,7 @@ from processing import Settings
 import capture_devices
 from rov_ai import list_adapters, adapter_label
 
-VERSION = "0.3.13"
+VERSION = "0.3.14"
 
 STYLE = """
 QWidget { background: #0b1420; color: #d9e6ef; font-family: 'Segoe UI'; font-size: 13px; }
@@ -54,10 +54,11 @@ QSlider::handle:horizontal { background: #e8f6f3; width: 16px; height: 16px; mar
 # 0.3.7: "Visual" presets of the AI look (restoration, specks, color, local
 # contrast, noise, sharpness) so the common case needs a single choice.
 # "Automático" starts from the Natural values and adapts them to the scene.
-VISUALS = [("Automático", (35, 0, 30, 50, 30, 15)),
-           ("Natural", (35, 0, 30, 50, 30, 15)),
-           ("Mais detalhe", (45, 0, 30, 70, 25, 35)),
-           ("Cores vivas", (35, 0, 90, 40, 30, 15))]
+VISUALS = [("Automático", (35, 0, 30, 50, 30, 15, 50)),
+           ("Natural", (35, 0, 30, 50, 30, 15, 0)),
+           ("Mais detalhe", (45, 0, 30, 70, 25, 35, 0)),
+           ("Cores vivas", (35, 0, 90, 40, 30, 15, 0)),
+           ("Máxima visibilidade", (45, 0, 40, 70, 35, 35, 90))]
 
 
 def compact_form(parent=None):
@@ -294,7 +295,9 @@ class Window(QMainWindow):
         self.visual = fit(QComboBox())
         self.visual.addItems([name for name, _ in VISUALS] + ["Personalizado"])
         self.visual.setToolTip("Automático: mede véu, ruído e escuridão da cena e ajusta contraste, nitidez, "
-                               "ruído e restauração aos poucos. Natural: cor fiel, contraste local moderado. Mais detalhe: abre mais as "
+                               "ruído, restauração e remoção de véu aos poucos. Máxima visibilidade: remove o véu da água "
+                               "com força e abre o contraste, para enxergar o mais longe possível em água turva "
+                               "(pode evidenciar blocos de compressão do vídeo). Natural: cor fiel, contraste local moderado. Mais detalhe: abre mais as "
                                "sombras e realça bordas. Cores vivas: aparência mais saturada.")
         controls.addRow("Visual", self.visual)
         self.stabilize = QCheckBox("Estabilizar imagem")
@@ -352,9 +355,12 @@ class Window(QMainWindow):
         self.ai_noise.setToolTip("Suaviza granulação. Valores altos podem suavizar detalhes; não remove partículas reais com garantia.")
         self.ai_sharp = fit(self.number(0, 100, 15, 5, " %"))
         self.ai_sharp.setToolTip("Realça bordas na resolução de saída. Ignora variações do tamanho do ruído estimado e nunca ultrapassa o claro/escuro vizinho (sem halos). Não recupera detalhes ausentes.")
+        self.ai_dehaze = fit(self.number(0, 100, 50, 5, " %"))
+        self.ai_dehaze.setToolTip("Remove o véu que a água turva soma à imagem (modelo físico: cada ponto é corrigido só com o próprio valor e a cor da água estimada; nada é desenhado). Mostra objetos mais distantes e escurece a água vazia. Valores altos evidenciam ruído e blocos de compressão. Zero = comportamento da 0.3.13.")
         for label, widget in [("Partículas / temporal", self.ai_restore), ("Pontos claros", self.ai_specks),
                               ("Cor", self.ai_color), ("Contraste local", self.ai_contrast),
-                              ("Redução de ruído", self.ai_noise), ("Nitidez", self.ai_sharp)]:
+                              ("Redução de ruído", self.ai_noise), ("Nitidez", self.ai_sharp),
+                              ("Remover véu da água", self.ai_dehaze)]:
             ai.addRow(label, widget)
         treatment_layout.addWidget(self.ai_section)
         self.classic_box = QWidget()
@@ -384,7 +390,7 @@ class Window(QMainWindow):
         self._applying_visual = False
         self.visual.currentIndexChanged.connect(self.apply_visual)
         for widget in [self.ai_restore, self.ai_specks, self.ai_color, self.ai_contrast,
-                       self.ai_noise, self.ai_sharp]:
+                       self.ai_noise, self.ai_sharp, self.ai_dehaze]:
             widget.valueChanged.connect(self.visual_edited)
         treatment.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         side.addWidget(treatment)
@@ -478,6 +484,7 @@ class Window(QMainWindow):
         self.ai_specks.valueChanged.connect(self.update_settings)
         self.ai_color.valueChanged.connect(self.update_settings)
         self.ai_contrast.valueChanged.connect(self.update_settings)
+        self.ai_dehaze.valueChanged.connect(self.update_settings)
         self.ai_realtime.toggled.connect(self.update_settings)
         self.update_settings()
         self.timer = QTimer(self)
@@ -507,7 +514,7 @@ class Window(QMainWindow):
             "auto" if self.ai_backend.currentIndex()==0 else "cpu",int(self.ai_device.currentData()),self.ai_noise.value()/100,self.ai_sharp.value()/100,self.ai_realtime.isChecked(),self.ai_specks.value()/100,self.ai_restore.value()/100,
             self.ai_color.value()/100,self.ai_contrast.value()/100,
             self.visual.currentIndex()==0, 1.0 if self.stabilize.isChecked() else 0.0,
-            5 if self.perf_extra.isChecked() else 3)
+            self.ai_dehaze.value() / 100, 5 if self.perf_extra.isChecked() else 3)
 
     def update_settings(self, *_):
         classic=self.motor.currentIndex()==1
@@ -535,7 +542,7 @@ class Window(QMainWindow):
         self._applying_visual = True
         values = VISUALS[index][1]
         for widget, value in zip([self.ai_restore, self.ai_specks, self.ai_color, self.ai_contrast,
-                                  self.ai_noise, self.ai_sharp], values):
+                                  self.ai_noise, self.ai_sharp, self.ai_dehaze], values):
             widget.setValue(value)
         self._applying_visual = False
         self.update_settings()
@@ -544,7 +551,8 @@ class Window(QMainWindow):
         if self._applying_visual:
             return
         values = tuple(round(w.value()) for w in [self.ai_restore, self.ai_specks, self.ai_color,
-                                                   self.ai_contrast, self.ai_noise, self.ai_sharp])
+                                                   self.ai_contrast, self.ai_noise, self.ai_sharp,
+                                                   self.ai_dehaze])
         current = self.visual.currentIndex()
         if current < len(VISUALS) and VISUALS[current][1] == values:
             return
@@ -970,7 +978,7 @@ class Window(QMainWindow):
         process.finished.connect(self.export_finished)
         process.errorOccurred.connect(self.export_error)
         process.start(sys.executable,[str(Path(__file__).with_name('export_video.py')),source,dest,
-            '--quality',settings.quality,'--backend',settings.backend,'--device',str(settings.device_id),'--strength',str(settings.strength),'--noise',str(settings.ai_noise),'--sharp',str(settings.ai_sharp),'--specks',str(settings.ai_specks),'--restore',str(settings.ai_restore),'--color',str(settings.ai_color),'--contrast',str(settings.ai_contrast),'--stabilize',str(settings.stabilize)]+(['--auto'] if settings.ai_auto else []))
+            '--quality',settings.quality,'--backend',settings.backend,'--device',str(settings.device_id),'--strength',str(settings.strength),'--noise',str(settings.ai_noise),'--sharp',str(settings.ai_sharp),'--specks',str(settings.ai_specks),'--restore',str(settings.ai_restore),'--color',str(settings.ai_color),'--contrast',str(settings.ai_contrast),'--stabilize',str(settings.stabilize),'--dehaze',str(settings.ai_dehaze)]+(['--auto'] if settings.ai_auto else []))
 
     def export_read(self):
         if self.export_process:

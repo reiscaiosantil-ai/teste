@@ -28,6 +28,7 @@ class Settings:
     ai_contrast: float = 0.5   # 0.3.6: limited local contrast on luminance
     ai_auto: bool = False      # 0.3.9: fine controls follow the scene
     stabilize: float = 0.0     # 0.3.9: digital stabilization of the treated view
+    ai_dehaze: float = 0.0     # 0.3.14: physical veil (backscatter) removal
     perf_max: int = 3          # 0.3.12: highest automatic economy level (5 = extra levels)
 
 
@@ -52,6 +53,8 @@ class Enhancer:
             self.temporal.reset()
         if self.stabilizer is not None:
             self.stabilizer.reset()
+        if getattr(self, 'veil', None) is not None:
+            self.veil.reset()
 
     def process(self, frame, settings, dt=1 / 30):
         if frame.dtype != np.uint8 or frame.ndim != 3 or frame.shape[2] != 3:
@@ -95,14 +98,18 @@ class Enhancer:
                 correction = (self.stabilizer.update(work, dt, settings.stabilize)
                               if settings.stabilize > 0 else None)
                 correction_ai, _ = self.ai.estimate(cleaned)
-                enhanced = self.ai.apply(cleaned, correction_ai, settings.strength)
+                from veil import VeilRemover, restore
+                if getattr(self, 'veil', None) is None:
+                    self.veil = VeilRemover()
+                enhanced, correction_ai, detail_strength = restore(
+                    self.veil, cleaned, correction_ai, settings.strength, settings.ai_dehaze, dt)
                 enhanced = self.temporal.natural(work, enhanced, settings.ai_color,
                                                  settings.ai_contrast * settings.strength, dt)
                 enhanced = self.temporal.clarify(enhanced, settings.ai_restore * settings.strength, dt)
                 enhanced = finish_ai(enhanced, settings.ai_noise, 0., settings.ai_specks)
                 from rov_ai import detail_gain
                 result = detail_gain(lift_change(frame, work, enhanced), frame, correction_ai,
-                                     settings.strength)
+                                     detail_strength)
                 result = sharpen_detail(result, settings.ai_sharp)
                 if correction is not None:
                     result = self.stabilizer.warp(result, correction,
